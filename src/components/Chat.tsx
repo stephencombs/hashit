@@ -1,75 +1,91 @@
 import { useState } from "react";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "~/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "~/components/ai-elements/message";
+import {
+  PromptInput,
+  type PromptInputMessage,
+  PromptInputTextarea,
+  PromptInputSubmit,
+  PromptInputFooter,
+  PromptInputBody,
+} from "~/components/ai-elements/prompt-input";
+import { MessageSquare } from "lucide-react";
+import type { ChatStatus } from "ai";
 
 export function Chat() {
   const [input, setInput] = useState("");
 
-  const { messages, sendMessage, isLoading } = useChat({
+  const { messages, sendMessage, status } = useChat({
     connection: fetchServerSentEvents("/api/chat"),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && !isLoading) {
-      sendMessage(input);
+  const handleSubmit = (message: PromptInputMessage) => {
+    if (message.text.trim()) {
+      sendMessage(message.text);
       setInput("");
     }
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`mb-4 ${
-              message.role === "assistant" ? "text-blue-600" : "text-gray-800"
-            }`}
-          >
-            <div className="font-semibold mb-1">
-              {message.role === "assistant" ? "Assistant" : "You"}
-            </div>
-            <div>
-              {message.parts.map((part, idx) => {
-                if (part.type === "thinking") {
-                  return (
-                    <div
-                      key={idx}
-                      className="text-sm text-gray-500 italic mb-2"
-                    >
-                      💭 Thinking: {part.content}
-                    </div>
-                  );
-                }
-                if (part.type === "text") {
-                  return <div key={idx}>{part.content}</div>;
-                }
-                return null;
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="mx-auto flex h-screen w-full max-w-4xl flex-col p-6">
+      <Conversation>
+        <ConversationContent>
+          {messages.length === 0 ? (
+            <ConversationEmptyState
+              icon={<MessageSquare className="size-12" />}
+              title="Start a conversation"
+              description="Type a message below to begin chatting"
+            />
+          ) : (
+            messages.map((message) => (
+              <Message
+                from={message.role as "user" | "assistant"}
+                key={message.id}
+              >
+                <MessageContent>
+                  {message.parts.map((part, i) => {
+                    if (part.type === "text") {
+                      return (
+                        <MessageResponse key={`${message.id}-${i}`}>
+                          {part.content}
+                        </MessageResponse>
+                      );
+                    }
+                    return null;
+                  })}
+                </MessageContent>
+              </Message>
+            ))
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
-      <form onSubmit={handleSubmit} className="p-4 border-t">
-        <div className="flex gap-2">
-          <input
-            type="text"
+      <PromptInput onSubmit={handleSubmit} className="mt-4">
+        <PromptInputBody>
+          <PromptInputTextarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 border rounded-lg"
-            disabled={isLoading}
+            onChange={(e) => setInput(e.currentTarget.value)}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
-          >
-            Send
-          </button>
-        </div>
-      </form>
+        </PromptInputBody>
+        <PromptInputFooter>
+          <div />
+          <PromptInputSubmit
+            disabled={!input.trim() && status === "ready"}
+            status={status as ChatStatus}
+          />
+        </PromptInputFooter>
+      </PromptInput>
     </div>
   );
 }

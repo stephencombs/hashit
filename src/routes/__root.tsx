@@ -7,7 +7,9 @@ import {
   Scripts,
   ErrorComponent,
 } from '@tanstack/react-router'
+import { TooltipProvider } from '~/components/ui/tooltip'
 import { logger } from '~/utils/logger'
+import appCss from '~/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,6 +25,7 @@ export const Route = createRootRoute({
         title: 'TanStack Start Starter',
       },
     ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
   errorComponent: RootErrorComponent,
@@ -62,7 +65,9 @@ function RootErrorComponent({ error }: { error: Error }) {
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <TooltipProvider>
+        <Outlet />
+      </TooltipProvider>
     </RootDocument>
   )
 }
