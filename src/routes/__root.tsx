@@ -75,11 +75,11 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html>
+    <html className="h-full">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="flex h-full flex-col">
         {children}
         <Scripts />
       </body>

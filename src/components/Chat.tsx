@@ -37,7 +37,7 @@ export function Chat() {
   };
 
   return (
-    <div className="mx-auto flex h-screen w-full max-w-4xl flex-col p-6">
+    <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col p-6">
       <Conversation>
         <ConversationContent>
           {messages.length === 0 ? (
