@@ -1,8 +1,8 @@
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { logger } from '~/utils/logger'
-import { metrics } from '~/utils/metrics'
+import { useRequest } from 'nitro/context'
+import type { RequestLogger } from 'evlog'
 
 const filePath = 'count.txt'
 
@@ -15,23 +15,20 @@ async function readCount() {
 const getCount = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  return metrics.measure('server_fn:getCount', async () => {
-    logger.debug('Fetching count')
-    const count = await readCount()
-    logger.debug('Count fetched', { count })
-    return count
-  })
+  const log = useRequest().context.log as RequestLogger
+  const count = await readCount()
+  log.set({ action: 'getCount', count })
+  return count
 })
 
 const updateCount = createServerFn({ method: 'POST' })
   .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
-    await metrics.measure('server_fn:updateCount', async () => {
-      const count = await readCount()
-      const next = count + data
-      logger.info('Updating count', { from: count, to: next })
-      await fs.promises.writeFile(filePath, `${next}`)
-    })
+    const log = useRequest().context.log as RequestLogger
+    const count = await readCount()
+    const next = count + data
+    log.set({ action: 'updateCount', from: count, to: next })
+    await fs.promises.writeFile(filePath, `${next}`)
   })
 
 export const Route = createFileRoute('/')({

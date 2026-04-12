@@ -1,9 +1,9 @@
 import { chat, toServerSentEventsResponse } from '@tanstack/ai'
 import { createOpenaiChat } from '@tanstack/ai-openai'
 import { createFileRoute } from '@tanstack/react-router'
-import { logger } from '~/utils/logger'
-import { metrics } from '~/utils/metrics'
-import { reportError } from '~/utils/error-reporter'
+import { useRequest } from 'nitro/context'
+import { createError } from 'evlog'
+import type { RequestLogger } from 'evlog'
 
 function getAzureAdapter(deployment?: string) {
   const model = deployment || process.env.AZURE_OPENAI_DEPLOYMENT!
@@ -19,70 +19,43 @@ export const Route = createFileRoute('/api/chat')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const start = Date.now()
+        const req = useRequest()
+        const log = req.context.log as RequestLogger
 
         if (
           !process.env.AZURE_OPENAI_API_KEY ||
           !process.env.AZURE_OPENAI_ENDPOINT ||
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
-          const err = new Error('Azure OpenAI environment variables not configured')
-          reportError(err, { route: '/api/chat' })
-
-          return new Response(
-            JSON.stringify({
-              error:
-                'Azure OpenAI environment variables not configured. ' +
-                'Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, ' +
-                'and AZURE_OPENAI_DEPLOYMENT.',
-            }),
-            {
-              status: 500,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          )
+          throw createError({
+            message: 'Azure OpenAI environment variables not configured',
+            status: 500,
+            why: 'Missing one or more required environment variables',
+            fix: 'Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT',
+          })
         }
 
         const body = await request.json()
         const { messages, data } = body
         const conversationId: string | undefined = data?.conversationId
 
-        logger.info('Chat request received', {
+        log.set({
           conversationId,
           messageCount: messages?.length,
           model: data?.model,
         })
 
-        try {
-          const adapter = getAzureAdapter(data?.model)
+        const adapter = getAzureAdapter(data?.model)
 
-          const stream = chat({
-            adapter,
-            messages,
-            conversationId,
-          })
+        const stream = chat({
+          adapter,
+          messages,
+          conversationId,
+        })
 
-          const duration = Date.now() - start
-          metrics.record('api:chat:stream_start', duration)
-          logger.info('Chat stream started', { conversationId, duration })
+        log.set({ phase: 'stream_started' })
 
-          return toServerSentEventsResponse(stream)
-        } catch (error) {
-          const duration = Date.now() - start
-          metrics.record('api:chat:error', duration)
-          reportError(error, { route: '/api/chat', conversationId })
-
-          return new Response(
-            JSON.stringify({
-              error:
-                error instanceof Error ? error.message : 'An error occurred',
-            }),
-            {
-              status: 500,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          )
-        }
+        return toServerSentEventsResponse(stream)
       },
     },
   },

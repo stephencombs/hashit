@@ -6,10 +6,20 @@
       "sourceType": "github",
       "computedHash": "7e81acdd3028bb68aa4387b2bd083c5812a50e2be1bea08c76994dcfb8f6a3d3"
     },
+    "analyze-logs": {
+      "source": "evlog.dev",
+      "sourceType": "well-known",
+      "computedHash": "28bd8254997b767ebba1f7f2cf4567ddb6c51b1fcdca9baf9b9cd7ee3ca51d7c"
+    },
     "portless": {
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "computedHash": "4ec0e34bf4604a1327fd396825d50fbb3950d94d5f68deaea48c89788444292b"
+    },
+    "review-logging-patterns": {
+      "source": "evlog.dev",
+      "sourceType": "well-known",
+      "computedHash": "16ec9091a37cfce1089d137da6c4d2997d771a8eb914a952df7654afbcdd1f36"
     }
   }
 }

@@ -7,11 +7,15 @@ import {
   Scripts,
   ErrorComponent,
 } from '@tanstack/react-router'
+import { createMiddleware } from '@tanstack/react-start'
+import { evlogErrorHandler } from 'evlog/nitro/v3'
 import { TooltipProvider } from '~/components/ui/tooltip'
-import { logger } from '~/utils/logger'
 import appCss from '~/app.css?url'
 
 export const Route = createRootRoute({
+  server: {
+    middleware: [createMiddleware().server(evlogErrorHandler)],
+  },
   head: () => ({
     meta: [
       {
@@ -46,10 +50,7 @@ function NotFoundComponent() {
 
 function RootErrorComponent({ error }: { error: Error }) {
   useEffect(() => {
-    logger.error('Unhandled error caught by root boundary', {
-      message: error.message,
-      stack: error.stack,
-    })
+    console.error('Unhandled error caught by root boundary', error)
   }, [error])
 
   return (
