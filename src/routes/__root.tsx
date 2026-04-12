@@ -1,11 +1,13 @@
 /// <reference types="vite/client" />
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
+  ErrorComponent,
 } from '@tanstack/react-router'
+import { logger } from '~/utils/logger'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,7 +25,26 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootComponent,
+  errorComponent: RootErrorComponent,
 })
+
+function RootErrorComponent({ error }: { error: Error }) {
+  useEffect(() => {
+    logger.error('Unhandled error caught by root boundary', {
+      message: error.message,
+      stack: error.stack,
+    })
+  }, [error])
+
+  return (
+    <RootDocument>
+      <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+        <h1>Something went wrong</h1>
+        <ErrorComponent error={error} />
+      </div>
+    </RootDocument>
+  )
+}
 
 function RootComponent() {
   return (

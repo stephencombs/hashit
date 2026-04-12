@@ -1,6 +1,9 @@
 import { chat, toServerSentEventsResponse } from '@tanstack/ai'
 import { createOpenaiChat } from '@tanstack/ai-openai'
 import { createFileRoute } from '@tanstack/react-router'
+import { logger } from '~/utils/logger'
+import { metrics } from '~/utils/metrics'
+import { reportError } from '~/utils/error-reporter'
 
 function getAzureAdapter(deployment?: string) {
   const model = deployment || process.env.AZURE_OPENAI_DEPLOYMENT!
@@ -16,11 +19,16 @@ export const Route = createFileRoute('/api/chat')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const start = Date.now()
+
         if (
           !process.env.AZURE_OPENAI_API_KEY ||
           !process.env.AZURE_OPENAI_ENDPOINT ||
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
+          const err = new Error('Azure OpenAI environment variables not configured')
+          reportError(err, { route: '/api/chat' })
+
           return new Response(
             JSON.stringify({
               error:
@@ -39,6 +47,12 @@ export const Route = createFileRoute('/api/chat')({
         const { messages, data } = body
         const conversationId: string | undefined = data?.conversationId
 
+        logger.info('Chat request received', {
+          conversationId,
+          messageCount: messages?.length,
+          model: data?.model,
+        })
+
         try {
           const adapter = getAzureAdapter(data?.model)
 
@@ -48,8 +62,16 @@ export const Route = createFileRoute('/api/chat')({
             conversationId,
           })
 
+          const duration = Date.now() - start
+          metrics.record('api:chat:stream_start', duration)
+          logger.info('Chat stream started', { conversationId, duration })
+
           return toServerSentEventsResponse(stream)
         } catch (error) {
+          const duration = Date.now() - start
+          metrics.record('api:chat:error', duration)
+          reportError(error, { route: '/api/chat', conversationId })
+
           return new Response(
             JSON.stringify({
               error:
