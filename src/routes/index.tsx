@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { PenSquareIcon } from 'lucide-react'
 import { AppSidebar } from '~/components/app-sidebar'
 import { Chat } from '~/components/Chat'
@@ -23,6 +23,16 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+  const navigate = useNavigate()
+
+  const handleThreadCreated = (threadId: string) => {
+    navigate({
+      to: '/chat/$threadId',
+      params: { threadId },
+      replace: true,
+    })
+  }
+
   return (
     <SidebarProvider
       style={
@@ -42,7 +52,7 @@ function Home() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">All Chats</BreadcrumbLink>
+                <BreadcrumbLink href="/">All Chats</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
@@ -51,13 +61,13 @@ function Home() {
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" disabled>
               <PenSquareIcon data-icon="inline-start" />
               <span className="sr-only">New chat</span>
             </Button>
           </div>
         </header>
-        <Chat />
+        <Chat onThreadCreated={handleThreadCreated} />
       </SidebarInset>
     </SidebarProvider>
   )

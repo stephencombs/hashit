@@ -2,7 +2,7 @@
 import { type ReactNode, useEffect } from 'react'
 import {
   Outlet,
-  createRootRoute,
+  createRootRouteWithContext,
   HeadContent,
   Scripts,
   ErrorComponent,
@@ -11,8 +11,11 @@ import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import appCss from '~/app.css?url'
+import type { QueryClient } from '@tanstack/react-query'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient
+}>()({
   server: {
     middleware: [createMiddleware().server(evlogErrorHandler)],
   },

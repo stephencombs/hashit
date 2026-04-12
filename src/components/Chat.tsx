@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Conversation,
   ConversationContent,
@@ -21,19 +22,66 @@ import {
 } from "~/components/ai-elements/prompt-input";
 import { MessageSquare } from "lucide-react";
 import type { ChatStatus } from "ai";
+import type { Thread } from "~/lib/schemas";
 
-export function Chat() {
+interface ChatProps {
+  threadId?: string;
+  initialMessages?: Array<{
+    id: string;
+    role: "user" | "assistant";
+    parts: Array<{ type: "text"; content: string }>;
+  }>;
+  onThreadCreated?: (threadId: string) => void;
+}
+
+const OPTIMISTIC_ID = "optimistic-new";
+
+export function Chat({
+  threadId,
+  initialMessages,
+  onThreadCreated,
+}: ChatProps) {
   const [input, setInput] = useState("");
+  const createdThreadIdRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { messages, sendMessage, status } = useChat({
+    id: threadId,
     connection: fetchServerSentEvents("/api/chat"),
+    initialMessages: initialMessages as any,
+    body: threadId ? { threadId } : undefined,
+    onCustomEvent: (eventType: string, data: unknown, _context: { toolCallId?: string }) => {
+      if (eventType === "thread_created") {
+        const realId = (data as { threadId: string }).threadId;
+        createdThreadIdRef.current = realId;
+
+        queryClient.setQueryData<Thread[]>(["threads"], (old = []) =>
+          old.map((t) => (t.id === OPTIMISTIC_ID ? { ...t, id: realId } : t)),
+        );
+      }
+    },
+    onFinish: () => {
+      if (!threadId && createdThreadIdRef.current && onThreadCreated) {
+        queryClient.invalidateQueries({ queryKey: ["threads"] });
+        onThreadCreated(createdThreadIdRef.current);
+        createdThreadIdRef.current = null;
+      }
+    },
   });
 
   const handleSubmit = (message: PromptInputMessage) => {
-    if (message.text.trim()) {
-      sendMessage(message.text);
-      setInput("");
+    if (!message.text.trim()) return;
+
+    if (!threadId) {
+      const now = new Date();
+      queryClient.setQueryData<Thread[]>(["threads"], (old = []) => [
+        { id: OPTIMISTIC_ID, title: "Untitled", createdAt: now, updatedAt: now },
+        ...old,
+      ]);
     }
+
+    sendMessage(message.text);
+    setInput("");
   };
 
   return (

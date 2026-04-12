@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as ApiThreadsRouteImport } from './routes/api/threads'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
@@ -23,40 +26,85 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
+  id: '/chat/$threadId',
+  path: '/chat/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiThreadsRoute = ApiThreadsRouteImport.update({
+  id: '/api/threads',
+  path: '/api/threads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => ApiThreadsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/chat/$threadId': typeof ChatThreadIdRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/chat/$threadId': typeof ChatThreadIdRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/chat/$threadId': typeof ChatThreadIdRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/health' | '/api/chat'
+  fullPaths:
+    | '/'
+    | '/health'
+    | '/api/chat'
+    | '/api/threads'
+    | '/chat/$threadId'
+    | '/api/threads/$threadId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/health' | '/api/chat'
-  id: '__root__' | '/' | '/health' | '/api/chat'
+  to:
+    | '/'
+    | '/health'
+    | '/api/chat'
+    | '/api/threads'
+    | '/chat/$threadId'
+    | '/api/threads/$threadId'
+  id:
+    | '__root__'
+    | '/'
+    | '/health'
+    | '/api/chat'
+    | '/api/threads'
+    | '/chat/$threadId'
+    | '/api/threads/$threadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
+  ChatThreadIdRoute: typeof ChatThreadIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +123,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat/$threadId': {
+      id: '/chat/$threadId'
+      path: '/chat/$threadId'
+      fullPath: '/chat/$threadId'
+      preLoaderRoute: typeof ChatThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/threads': {
+      id: '/api/threads'
+      path: '/api/threads'
+      fullPath: '/api/threads'
+      preLoaderRoute: typeof ApiThreadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -82,13 +144,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/threads/$threadId': {
+      id: '/api/threads/$threadId'
+      path: '/$threadId'
+      fullPath: '/api/threads/$threadId'
+      preLoaderRoute: typeof ApiThreadsThreadIdRouteImport
+      parentRoute: typeof ApiThreadsRoute
+    }
   }
 }
+
+interface ApiThreadsRouteChildren {
+  ApiThreadsThreadIdRoute: typeof ApiThreadsThreadIdRoute
+}
+
+const ApiThreadsRouteChildren: ApiThreadsRouteChildren = {
+  ApiThreadsThreadIdRoute: ApiThreadsThreadIdRoute,
+}
+
+const ApiThreadsRouteWithChildren = ApiThreadsRoute._addFileChildren(
+  ApiThreadsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiThreadsRoute: ApiThreadsRouteWithChildren,
+  ChatThreadIdRoute: ChatThreadIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
