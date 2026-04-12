@@ -1,0 +1,20 @@
+node_modules
+dist
+.output
+.vinxi
+count.txt
+
+# Environment
+.env
+.env.*
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
