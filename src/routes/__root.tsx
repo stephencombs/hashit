@@ -26,7 +26,20 @@ export const Route = createRootRoute({
   }),
   component: RootComponent,
   errorComponent: RootErrorComponent,
+  notFoundComponent: NotFoundComponent,
 })
+
+function NotFoundComponent() {
+  return (
+    <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+      <h1>404 — Page not found</h1>
+      <p>The page you're looking for doesn't exist.</p>
+      <a href="/" style={{ color: 'inherit' }}>
+        Go home
+      </a>
+    </div>
+  )
+}
 
 function RootErrorComponent({ error }: { error: Error }) {
   useEffect(() => {
