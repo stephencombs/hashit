@@ -10,6 +10,8 @@ import {
 import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 import { TooltipProvider } from '~/components/ui/tooltip'
+import { ModelSettingsProvider } from '~/hooks/use-model-settings'
+import { ThemeProvider } from '~/hooks/use-theme'
 import appCss from '~/app.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -33,6 +35,11 @@ export const Route = createRootRouteWithContext<{
       },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
+    scripts: [
+      {
+        children: `(function(){try{var t=localStorage.getItem("hashit-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+      },
+    ],
   }),
   component: RootComponent,
   errorComponent: RootErrorComponent,
@@ -69,16 +76,20 @@ function RootErrorComponent({ error }: { error: Error }) {
 function RootComponent() {
   return (
     <RootDocument>
-      <TooltipProvider>
-        <Outlet />
-      </TooltipProvider>
+      <ThemeProvider>
+        <ModelSettingsProvider>
+          <TooltipProvider>
+            <Outlet />
+          </TooltipProvider>
+        </ModelSettingsProvider>
+      </ThemeProvider>
     </RootDocument>
   )
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className="h-full">
+    <html className="h-full" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

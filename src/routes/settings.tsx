@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { AppSidebar } from '~/components/app-sidebar'
-import { Chat } from '~/components/Chat'
+import { SettingsNav } from '~/components/settings-nav'
 import { Separator } from '~/components/ui/separator'
 import {
   SidebarInset,
@@ -8,21 +8,11 @@ import {
   SidebarTrigger,
 } from '~/components/ui/sidebar'
 
-export const Route = createFileRoute('/')({
-  component: Home,
+export const Route = createFileRoute('/settings')({
+  component: SettingsLayout,
 })
 
-function Home() {
-  const navigate = useNavigate()
-
-  const handleThreadCreated = (threadId: string) => {
-    navigate({
-      to: '/chat/$threadId',
-      params: { threadId },
-      replace: true,
-    })
-  }
-
+function SettingsLayout() {
   return (
     <SidebarProvider
       style={
@@ -33,15 +23,20 @@ function Home() {
     >
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
             orientation="vertical"
             className="mr-2 data-vertical:h-4 data-vertical:self-auto"
           />
-          <h1 className="text-sm font-medium">New Chat</h1>
+          <h1 className="text-sm font-medium">Settings</h1>
         </header>
-        <Chat onThreadCreated={handleThreadCreated} />
+        <div className="flex min-h-0 flex-1">
+          <SettingsNav />
+          <main className="flex-1 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

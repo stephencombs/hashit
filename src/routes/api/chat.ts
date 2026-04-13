@@ -8,6 +8,7 @@ import { db } from '~/db'
 import { threads, messages as messagesTable } from '~/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { chatRequestSchema } from '~/lib/schemas'
+import { createPlanTool } from '~/lib/tools'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk, MessagePart } from '@tanstack/ai'
 
@@ -164,6 +165,7 @@ async function* withPersistence(
 
   let accumulated = ''
   const assistantParts: Array<MessagePart> = []
+  const toolCalls = new Map<string, { name: string; args: string }>()
 
   for await (const chunk of stream) {
     if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
@@ -172,19 +174,45 @@ async function* withPersistence(
       } else if (chunk.delta) {
         accumulated += chunk.delta
       }
+    } else if (chunk.type === 'TOOL_CALL_START') {
+      toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: '' })
+    } else if (chunk.type === 'TOOL_CALL_ARGS') {
+      const tc = toolCalls.get(chunk.toolCallId)
+      if (tc) tc.args += chunk.delta
+    } else if (chunk.type === 'TOOL_CALL_END' && !chunk.result) {
+      const tc = toolCalls.get(chunk.toolCallId)
+      if (tc) {
+        assistantParts.push({
+          type: 'tool-call',
+          id: chunk.toolCallId,
+          name: tc.name,
+          arguments: tc.args,
+          state: 'input-complete',
+        })
+      }
     }
     yield chunk
   }
 
   if (accumulated) {
     assistantParts.push({ type: 'text', content: accumulated })
+  }
 
+  if (assistantParts.length > 0) {
     try {
       await persistAssistantMessage(threadId, accumulated, assistantParts)
       maybeGenerateTitle(threadId, userContent).catch(() => {})
     } catch (err) {
       log.set({ persistAssistantError: String(err) })
     }
+  }
+
+  // Signal that persistence is complete so the client can safely navigate
+  yield {
+    type: 'CUSTOM' as const,
+    name: 'persistence_complete',
+    value: { threadId },
+    timestamp: Date.now(),
   }
 }
 
@@ -272,6 +300,9 @@ export const Route = createFileRoute('/api/chat')({
           adapter,
           messages,
           conversationId,
+          temperature: data?.temperature,
+          systemPrompts: data?.systemPrompt ? [data.systemPrompt] : undefined,
+          tools: [createPlanTool],
         })
 
         log.set({ phase: 'stream_started' })

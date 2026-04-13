@@ -30,7 +30,7 @@ export const chatRequestSchema = z.object({
     z.object({
       role: z.string(),
       parts: z
-        .array(z.object({ type: z.string(), content: z.string() }))
+        .array(z.object({ type: z.string() }).passthrough())
         .optional(),
       content: z.string().optional(),
     }),
@@ -40,6 +40,8 @@ export const chatRequestSchema = z.object({
       threadId: z.string().optional(),
       conversationId: z.string().optional(),
       model: z.string().optional(),
+      temperature: z.number().min(0).max(2).optional(),
+      systemPrompt: z.string().optional(),
     })
     .optional(),
 })

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import { parsePartialJSON } from "@tanstack/ai";
 import { useQueryClient } from "@tanstack/react-query";
+import { useModelSettings } from "~/hooks/use-model-settings";
 import {
   Conversation,
   ConversationContent,
@@ -13,6 +15,15 @@ import {
   MessageResponse,
 } from "~/components/ai-elements/message";
 import {
+  Plan,
+  PlanAction,
+  PlanContent,
+  PlanDescription,
+  PlanHeader,
+  PlanTitle,
+  PlanTrigger,
+} from "~/components/ai-elements/plan";
+import {
   PromptInput,
   type PromptInputMessage,
   PromptInputTextarea,
@@ -22,6 +33,7 @@ import {
 } from "~/components/ai-elements/prompt-input";
 import { MessageSquare } from "lucide-react";
 import type { ChatStatus } from "ai";
+import type { ToolCallPart } from "@tanstack/ai";
 import type { Thread } from "~/lib/schemas";
 
 interface ChatProps {
@@ -34,6 +46,67 @@ interface ChatProps {
   onThreadCreated?: (threadId: string) => void;
 }
 
+interface PlanData {
+  title: string;
+  description: string;
+  steps: Array<{ title: string; description: string }>;
+}
+
+function isToolCallPart(part: { type: string }): part is ToolCallPart {
+  return part.type === "tool-call";
+}
+
+function parsePlan(args: string): PlanData | null {
+  try {
+    const parsed = parsePartialJSON(args);
+    if (parsed && typeof (parsed as Record<string, unknown>).title === "string")
+      return parsed as PlanData;
+  } catch {}
+  return null;
+}
+
+function PlanDisplay({
+  plan,
+  isStreaming,
+}: {
+  plan: PlanData;
+  isStreaming: boolean;
+}) {
+  return (
+    <Plan
+      isStreaming={isStreaming}
+      defaultOpen
+      className="min-w-full shadow-none ring-0 border border-border"
+    >
+      <PlanHeader>
+        <div className="flex-1 space-y-1">
+          <PlanTitle>{plan.title}</PlanTitle>
+          {plan.description && (
+            <PlanDescription>{plan.description}</PlanDescription>
+          )}
+        </div>
+        <PlanAction>
+          <PlanTrigger />
+        </PlanAction>
+      </PlanHeader>
+      {plan.steps && plan.steps.length > 0 && (
+        <PlanContent>
+          <ol className="list-inside list-decimal space-y-3 text-sm">
+            {plan.steps.map((step, i) => (
+              <li key={i} className="space-y-0.5">
+                <span className="font-medium">{step.title}</span>
+                <p className="ml-5 text-muted-foreground">
+                  {step.description}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </PlanContent>
+      )}
+    </Plan>
+  );
+}
+
 const OPTIMISTIC_ID = "optimistic-new";
 
 export function Chat({
@@ -44,28 +117,46 @@ export function Chat({
   const [input, setInput] = useState("");
   const createdThreadIdRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
+  const { model, temperature, systemPrompt } = useModelSettings();
+
+  const navigateIfReady = () => {
+    if (!threadId && createdThreadIdRef.current && onThreadCreated) {
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      onThreadCreated(createdThreadIdRef.current);
+      createdThreadIdRef.current = null;
+    }
+  };
 
   const { messages, sendMessage, status } = useChat({
     id: threadId,
     connection: fetchServerSentEvents("/api/chat"),
-    initialMessages: initialMessages as any,
-    body: threadId ? { threadId } : undefined,
-    onCustomEvent: (eventType: string, data: unknown, _context: { toolCallId?: string }) => {
+    initialMessages: initialMessages as Array<{
+      id: string;
+      role: "user" | "assistant";
+      parts: Array<{ type: "text"; content: string }>;
+    }>,
+    body: { threadId, model, temperature, systemPrompt },
+    onCustomEvent: (
+      eventType: string,
+      data: unknown,
+      _context: { toolCallId?: string },
+    ) => {
       if (eventType === "thread_created") {
-        const realId = (data as { threadId: string }).threadId;
+        const { threadId: realId } = data as { threadId: string };
         createdThreadIdRef.current = realId;
 
         queryClient.setQueryData<Thread[]>(["threads"], (old = []) =>
-          old.map((t) => (t.id === OPTIMISTIC_ID ? { ...t, id: realId } : t)),
+          old.map((t) =>
+            t.id === OPTIMISTIC_ID ? { ...t, id: realId } : t,
+          ),
         );
+      }
+      if (eventType === "persistence_complete") {
+        navigateIfReady();
       }
     },
     onFinish: () => {
-      if (!threadId && createdThreadIdRef.current && onThreadCreated) {
-        queryClient.invalidateQueries({ queryKey: ["threads"] });
-        onThreadCreated(createdThreadIdRef.current);
-        createdThreadIdRef.current = null;
-      }
+      navigateIfReady();
     },
   });
 
@@ -75,7 +166,12 @@ export function Chat({
     if (!threadId) {
       const now = new Date();
       queryClient.setQueryData<Thread[]>(["threads"], (old = []) => [
-        { id: OPTIMISTIC_ID, title: "Untitled", createdAt: now, updatedAt: now },
+        {
+          id: OPTIMISTIC_ID,
+          title: "Untitled",
+          createdAt: now,
+          updatedAt: now,
+        },
         ...old,
       ]);
     }
@@ -108,6 +204,21 @@ export function Chat({
                           {part.content}
                         </MessageResponse>
                       );
+                    }
+                    if (
+                      isToolCallPart(part) &&
+                      part.name === "create_plan"
+                    ) {
+                      const plan = parsePlan(part.arguments);
+                      if (plan) {
+                        return (
+                          <PlanDisplay
+                            key={`${message.id}-${i}`}
+                            plan={plan}
+                            isStreaming={status !== "ready"}
+                          />
+                        );
+                      }
                     }
                     return null;
                   })}
