@@ -2,14 +2,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { PenSquareIcon } from 'lucide-react'
 import { AppSidebar } from '~/components/app-sidebar'
 import { Chat } from '~/components/Chat'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '~/components/ui/breadcrumb'
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
 import {
@@ -37,7 +29,7 @@ function Home() {
     <SidebarProvider
       style={
         {
-          '--sidebar-width': '350px',
+          '--sidebar-width': '280px',
         } as React.CSSProperties
       }
     >
@@ -49,17 +41,7 @@ function Home() {
             orientation="vertical"
             className="mr-2 data-vertical:h-4 data-vertical:self-auto"
           />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/">All Chats</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>New Chat</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <h1 className="text-sm font-medium">New Chat</h1>
           <div className="ml-auto">
             <Button variant="ghost" size="icon" disabled>
               <PenSquareIcon data-icon="inline-start" />

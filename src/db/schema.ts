@@ -6,6 +6,8 @@ export const threads = sqliteTable('threads', {
   title: text('title').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+  pinnedAt: integer('pinned_at', { mode: 'timestamp' }),
 })
 
 export const messages = sqliteTable('messages', {

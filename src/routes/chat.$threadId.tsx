@@ -1,24 +1,16 @@
+import { useRef, useState } from 'react'
 import { z } from 'zod'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { PenSquareIcon } from 'lucide-react'
+
 import { AppSidebar } from '~/components/app-sidebar'
 import { Chat } from '~/components/Chat'
 import { db } from '~/db'
 import { threads, messages } from '~/db/schema'
 import { eq, asc } from 'drizzle-orm'
 import { threadDetailQuery } from '~/lib/queries'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '~/components/ui/breadcrumb'
-import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
 import {
   SidebarInset,
@@ -54,6 +46,80 @@ export const Route = createFileRoute('/chat/$threadId')({
   component: ChatThread,
 })
 
+function EditableTitle({ threadId, title }: { threadId: string; title: string }) {
+  const [editing, setEditing] = useState(false)
+  const ref = useRef<HTMLHeadingElement>(null)
+  const queryClient = useQueryClient()
+
+  const rename = useMutation({
+    mutationFn: async (newTitle: string) => {
+      await fetch(`/api/threads/${threadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] })
+      queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+    },
+  })
+
+  const commit = () => {
+    const el = ref.current
+    setEditing(false)
+    if (!el) return
+    const newTitle = el.textContent?.trim() ?? ''
+    if (newTitle && newTitle !== title) {
+      rename.mutate(newTitle)
+    } else {
+      el.textContent = title
+    }
+  }
+
+  return (
+    <h1
+      ref={ref}
+      className={`text-sm font-medium ${editing ? 'rounded border border-input px-1 outline-none ring-1 ring-ring' : 'cursor-text'}`}
+      contentEditable={editing}
+      suppressContentEditableWarning
+      onDoubleClick={() => {
+        if (editing) return
+        setEditing(true)
+        requestAnimationFrame(() => {
+          const el = ref.current
+          if (!el) return
+          el.focus()
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const sel = window.getSelection()
+          sel?.removeAllRanges()
+          sel?.addRange(range)
+        })
+      }}
+      onBlur={() => {
+        if (editing) commit()
+      }}
+      onKeyDown={(e) => {
+        if (!editing) return
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          commit()
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          const el = ref.current
+          if (el) el.textContent = title
+          setEditing(false)
+          el?.blur()
+        }
+      }}
+    >
+      {title}
+    </h1>
+  )
+}
+
 function ChatThread() {
   const { threadId } = Route.useParams()
   const { data: thread } = useSuspenseQuery(threadDetailQuery(threadId))
@@ -68,7 +134,7 @@ function ChatThread() {
     <SidebarProvider
       style={
         {
-          '--sidebar-width': '350px',
+          '--sidebar-width': '280px',
         } as React.CSSProperties
       }
     >
@@ -80,25 +146,7 @@ function ChatThread() {
             orientation="vertical"
             className="mr-2 data-vertical:h-4 data-vertical:self-auto"
           />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/">All Chats</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{thread.title}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="ml-auto">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <PenSquareIcon data-icon="inline-start" />
-                <span className="sr-only">New chat</span>
-              </Button>
-            </Link>
-          </div>
+          <EditableTitle threadId={thread.id} title={thread.title} />
         </header>
         <Chat
           key={thread.id}

@@ -27,6 +27,33 @@ export const Route = createFileRoute('/api/threads/$threadId')({
 
         return Response.json({ ...thread, messages: threadMessages })
       },
+
+      PATCH: async ({ params, request }) => {
+        const { threadId } = params
+        const body = await request.json() as { pinned?: boolean; title?: string }
+        const set: Record<string, unknown> = {}
+        if (body.pinned !== undefined) {
+          set.pinnedAt = body.pinned ? new Date() : null
+        }
+        if (body.title !== undefined) {
+          set.title = body.title
+          set.updatedAt = new Date()
+        }
+        await db
+          .update(threads)
+          .set(set)
+          .where(eq(threads.id, threadId))
+        return Response.json({ ok: true })
+      },
+
+      DELETE: async ({ params }) => {
+        const { threadId } = params
+        await db
+          .update(threads)
+          .set({ deletedAt: new Date() })
+          .where(eq(threads.id, threadId))
+        return new Response(null, { status: 204 })
+      },
     },
   },
 })

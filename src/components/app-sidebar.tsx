@@ -1,201 +1,245 @@
-import { useState } from "react"
-import { Link } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useMemo, useRef } from "react"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   HashIcon,
-  InboxIcon,
-  MessageSquareIcon,
   PenSquareIcon,
-  SearchIcon,
-  SettingsIcon,
-  StarIcon,
+  PinIcon,
+  PinOffIcon,
   Trash2Icon,
 } from "lucide-react"
 
 import { NavUser } from "~/components/nav-user"
-import { Label } from "~/components/ui/label"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
-  SidebarInput,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "~/components/ui/sidebar"
-import { Switch } from "~/components/ui/switch"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip"
+import { useIsOverflowing } from "~/hooks/use-is-overflowing"
 import { threadListQuery } from "~/lib/queries"
 import type { Thread } from "~/lib/schemas"
 
-const data = {
-  user: {
-    name: "User",
-    email: "user@example.com",
-    avatar: "",
-  },
-  navMain: [
-    {
-      title: "All Chats",
-      url: "#",
-      icon: MessageSquareIcon,
-      isActive: true,
-    },
-    {
-      title: "Starred",
-      url: "#",
-      icon: StarIcon,
-      isActive: false,
-    },
-    {
-      title: "Archived",
-      url: "#",
-      icon: InboxIcon,
-      isActive: false,
-    },
-    {
-      title: "Trash",
-      url: "#",
-      icon: Trash2Icon,
-      isActive: false,
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: SettingsIcon,
-      isActive: false,
-    },
-  ],
+const user = {
+  name: "User",
+  email: "user@example.com",
+  avatar: "",
 }
 
-function formatDate(date: Date) {
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60_000)
-  const diffHr = Math.floor(diffMs / 3_600_000)
-  const diffDays = Math.floor(diffMs / 86_400_000)
+function ConversationTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const isOverflowing = useIsOverflowing(title, ref)
 
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
+  return (
+    <TooltipProvider delay={300}>
+      <Tooltip>
+        <TooltipTrigger
+          render={<span ref={ref} className="min-w-0 truncate" />}
+        >
+          {title}
+        </TooltipTrigger>
+        {isOverflowing && (
+          <TooltipContent side="bottom">{title}</TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+function usePinThread() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ threadId, pinned }: { threadId: string; pinned: boolean }) => {
+      await fetch(`/api/threads/${threadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned }),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads"] })
+    },
+  })
+}
+
+function useDeleteThread() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      await fetch(`/api/threads/${threadId}`, { method: "DELETE" })
+    },
+    onSuccess: (_data, threadId) => {
+      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      const pathname = window.location.pathname
+      if (pathname.includes(threadId)) {
+        navigate({ to: "/" })
+      }
+    },
+  })
+}
+
+function ThreadItem({
+  conversation,
+  pinThread,
+  deleteThread,
+}: {
+  conversation: Thread
+  pinThread: ReturnType<typeof usePinThread>
+  deleteThread: ReturnType<typeof useDeleteThread>
+}) {
+  return (
+    <SidebarMenuItem className="overflow-hidden">
+      <SidebarMenuButton
+        render={
+          <Link
+            to="/chat/$threadId"
+            params={{ threadId: conversation.id }}
+          />
+        }
+      >
+        <ConversationTitle title={conversation.title} />
+      </SidebarMenuButton>
+      <div className="absolute inset-y-0 right-0 flex translate-x-full items-center gap-1 pr-2 pl-6 bg-gradient-to-r from-transparent to-sidebar to-30% transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0 group-data-[collapsible=icon]:hidden">
+        <button
+          className="flex size-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          onClick={(e) => {
+            e.preventDefault()
+            e.currentTarget.blur()
+            pinThread.mutate({
+              threadId: conversation.id,
+              pinned: !conversation.pinnedAt,
+            })
+          }}
+        >
+          {conversation.pinnedAt ? (
+            <PinOffIcon className="size-5" />
+          ) : (
+            <PinIcon className="size-5" />
+          )}
+          <span className="sr-only">
+            {conversation.pinnedAt ? "Unpin" : "Pin"}
+          </span>
+        </button>
+        <button
+          className="flex size-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          onClick={(e) => {
+            e.preventDefault()
+            e.currentTarget.blur()
+            deleteThread.mutate(conversation.id)
+          }}
+        >
+          <Trash2Icon className="size-5" />
+          <span className="sr-only">Delete</span>
+        </button>
+      </div>
+    </SidebarMenuItem>
+  )
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [activeItem, setActiveItem] = useState(data.navMain[0])
-  const { setOpen } = useSidebar()
   const { data: conversations = [] } = useQuery(threadListQuery)
+  const pinThread = usePinThread()
+  const deleteThread = useDeleteThread()
+
+  const { pinned, recents } = useMemo(() => {
+    const pinned: Thread[] = []
+    const recents: Thread[] = []
+    for (const c of conversations) {
+      if (c.pinnedAt) pinned.push(c)
+      else recents.push(c)
+    }
+    return { pinned, recents }
+  }, [conversations])
 
   return (
-    <Sidebar
-      collapsible="icon"
-      className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
-      {...props}
-    >
-      {/* Icon strip sidebar */}
-      <Sidebar
-        collapsible="none"
-        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
-      >
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                className="md:h-8 md:p-0"
-                render={<Link to="/" />}
-              >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <HashIcon className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Hashit</span>
-                  <span className="truncate text-xs">AI Chat</span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent className="px-1.5 md:px-0">
-              <SidebarMenu>
-                {data.navMain.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      tooltip={{
-                        children: item.title,
-                        hidden: false,
-                      }}
-                      onClick={() => {
-                        setActiveItem(item)
-                        setOpen(true)
-                      }}
-                      isActive={activeItem?.title === item.title}
-                      className="px-2.5 md:px-2"
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          <NavUser user={data.user} />
-        </SidebarFooter>
-      </Sidebar>
-
-      {/* Conversation list sidebar */}
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-        <SidebarHeader className="gap-3.5 border-b p-4">
-          <div className="flex w-full items-center justify-between">
-            <div className="text-base font-medium text-foreground">
-              {activeItem?.title}
-            </div>
-            <Label className="flex items-center gap-2 text-sm">
-              <span>Starred</span>
-              <Switch className="shadow-none" />
-            </Label>
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <HashIcon className="size-4" />
           </div>
-          <SidebarInput placeholder="Search conversations..." />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup className="px-0">
-            <SidebarGroupContent>
-              {conversations.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No conversations yet
-                </div>
-              ) : (
-                conversations.map((conversation) => (
-                  <Link
-                    to="/chat/$threadId"
-                    params={{ threadId: conversation.id }}
-                    key={conversation.id}
-                    className="flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  >
-                    <div className="flex w-full items-center gap-2">
-                      <span className="truncate font-medium">
-                        {conversation.title}
-                      </span>
-                      <span className="ml-auto text-xs whitespace-nowrap">
-                        {formatDate(conversation.updatedAt)}
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+          <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="truncate font-semibold">Hashit</span>
+            <span className="truncate text-xs">AI Chat</span>
+          </div>
+        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<Link to="/" />}
+              tooltip="New Chat"
+            >
+              <PenSquareIcon />
+              <span>New Chat</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {conversations.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+            No conversations yet
+          </div>
+        ) : (
+          <>
+            {pinned.length > 0 && (
+              <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+                <SidebarGroupLabel>Pinned</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {pinned.map((conversation) => (
+                      <ThreadItem
+                        key={conversation.id}
+                        conversation={conversation}
+                        pinThread={pinThread}
+                        deleteThread={deleteThread}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {recents.length > 0 && (
+              <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+                <SidebarGroupLabel>Recents</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {recents.map((conversation) => (
+                      <ThreadItem
+                        key={conversation.id}
+                        conversation={conversation}
+                        pinThread={pinThread}
+                        deleteThread={deleteThread}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </>
+        )}
+      </SidebarContent>
+
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
     </Sidebar>
   )
 }

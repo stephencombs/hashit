@@ -7,6 +7,8 @@ const coercedDate = z.coerce.date()
 export const selectThreadSchema = createSelectSchema(threads, {
   createdAt: coercedDate,
   updatedAt: coercedDate,
+  deletedAt: coercedDate.nullable(),
+  pinnedAt: coercedDate.nullable(),
 })
 export const insertThreadSchema = createInsertSchema(threads)
 
