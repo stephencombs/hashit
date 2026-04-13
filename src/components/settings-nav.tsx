@@ -3,12 +3,14 @@ import {
   BrainIcon,
   DatabaseIcon,
   PaletteIcon,
+  ServerIcon,
 } from "lucide-react"
 import { cn } from "~/lib/utils"
 
 const sections = [
   { to: "/settings/appearance", label: "Appearance", icon: PaletteIcon },
   { to: "/settings/model", label: "Model", icon: BrainIcon },
+  { to: "/settings/mcp", label: "MCP Servers", icon: ServerIcon },
   { to: "/settings/data", label: "Data", icon: DatabaseIcon },
 ] as const
 

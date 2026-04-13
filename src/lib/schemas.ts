@@ -42,6 +42,8 @@ export const chatRequestSchema = z.object({
       model: z.string().optional(),
       temperature: z.number().min(0).max(2).optional(),
       systemPrompt: z.string().optional(),
+      selectedServers: z.array(z.string()).optional(),
+      enabledTools: z.record(z.string(), z.array(z.string())).optional(),
     })
     .optional(),
 })

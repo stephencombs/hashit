@@ -3,6 +3,7 @@ import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { parsePartialJSON } from "@tanstack/ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useModelSettings } from "~/hooks/use-model-settings";
+import { useMcpSettings } from "~/hooks/use-mcp-settings";
 import {
   Conversation,
   ConversationContent,
@@ -14,6 +15,17 @@ import {
   MessageContent,
   MessageResponse,
 } from "~/components/ai-elements/message";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "~/components/ai-elements/reasoning";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "~/components/ai-elements/chain-of-thought";
 import {
   Plan,
   PlanAction,
@@ -115,9 +127,11 @@ export function Chat({
   onThreadCreated,
 }: ChatProps) {
   const [input, setInput] = useState("");
+  const [toolSummary, setToolSummary] = useState<string | null>(null);
   const createdThreadIdRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const { model, temperature, systemPrompt } = useModelSettings();
+  const { selectedServers, enabledTools } = useMcpSettings();
 
   const navigateIfReady = () => {
     if (!threadId && createdThreadIdRef.current && onThreadCreated) {
@@ -135,7 +149,7 @@ export function Chat({
       role: "user" | "assistant";
       parts: Array<{ type: "text"; content: string }>;
     }>,
-    body: { threadId, model, temperature, systemPrompt },
+    body: { threadId, model, temperature, systemPrompt, selectedServers, enabledTools },
     onCustomEvent: (
       eventType: string,
       data: unknown,
@@ -154,14 +168,21 @@ export function Chat({
       if (eventType === "persistence_complete") {
         navigateIfReady();
       }
+      if (eventType === "tool_summary") {
+        setToolSummary((data as { summary: string }).summary);
+      }
     },
     onFinish: () => {
-      navigateIfReady();
+      // Navigation is handled by persistence_complete custom event instead,
+      // which fires after the full server-side stream completes (including
+      // tool execution in the agentic loop). onFinish fires on RUN_FINISHED
+      // which can happen mid-stream before tool results return.
     },
   });
 
   const handleSubmit = (message: PromptInputMessage) => {
     if (!message.text.trim()) return;
+    setToolSummary(null);
 
     if (!threadId) {
       const now = new Date();
@@ -191,40 +212,111 @@ export function Chat({
               description="Type a message below to begin chatting"
             />
           ) : (
-            messages.map((message) => (
-              <Message
-                from={message.role as "user" | "assistant"}
-                key={message.id}
-              >
-                <MessageContent>
-                  {message.parts.map((part, i) => {
-                    if (part.type === "text") {
+            messages.map((message, index) => {
+              const isLastMessage = index === messages.length - 1;
+              const isStreaming = status !== "ready";
+              const lastPart = message.parts.at(-1);
+
+              const thinkingParts = message.parts.filter(
+                (p) => p.type === "thinking",
+              );
+              const thinkingText = thinkingParts
+                .map((p) => (p as { content: string }).content)
+                .join("\n\n");
+              const isThinkingStreaming =
+                isLastMessage &&
+                isStreaming &&
+                lastPart?.type === "thinking";
+
+              const mcpToolPartsDeduped = new Map<string, ToolCallPart>();
+              for (const p of message.parts) {
+                if (isToolCallPart(p) && p.name !== "create_plan") {
+                  mcpToolPartsDeduped.set(p.id, p);
+                }
+              }
+              const mcpToolParts = [...mcpToolPartsDeduped.values()];
+
+              return (
+                <Message
+                  from={message.role as "user" | "assistant"}
+                  key={message.id}
+                >
+                  <MessageContent>
+                    {thinkingText && (
+                      <Reasoning isStreaming={isThinkingStreaming}>
+                        <ReasoningTrigger />
+                        <ReasoningContent>
+                          {thinkingText}
+                        </ReasoningContent>
+                      </Reasoning>
+                    )}
+                    {mcpToolParts.length > 0 && (() => {
+                      const allComplete = mcpToolParts.every((p) => (p as ToolCallPart).state === "result");
+                      const persistedSummary = message.parts.find(
+                        (p) => (p as { type: string }).type === "tool-summary",
+                      ) as { content: string } | undefined;
+                      const header = toolSummary ?? persistedSummary?.content ?? "Using tools";
                       return (
-                        <MessageResponse key={`${message.id}-${i}`}>
-                          {part.content}
-                        </MessageResponse>
+                      <ChainOfThought
+                        key={allComplete ? "done" : "active"}
+                        defaultOpen={!allComplete}
+                      >
+                        <ChainOfThoughtHeader>
+                          {header}
+                        </ChainOfThoughtHeader>
+                        <ChainOfThoughtContent>
+                          {mcpToolParts.map((part) => {
+                            const tc = part as ToolCallPart;
+                            return (
+                              <ChainOfThoughtStep
+                                key={tc.id}
+                                label={tc.name.replace(/__/g, " / ")}
+                                description={
+                                  tc.state === "result"
+                                    ? "Complete"
+                                    : "Running..."
+                                }
+                                status={
+                                  tc.state === "result"
+                                    ? "complete"
+                                    : "active"
+                                }
+                              />
+                            );
+                          })}
+                        </ChainOfThoughtContent>
+                      </ChainOfThought>
                       );
-                    }
-                    if (
-                      isToolCallPart(part) &&
-                      part.name === "create_plan"
-                    ) {
-                      const plan = parsePlan(part.arguments);
-                      if (plan) {
+                    })()}
+                    {message.parts.map((part, i) => {
+                      if (part.type === "text") {
                         return (
-                          <PlanDisplay
-                            key={`${message.id}-${i}`}
-                            plan={plan}
-                            isStreaming={status !== "ready"}
-                          />
+                          <MessageResponse key={`${message.id}-${i}`}>
+                            {part.content}
+                          </MessageResponse>
                         );
                       }
-                    }
-                    return null;
-                  })}
-                </MessageContent>
-              </Message>
-            ))
+                      if (
+                        isToolCallPart(part) &&
+                        part.name === "create_plan"
+                      ) {
+                        const plan = parsePlan(part.arguments);
+                        if (plan) {
+                          return (
+                            <PlanDisplay
+                              key={`${message.id}-${i}`}
+                              plan={plan}
+                              isStreaming={isStreaming}
+                            />
+                          );
+                        }
+                      }
+                      return null;
+                    })}
+                  </MessageContent>
+                </Message>
+              );
+            })
           )}
         </ConversationContent>
         <ConversationScrollButton />

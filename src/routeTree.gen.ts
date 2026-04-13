@@ -14,12 +14,15 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsModelRouteImport } from './routes/settings/model'
+import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as SettingsDataRouteImport } from './routes/settings/data'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings/appearance'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as ApiThreadsRouteImport } from './routes/api/threads'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
+import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
+import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -44,6 +47,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsModelRoute = SettingsModelRouteImport.update({
   id: '/model',
   path: '/model',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsMcpRoute = SettingsMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsDataRoute = SettingsDataRouteImport.update({
@@ -76,6 +84,16 @@ const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
   path: '/$threadId',
   getParentRoute: () => ApiThreadsRoute,
 } as any)
+const ApiMcpToolsRoute = ApiMcpToolsRouteImport.update({
+  id: '/api/mcp/tools',
+  path: '/api/mcp/tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpServersRoute = ApiMcpServersRouteImport.update({
+  id: '/api/mcp/servers',
+  path: '/api/mcp/servers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,8 +104,11 @@ export interface FileRoutesByFullPath {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRoutesByTo {
@@ -98,8 +119,11 @@ export interface FileRoutesByTo {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/settings': typeof SettingsIndexRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRoutesById {
@@ -112,8 +136,11 @@ export interface FileRoutesById {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/settings/': typeof SettingsIndexRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
 }
 export interface FileRouteTypes {
@@ -127,8 +154,11 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/mcp'
     | '/settings/model'
     | '/settings/'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
     | '/api/threads/$threadId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -139,8 +169,11 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/mcp'
     | '/settings/model'
     | '/settings'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
     | '/api/threads/$threadId'
   id:
     | '__root__'
@@ -152,8 +185,11 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/mcp'
     | '/settings/model'
     | '/settings/'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
     | '/api/threads/$threadId'
   fileRoutesById: FileRoutesById
 }
@@ -164,6 +200,8 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
   ChatThreadIdRoute: typeof ChatThreadIdRoute
+  ApiMcpServersRoute: typeof ApiMcpServersRoute
+  ApiMcpToolsRoute: typeof ApiMcpToolsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -201,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/model'
       fullPath: '/settings/model'
       preLoaderRoute: typeof SettingsModelRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/mcp': {
+      id: '/settings/mcp'
+      path: '/mcp'
+      fullPath: '/settings/mcp'
+      preLoaderRoute: typeof SettingsMcpRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/data': {
@@ -245,12 +290,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiThreadsThreadIdRouteImport
       parentRoute: typeof ApiThreadsRoute
     }
+    '/api/mcp/tools': {
+      id: '/api/mcp/tools'
+      path: '/api/mcp/tools'
+      fullPath: '/api/mcp/tools'
+      preLoaderRoute: typeof ApiMcpToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp/servers': {
+      id: '/api/mcp/servers'
+      path: '/api/mcp/servers'
+      fullPath: '/api/mcp/servers'
+      preLoaderRoute: typeof ApiMcpServersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface SettingsRouteChildren {
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsDataRoute: typeof SettingsDataRoute
+  SettingsMcpRoute: typeof SettingsMcpRoute
   SettingsModelRoute: typeof SettingsModelRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -258,6 +318,7 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsDataRoute: SettingsDataRoute,
+  SettingsMcpRoute: SettingsMcpRoute,
   SettingsModelRoute: SettingsModelRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -285,6 +346,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiThreadsRoute: ApiThreadsRouteWithChildren,
   ChatThreadIdRoute: ChatThreadIdRoute,
+  ApiMcpServersRoute: ApiMcpServersRoute,
+  ApiMcpToolsRoute: ApiMcpToolsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

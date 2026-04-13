@@ -1,4 +1,4 @@
-import { chat, generateMessageId, toServerSentEventsResponse } from '@tanstack/ai'
+import { chat, generateMessageId, maxIterations, toServerSentEventsResponse } from '@tanstack/ai'
 import { createOpenaiChat } from '@tanstack/ai-openai'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRequest } from 'nitro/context'
@@ -9,6 +9,7 @@ import { threads, messages as messagesTable } from '~/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { chatRequestSchema } from '~/lib/schemas'
 import { createPlanTool } from '~/lib/tools'
+import { getMcpTools } from '~/lib/mcp/client'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk, MessagePart } from '@tanstack/ai'
 
@@ -140,6 +141,31 @@ async function maybeGenerateTitle(threadId: string, userContent: string) {
   }
 }
 
+async function generateToolSummary(
+  userPrompt: string,
+  toolName: string,
+): Promise<string> {
+  try {
+    const adapter = getAzureAdapter()
+    const stream = chat({
+      adapter,
+      messages: [
+        {
+          role: 'user',
+          content: `Generate a very short action phrase (3-6 words, present participle, no quotes) describing what's happening. The user asked: "${userPrompt}" and the tool "${toolName}" is being called. Example outputs: "Searching for employees", "Looking up pay history", "Checking certifications"`,
+        },
+      ],
+    })
+    let text = ''
+    for await (const c of stream) {
+      if (c.type === 'TEXT_MESSAGE_CONTENT' && c.delta) text += c.delta
+    }
+    return text.trim() || 'Using tools'
+  } catch {
+    return 'Using tools'
+  }
+}
+
 async function* withPersistence(
   stream: AsyncIterable<StreamChunk>,
   threadId: string,
@@ -166,32 +192,58 @@ async function* withPersistence(
   let accumulated = ''
   const assistantParts: Array<MessagePart> = []
   const toolCalls = new Map<string, { name: string; args: string }>()
+  let streamError: unknown = null
+  let summaryEmitted = false
 
-  for await (const chunk of stream) {
-    if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
-      if (chunk.content) {
-        accumulated = chunk.content
-      } else if (chunk.delta) {
-        accumulated += chunk.delta
+  try {
+    for await (const chunk of stream) {
+      if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
+        if (chunk.content) {
+          accumulated = chunk.content
+        } else if (chunk.delta) {
+          accumulated += chunk.delta
+        }
+      } else if (chunk.type === 'TOOL_CALL_START') {
+        toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: '' })
+        if (!summaryEmitted) {
+          summaryEmitted = true
+          const summary = await generateToolSummary(userContent, chunk.toolName)
+          assistantParts.push({
+            type: 'tool-summary' as 'text',
+            content: summary,
+          })
+          yield {
+            type: 'CUSTOM' as const,
+            name: 'tool_summary',
+            value: { summary },
+            timestamp: Date.now(),
+          }
+        }
+      } else if (chunk.type === 'TOOL_CALL_ARGS') {
+        const tc = toolCalls.get(chunk.toolCallId)
+        if (tc) tc.args += chunk.delta
+      } else if (chunk.type === 'TOOL_CALL_END') {
+        const tc = toolCalls.get(chunk.toolCallId)
+        if (tc) {
+          assistantParts.push({
+            type: 'tool-call',
+            id: chunk.toolCallId,
+            name: tc.name,
+            arguments: tc.args,
+            state: chunk.result ? 'result' : 'input-complete',
+          })
+        }
       }
-    } else if (chunk.type === 'TOOL_CALL_START') {
-      toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: '' })
-    } else if (chunk.type === 'TOOL_CALL_ARGS') {
-      const tc = toolCalls.get(chunk.toolCallId)
-      if (tc) tc.args += chunk.delta
-    } else if (chunk.type === 'TOOL_CALL_END' && !chunk.result) {
-      const tc = toolCalls.get(chunk.toolCallId)
-      if (tc) {
-        assistantParts.push({
-          type: 'tool-call',
-          id: chunk.toolCallId,
-          name: tc.name,
-          arguments: tc.args,
-          state: 'input-complete',
-        })
-      }
+      yield chunk
     }
-    yield chunk
+  } catch (err) {
+    streamError = err
+    const msg = err instanceof Error ? err.message : String(err)
+    log.set({ streamError: msg })
+    console.error('>>> chatStream: Fatal error during response creation <<<')
+    console.error('>>> Error message:', msg)
+    if (err instanceof Error) console.error('>>> Error stack:', err.stack)
+    console.error('>>> Full error:', err)
   }
 
   if (accumulated) {
@@ -207,7 +259,6 @@ async function* withPersistence(
     }
   }
 
-  // Signal that persistence is complete so the client can safely navigate
   yield {
     type: 'CUSTOM' as const,
     name: 'persistence_complete',
@@ -295,6 +346,13 @@ export const Route = createFileRoute('/api/chat')({
         })
 
         const adapter = getAzureAdapter(data?.model)
+        const mcpTools = await getMcpTools(
+          data?.selectedServers,
+          data?.enabledTools,
+        )
+
+        const modelName = data?.model || process.env.AZURE_OPENAI_DEPLOYMENT!
+        const supportsReasoning = /gpt-5|o[1-9]/.test(modelName)
 
         const stream = chat({
           adapter,
@@ -302,7 +360,13 @@ export const Route = createFileRoute('/api/chat')({
           conversationId,
           temperature: data?.temperature,
           systemPrompts: data?.systemPrompt ? [data.systemPrompt] : undefined,
-          tools: [createPlanTool],
+          tools: [createPlanTool, ...mcpTools],
+          agentLoopStrategy: maxIterations(5),
+          ...(supportsReasoning && {
+            modelOptions: {
+              reasoning: { summary: 'auto' },
+            },
+          }),
         })
 
         log.set({ phase: 'stream_started' })

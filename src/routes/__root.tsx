@@ -11,6 +11,7 @@ import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import { ModelSettingsProvider } from '~/hooks/use-model-settings'
+import { McpSettingsProvider } from '~/hooks/use-mcp-settings'
 import { ThemeProvider } from '~/hooks/use-theme'
 import appCss from '~/app.css?url'
 import type { QueryClient } from '@tanstack/react-query'
@@ -78,9 +79,11 @@ function RootComponent() {
     <RootDocument>
       <ThemeProvider>
         <ModelSettingsProvider>
-          <TooltipProvider>
-            <Outlet />
-          </TooltipProvider>
+          <McpSettingsProvider>
+            <TooltipProvider>
+              <Outlet />
+            </TooltipProvider>
+          </McpSettingsProvider>
         </ModelSettingsProvider>
       </ThemeProvider>
     </RootDocument>
