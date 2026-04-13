@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { db } from '~/db'
 import { threads } from '~/db/schema'
-import { desc, isNull } from 'drizzle-orm'
+import { desc, isNull, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createThreadBodySchema } from '~/lib/schemas'
 
@@ -13,7 +13,10 @@ export const Route = createFileRoute('/api/threads')({
           .select()
           .from(threads)
           .where(isNull(threads.deletedAt))
-          .orderBy(desc(threads.pinnedAt), desc(threads.updatedAt))
+          .orderBy(
+            sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
+            desc(threads.updatedAt),
+          )
 
         return Response.json(allThreads)
       },

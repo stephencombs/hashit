@@ -16,7 +16,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as CanvasIndexRouteImport } from './routes/canvas.index'
 import { Route as SettingsModelRouteImport } from './routes/settings/model'
-import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as SettingsDataRouteImport } from './routes/settings/data'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings/appearance'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
@@ -25,8 +24,6 @@ import { Route as ApiThreadsRouteImport } from './routes/api/threads'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiCanvasRouteImport } from './routes/api/canvas'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
-import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
-import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
 import { Route as ApiCanvasCanvasIdRouteImport } from './routes/api/canvas.$canvasId'
 import { Route as ApiCanvasCanvasIdNodesRouteImport } from './routes/api/canvas.$canvasId.nodes'
 import { Route as ApiCanvasCanvasIdEdgesRouteImport } from './routes/api/canvas.$canvasId.edges'
@@ -70,11 +67,6 @@ const SettingsModelRoute = SettingsModelRouteImport.update({
   path: '/model',
   getParentRoute: () => SettingsRoute,
 } as any)
-const SettingsMcpRoute = SettingsMcpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsDataRoute = SettingsDataRouteImport.update({
   id: '/data',
   path: '/data',
@@ -114,16 +106,6 @@ const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
   getParentRoute: () => ApiThreadsRoute,
-} as any)
-const ApiMcpToolsRoute = ApiMcpToolsRouteImport.update({
-  id: '/api/mcp/tools',
-  path: '/api/mcp/tools',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMcpServersRoute = ApiMcpServersRouteImport.update({
-  id: '/api/mcp/servers',
-  path: '/api/mcp/servers',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCanvasCanvasIdRoute = ApiCanvasCanvasIdRouteImport.update({
   id: '/$canvasId',
@@ -177,13 +159,10 @@ export interface FileRoutesByFullPath {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
-  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/canvas/': typeof CanvasIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
-  '/api/mcp/servers': typeof ApiMcpServersRoute
-  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
   '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
@@ -202,13 +181,10 @@ export interface FileRoutesByTo {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
-  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/canvas': typeof CanvasIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
-  '/api/mcp/servers': typeof ApiMcpServersRoute
-  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
   '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
@@ -230,13 +206,10 @@ export interface FileRoutesById {
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
-  '/settings/mcp': typeof SettingsMcpRoute
   '/settings/model': typeof SettingsModelRoute
   '/canvas/': typeof CanvasIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
-  '/api/mcp/servers': typeof ApiMcpServersRoute
-  '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
   '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
@@ -259,13 +232,10 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
-    | '/settings/mcp'
     | '/settings/model'
     | '/canvas/'
     | '/settings/'
     | '/api/canvas/$canvasId'
-    | '/api/mcp/servers'
-    | '/api/mcp/tools'
     | '/api/threads/$threadId'
     | '/api/canvas/$canvasId/edges'
     | '/api/canvas/$canvasId/nodes'
@@ -284,13 +254,10 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
-    | '/settings/mcp'
     | '/settings/model'
     | '/canvas'
     | '/settings'
     | '/api/canvas/$canvasId'
-    | '/api/mcp/servers'
-    | '/api/mcp/tools'
     | '/api/threads/$threadId'
     | '/api/canvas/$canvasId/edges'
     | '/api/canvas/$canvasId/nodes'
@@ -311,13 +278,10 @@ export interface FileRouteTypes {
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
-    | '/settings/mcp'
     | '/settings/model'
     | '/canvas/'
     | '/settings/'
     | '/api/canvas/$canvasId'
-    | '/api/mcp/servers'
-    | '/api/mcp/tools'
     | '/api/threads/$threadId'
     | '/api/canvas/$canvasId/edges'
     | '/api/canvas/$canvasId/nodes'
@@ -336,8 +300,6 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
   ChatThreadIdRoute: typeof ChatThreadIdRoute
-  ApiMcpServersRoute: typeof ApiMcpServersRoute
-  ApiMcpToolsRoute: typeof ApiMcpToolsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -389,13 +351,6 @@ declare module '@tanstack/react-router' {
       path: '/model'
       fullPath: '/settings/model'
       preLoaderRoute: typeof SettingsModelRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/mcp': {
-      id: '/settings/mcp'
-      path: '/mcp'
-      fullPath: '/settings/mcp'
-      preLoaderRoute: typeof SettingsMcpRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/data': {
@@ -453,20 +408,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/threads/$threadId'
       preLoaderRoute: typeof ApiThreadsThreadIdRouteImport
       parentRoute: typeof ApiThreadsRoute
-    }
-    '/api/mcp/tools': {
-      id: '/api/mcp/tools'
-      path: '/api/mcp/tools'
-      fullPath: '/api/mcp/tools'
-      preLoaderRoute: typeof ApiMcpToolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp/servers': {
-      id: '/api/mcp/servers'
-      path: '/api/mcp/servers'
-      fullPath: '/api/mcp/servers'
-      preLoaderRoute: typeof ApiMcpServersRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/canvas/$canvasId': {
       id: '/api/canvas/$canvasId'
@@ -536,7 +477,6 @@ const CanvasRouteWithChildren =
 interface SettingsRouteChildren {
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsDataRoute: typeof SettingsDataRoute
-  SettingsMcpRoute: typeof SettingsMcpRoute
   SettingsModelRoute: typeof SettingsModelRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -544,7 +484,6 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsDataRoute: SettingsDataRoute,
-  SettingsMcpRoute: SettingsMcpRoute,
   SettingsModelRoute: SettingsModelRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -647,8 +586,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiThreadsRoute: ApiThreadsRouteWithChildren,
   ChatThreadIdRoute: ChatThreadIdRoute,
-  ApiMcpServersRoute: ApiMcpServersRoute,
-  ApiMcpToolsRoute: ApiMcpToolsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -47,14 +47,19 @@ async function persistUserMessage(
   }
 
   const id = generateMessageId()
+  const now = new Date()
   await db.insert(messagesTable).values({
     id,
     threadId,
     role: 'user',
     content: userContent,
     parts: userParts,
-    createdAt: new Date(),
+    createdAt: now,
   })
+  await db
+    .update(threads)
+    .set({ updatedAt: now })
+    .where(eq(threads.id, threadId))
   return id
 }
 

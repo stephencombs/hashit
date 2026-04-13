@@ -166,6 +166,7 @@ export function Chat({
         );
       }
       if (eventType === "persistence_complete") {
+        queryClient.invalidateQueries({ queryKey: ["threads"] });
         navigateIfReady();
       }
       if (eventType === "tool_summary") {
@@ -184,17 +185,30 @@ export function Chat({
     if (!message.text.trim()) return;
     setToolSummary(null);
 
+    const now = new Date();
     if (!threadId) {
-      const now = new Date();
       queryClient.setQueryData<Thread[]>(["threads"], (old = []) => [
         {
           id: OPTIMISTIC_ID,
           title: "Untitled",
           createdAt: now,
           updatedAt: now,
+          deletedAt: null,
+          pinnedAt: null,
         },
         ...old,
       ]);
+    } else {
+      queryClient.setQueryData<Thread[]>(["threads"], (old = []) =>
+        old
+          .map((t) => (t.id === threadId ? { ...t, updatedAt: now } : t))
+          .sort((a, b) => {
+            const aPinned = a.pinnedAt ? 0 : 1;
+            const bPinned = b.pinnedAt ? 0 : 1;
+            if (aPinned !== bPinned) return aPinned - bPinned;
+            return b.updatedAt.getTime() - a.updatedAt.getTime();
+          }),
+      );
     }
 
     sendMessage(message.text);
