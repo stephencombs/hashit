@@ -89,3 +89,31 @@ export const nodeVersions = sqliteTable('node_versions', {
   source: text('source').$type<'user' | 'ai'>().notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
+
+export type AutomationType = 'chat-prompt' | 'webhook'
+export type AutomationRunStatus = 'success' | 'failure' | 'running'
+
+export const automations = sqliteTable('automations', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').$type<AutomationType>().notNull(),
+  cronExpression: text('cron_expression').notNull(),
+  config: text('config', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  lastRunAt: integer('last_run_at', { mode: 'timestamp' }),
+  nextRunAt: integer('next_run_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+})
+
+export const automationRuns = sqliteTable('automation_runs', {
+  id: text('id').primaryKey(),
+  automationId: text('automation_id')
+    .notNull()
+    .references(() => automations.id),
+  startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  status: text('status').$type<AutomationRunStatus>().notNull(),
+  result: text('result', { mode: 'json' }).$type<Record<string, unknown>>(),
+})

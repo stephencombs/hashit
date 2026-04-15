@@ -9,6 +9,7 @@ import {
   PinOffIcon,
   Trash2Icon,
   LayoutDashboardIcon,
+  ZapIcon,
 } from "lucide-react"
 
 import { NavUser } from "~/components/nav-user"
@@ -407,6 +408,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <Layers />
               <span>Artifacts</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={!!matchRoute({ to: "/automations" })}
+              render={<Link to="/automations" />}
+              tooltip="Automations"
+            >
+              <ZapIcon />
+              <span>Automations</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
