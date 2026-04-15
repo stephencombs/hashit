@@ -22,6 +22,15 @@ export const messages = sqliteTable('messages', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 
+export const artifacts = sqliteTable('artifacts', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  spec: text('spec', { mode: 'json' }).$type<Record<string, unknown>>(),
+  threadId: text('thread_id').references(() => threads.id),
+  messageId: text('message_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+})
+
 export type CanvasNodeType =
   | 'prd'
   | 'user_stories'

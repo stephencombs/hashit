@@ -9,6 +9,9 @@ import { threads, messages as messagesTable } from '~/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
 import { chatRequestSchema } from '~/lib/schemas'
 import { createPlanTool } from '~/lib/tools'
+import { collectFormDataTool } from '~/lib/form-tool'
+import { uiCatalog } from '~/lib/ui-catalog'
+import { withJsonRender } from '~/lib/json-render-stream'
 import { getMcpTools } from '~/lib/mcp/client'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk, MessagePart } from '@tanstack/ai'
@@ -171,6 +174,27 @@ async function generateToolSummary(
   }
 }
 
+/**
+ * Stops the agent loop stream as soon as collect_form_data completes.
+ * Without this, TanStack AI's agent loop sees a completed tool call and
+ * runs the LLM again, causing it to call the form tool a second (or third)
+ * time before the user has had a chance to fill the form.
+ */
+async function* withFormStop(
+  stream: AsyncIterable<StreamChunk>,
+): AsyncIterable<StreamChunk> {
+  const formToolCallIds = new Set<string>()
+  for await (const chunk of stream) {
+    yield chunk
+    if (chunk.type === 'TOOL_CALL_START' && chunk.toolName === 'collect_form_data') {
+      formToolCallIds.add(chunk.toolCallId)
+    }
+    if (chunk.type === 'TOOL_CALL_END' && formToolCallIds.has(chunk.toolCallId)) {
+      return
+    }
+  }
+}
+
 async function* withPersistence(
   stream: AsyncIterable<StreamChunk>,
   threadId: string,
@@ -195,13 +219,46 @@ async function* withPersistence(
   }
 
   let accumulated = ''
+  let accumulatedThinking = ''
+  let batchThinking = ''
+  let pendingThinkingChunk: StreamChunk | null = null
   const assistantParts: Array<MessagePart> = []
   const toolCalls = new Map<string, { name: string; args: string }>()
   let streamError: unknown = null
   let summaryEmitted = false
 
+  function* flushThinking(): Iterable<StreamChunk> {
+    if (pendingThinkingChunk && batchThinking) {
+      yield {
+        ...pendingThinkingChunk,
+        delta: batchThinking,
+        content: accumulatedThinking,
+      } as StreamChunk
+    }
+    batchThinking = ''
+    pendingThinkingChunk = null
+  }
+
   try {
     for await (const chunk of stream) {
+      if (chunk.type === 'STEP_FINISHED') {
+        // Buffer reasoning tokens and emit a single consolidated event when
+        // the thinking block ends. The adapter emits one STEP_FINISHED per
+        // token, each carrying the full accumulated text in `content`. Passing
+        // them through individually causes:
+        //   1. O(n²) bytes over the wire (content grows each event)
+        //   2. One ThinkingPart pushed to assistantParts per token, producing
+        //      the progressive "token staircase" on reload when Chat.tsx
+        //      concatenates consecutive thinking parts with \n\n
+        const delta = (chunk as { delta?: string }).delta || ''
+        batchThinking += delta
+        accumulatedThinking += delta
+        pendingThinkingChunk = chunk
+        continue
+      }
+
+      yield* flushThinking()
+
       if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
         if (chunk.content) {
           accumulated = chunk.content
@@ -238,9 +295,17 @@ async function* withPersistence(
             state: chunk.result ? 'result' : 'input-complete',
           })
         }
+      } else if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
+        const spec = (chunk.value as { spec: unknown }).spec
+        assistantParts.push({
+          type: 'ui-spec' as 'text',
+          content: JSON.stringify(spec),
+        })
       }
       yield chunk
     }
+
+    yield* flushThinking()
   } catch (err) {
     streamError = err
     const msg = err instanceof Error ? err.message : String(err)
@@ -249,6 +314,10 @@ async function* withPersistence(
     console.error('>>> Error message:', msg)
     if (err instanceof Error) console.error('>>> Error stack:', err.stack)
     console.error('>>> Full error:', err)
+  }
+
+  if (accumulatedThinking) {
+    assistantParts.unshift({ type: 'thinking', content: accumulatedThinking } as MessagePart)
   }
 
   if (accumulated) {
@@ -359,20 +428,36 @@ export const Route = createFileRoute('/api/chat')({
         const modelName = data?.model || process.env.AZURE_OPENAI_DEPLOYMENT!
         const supportsReasoning = /gpt-5|o[1-9]/.test(modelName)
 
-        const stream = chat({
+        const catalogSystemPrompt = uiCatalog.prompt({
+          mode: 'inline',
+          customRules: [
+            'Generate exactly ONE visualization per response -- either a single chart or a single data grid.',
+            'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
+            'When using DataGrid, include ALL rows in a single DataGrid with pagination enabled. Never split data across multiple responses or render tabular data as text.',
+            'If the user asks for multiple visualizations, generate the most relevant one and offer to show others in follow-up messages.',
+            'Use the collect_form_data tool when you need structured input from the user (e.g. registration, configuration, multi-field queries). Do not ask for multiple pieces of information via plain text when a form would be clearer. After calling collect_form_data, end your turn immediately with no text — the user must fill and submit the form before you respond again.',
+          ],
+        })
+
+        const rawStream = chat({
           adapter,
           messages,
           conversationId,
-          temperature: data?.temperature,
-          systemPrompts: data?.systemPrompt ? [data.systemPrompt] : undefined,
-          tools: [createPlanTool, ...mcpTools],
+          ...(!supportsReasoning && { temperature: data?.temperature }),
+          systemPrompts: [
+            ...(data?.systemPrompt ? [data.systemPrompt] : []),
+            catalogSystemPrompt,
+          ],
+          tools: [createPlanTool, collectFormDataTool, ...mcpTools],
           agentLoopStrategy: maxIterations(5),
           ...(supportsReasoning && {
             modelOptions: {
-              reasoning: { summary: 'auto' },
+              reasoning: { effort: 'low', summary: 'auto' },
             },
           }),
         })
+
+        const stream = withJsonRender(withFormStop(rawStream))
 
         log.set({ phase: 'stream_started' })
 

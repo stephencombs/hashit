@@ -3,6 +3,7 @@ import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   HashIcon,
+  Layers,
   PenSquareIcon,
   PinIcon,
   PinOffIcon,
@@ -396,6 +397,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <LayoutDashboardIcon />
               <span>Canvases</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={!!matchRoute({ to: "/artifacts" })}
+              render={<Link to="/artifacts" />}
+              tooltip="Artifacts"
+            >
+              <Layers />
+              <span>Artifacts</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
