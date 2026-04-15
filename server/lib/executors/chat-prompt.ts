@@ -11,11 +11,8 @@ export async function executeChatPrompt(
   }
 
   const body = {
-    messages: [{ role: 'user', content: prompt }],
-    data: {
-      threadId: threadId ?? undefined,
-      persist: true,
-    },
+    prompt,
+    ...(threadId && { threadId }),
   }
 
   const port = process.env.PORT || '3000'
@@ -23,7 +20,7 @@ export async function executeChatPrompt(
     process.env.APP_URL ||
     process.env.PORTLESS_URL ||
     `http://localhost:${port}`
-  const res = await fetch(`${baseUrl}/api/chat`, {
+  const res = await fetch(`${baseUrl}/api/agent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -31,10 +28,9 @@ export async function executeChatPrompt(
 
   if (!res.ok) {
     const text = await res.text().catch(() => 'Unknown error')
-    return { success: false, error: `Chat API returned ${res.status}: ${text}` }
+    return { success: false, error: `Agent API returned ${res.status}: ${text}` }
   }
 
-  // Drain the SSE stream so the AI completes generation and persistence finishes
   const reader = res.body?.getReader()
   if (reader) {
     while (true) {

@@ -44,6 +44,7 @@ export const chatRequestSchema = z.object({
       systemPrompt: z.string().optional(),
       selectedServers: z.array(z.string()).optional(),
       enabledTools: z.record(z.string(), z.array(z.string())).optional(),
+      source: z.string().optional(),
     })
     .optional(),
 })

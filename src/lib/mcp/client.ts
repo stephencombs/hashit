@@ -48,7 +48,12 @@ async function getOrConnect(
 export async function listToolsForServer(
   serverName: string,
 ): Promise<{ name: string; description: string }[]> {
-  const token = await getMCPAccessToken()
+  let token: string
+  try {
+    token = await getMCPAccessToken()
+  } catch {
+    return []
+  }
   const config = MCP_SERVERS.find((s) => s.name === serverName)
   if (!config) return []
 
@@ -73,7 +78,12 @@ export async function getMcpTools(
 
   if (servers.length === 0) return []
 
-  const token = await getMCPAccessToken()
+  let token: string
+  try {
+    token = await getMCPAccessToken()
+  } catch {
+    return []
+  }
   const allTools: ServerTool[] = []
 
   const results = await Promise.allSettled(

@@ -259,7 +259,7 @@ function McpSettings() {
               </div>
               <Accordion
                 key={filterServer ?? 'all'}
-                openMultiple
+                multiple
                 defaultValue={filterServer ? [filterServer] : []}
               >
               {(filterServer ? [filterServer] : selectedServers).map((serverName) => {
@@ -271,8 +271,8 @@ function McpSettings() {
                 return (
                   <AccordionItem key={serverName} value={serverName}>
                     <AccordionTrigger>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium">
                           {shortName(serverName)}
                         </span>
                         {server && (
@@ -328,8 +328,8 @@ function McpSettings() {
                                   }
                                   className="mt-0.5"
                                 />
-                                <div className="min-w-0">
-                                  <div className="text-sm font-medium">
+                                <div className="min-w-0 flex-1">
+                                  <div className="break-all text-sm font-medium">
                                     {tool.name}
                                   </div>
                                   <p className="text-xs text-muted-foreground">

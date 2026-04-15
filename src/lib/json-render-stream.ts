@@ -15,18 +15,28 @@ import type { StreamChunk } from '@tanstack/ai'
 export async function* withJsonRender(
   stream: AsyncIterable<StreamChunk>,
 ): AsyncIterable<StreamChunk> {
-  const compiler = createSpecStreamCompiler<Spec>()
+  let compiler = createSpecStreamCompiler<Spec>()
   let hasSpec = false
   let flushed = false
+  let specIndex = 0
   const textQueue: string[] = []
-  const patchQueue: Spec[] = []
+  const patchQueue: Array<{ spec: Spec; specIndex: number }> = []
+  const completeQueue: Array<{ spec: Spec; specIndex: number }> = []
 
   const parser = createMixedStreamParser({
-    onText: (text) => textQueue.push(text),
+    onText: (text) => {
+      if (hasSpec) {
+        completeQueue.push({ spec: compiler.getResult(), specIndex })
+        hasSpec = false
+        specIndex++
+        compiler = createSpecStreamCompiler<Spec>()
+      }
+      textQueue.push(text)
+    },
     onPatch: (patch) => {
       hasSpec = true
       compiler.push(JSON.stringify(patch) + '\n')
-      patchQueue.push({ ...compiler.getResult() } as Spec)
+      patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex })
     },
   })
 
@@ -45,13 +55,25 @@ export async function* withJsonRender(
     }
   }
 
+  function* drainCompleteQueue() {
+    while (completeQueue.length > 0) {
+      const entry = completeQueue.shift()!
+      yield {
+        type: 'CUSTOM' as const,
+        name: 'spec_complete',
+        value: { spec: entry.spec, specIndex: entry.specIndex },
+        timestamp: Date.now(),
+      }
+    }
+  }
+
   function* drainPatchQueue() {
     while (patchQueue.length > 0) {
-      const spec = patchQueue.shift()!
+      const entry = patchQueue.shift()!
       yield {
         type: 'CUSTOM' as const,
         name: 'spec_patch',
-        value: { spec },
+        value: { spec: entry.spec, specIndex: entry.specIndex },
         timestamp: Date.now(),
       }
     }
@@ -63,25 +85,27 @@ export async function* withJsonRender(
       yield {
         type: 'CUSTOM' as const,
         name: 'spec_complete',
-        value: { spec: compiler.getResult() },
+        value: { spec: compiler.getResult(), specIndex },
         timestamp: Date.now(),
       }
+      specIndex++
+      compiler = createSpecStreamCompiler<Spec>()
     }
   }
 
   for await (const chunk of stream) {
     if (chunk.type === 'TEXT_MESSAGE_CONTENT' && chunk.delta) {
       parser.push(chunk.delta)
+      yield* drainCompleteQueue()
       yield* drainTextQueue(chunk)
       yield* drainPatchQueue()
       continue
     }
 
-    // Flush buffered content before the message boundary so all text
-    // and spec events arrive in correct protocol order
     if (chunk.type === 'TEXT_MESSAGE_END' && !flushed) {
       flushed = true
       parser.flush()
+      yield* drainCompleteQueue()
       yield* drainTextQueue()
       yield* drainPatchQueue()
       yield* emitSpecComplete()
@@ -90,9 +114,9 @@ export async function* withJsonRender(
     yield chunk
   }
 
-  // Fallback flush for streams that lack TEXT_MESSAGE_END
   if (!flushed) {
     parser.flush()
+    yield* drainCompleteQueue()
     yield* drainTextQueue()
     yield* drainPatchQueue()
     yield* emitSpecComplete()

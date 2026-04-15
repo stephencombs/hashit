@@ -177,6 +177,16 @@ function ThreadItem({
         isActive={isActive}
         render={<Link to="/chat/$threadId" params={{ threadId: conversation.id }} />}
       >
+        {conversation.source === "automation" && (
+          <TooltipProvider delay={300}>
+            <Tooltip>
+              <TooltipTrigger render={<span className="flex shrink-0" />}>
+                <ZapIcon className="size-4 text-amber-500" />
+              </TooltipTrigger>
+              <TooltipContent side="right">Created by automation</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <ItemTitle title={conversation.title} />
       </SidebarMenuButton>
       <HoverActions>

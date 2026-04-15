@@ -4,6 +4,7 @@ import type { MessagePart } from '@tanstack/ai'
 export const threads = sqliteTable('threads', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
+  source: text('source'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   deletedAt: integer('deleted_at', { mode: 'timestamp' }),
@@ -116,4 +117,9 @@ export const automationRuns = sqliteTable('automation_runs', {
   completedAt: integer('completed_at', { mode: 'timestamp' }),
   status: text('status').$type<AutomationRunStatus>().notNull(),
   result: text('result', { mode: 'json' }).$type<Record<string, unknown>>(),
+})
+
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
 })

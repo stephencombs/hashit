@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import {
   Renderer,
   StateProvider,
@@ -27,26 +27,38 @@ export const JsonRenderDisplay = memo(function JsonRenderDisplay({
   onSaveArtifact?: (spec: Spec) => void
   saved?: boolean
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   if (!spec?.root || !spec?.elements) return null
 
   return (
-    <div className="group/chart relative">
+    <div className="group/chart flex flex-col gap-1">
       {onSaveArtifact && (
-        <div className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover/chart:opacity-100">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+        <div className="flex justify-end">
+          <DropdownMenu
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+          >
+            <DropdownMenuTrigger
+              asChild
+              onMouseEnter={() => setMenuOpen(true)}
+            >
               <Button
                 variant="ghost"
                 size="sm"
-                className="size-8 p-0 bg-background/80 backdrop-blur-sm shadow-sm border border-border/50"
+                className="size-8 p-0"
               >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-auto whitespace-nowrap">
+            <DropdownMenuContent
+              align="end"
+              className="w-auto whitespace-nowrap"
+              onMouseLeave={() => setMenuOpen(false)}
+            >
               <DropdownMenuItem
                 disabled={saved}
-                onClick={() => onSaveArtifact(spec)}
+                onClick={() => { onSaveArtifact(spec); setMenuOpen(false) }}
               >
                 {saved ? (
                   <Check className="size-4" />

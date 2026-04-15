@@ -28,7 +28,9 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiCanvasRouteImport } from './routes/api/canvas'
 import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
 import { Route as ApiArtifactsRouteImport } from './routes/api/artifacts'
+import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
+import { Route as ApiSettingsMcpTokenRouteImport } from './routes/api/settings/mcp-token'
 import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
 import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
 import { Route as ApiCanvasCanvasIdRouteImport } from './routes/api/canvas.$canvasId'
@@ -137,10 +139,20 @@ const ApiArtifactsRoute = ApiArtifactsRouteImport.update({
   path: '/api/artifacts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentRoute = ApiAgentRouteImport.update({
+  id: '/api/agent',
+  path: '/api/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
   getParentRoute: () => ApiThreadsRoute,
+} as any)
+const ApiSettingsMcpTokenRoute = ApiSettingsMcpTokenRouteImport.update({
+  id: '/api/settings/mcp-token',
+  path: '/api/settings/mcp-token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMcpToolsRoute = ApiMcpToolsRouteImport.update({
   id: '/api/mcp/tools',
@@ -216,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/canvas': typeof CanvasRouteWithChildren
   '/health': typeof HealthRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/canvas': typeof ApiCanvasRouteWithChildren
@@ -234,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
@@ -248,6 +262,7 @@ export interface FileRoutesByTo {
   '/artifacts': typeof ArtifactsRoute
   '/automations': typeof AutomationsRoute
   '/health': typeof HealthRoute
+  '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/canvas': typeof ApiCanvasRouteWithChildren
@@ -266,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
@@ -283,6 +299,7 @@ export interface FileRoutesById {
   '/canvas': typeof CanvasRouteWithChildren
   '/health': typeof HealthRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
   '/api/canvas': typeof ApiCanvasRouteWithChildren
@@ -301,6 +318,7 @@ export interface FileRoutesById {
   '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
@@ -319,6 +337,7 @@ export interface FileRouteTypes {
     | '/canvas'
     | '/health'
     | '/settings'
+    | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
     | '/api/canvas'
@@ -337,6 +356,7 @@ export interface FileRouteTypes {
     | '/api/canvas/$canvasId'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/api/automations/$automationId/runs'
     | '/api/canvas/$canvasId/edges'
@@ -351,6 +371,7 @@ export interface FileRouteTypes {
     | '/artifacts'
     | '/automations'
     | '/health'
+    | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
     | '/api/canvas'
@@ -369,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/canvas/$canvasId'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/api/automations/$automationId/runs'
     | '/api/canvas/$canvasId/edges'
@@ -385,6 +407,7 @@ export interface FileRouteTypes {
     | '/canvas'
     | '/health'
     | '/settings'
+    | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
     | '/api/canvas'
@@ -403,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/canvas/$canvasId'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/api/automations/$automationId/runs'
     | '/api/canvas/$canvasId/edges'
@@ -420,6 +444,7 @@ export interface RootRouteChildren {
   CanvasRoute: typeof CanvasRouteWithChildren
   HealthRoute: typeof HealthRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  ApiAgentRoute: typeof ApiAgentRoute
   ApiArtifactsRoute: typeof ApiArtifactsRouteWithChildren
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
   ApiCanvasRoute: typeof ApiCanvasRouteWithChildren
@@ -428,6 +453,7 @@ export interface RootRouteChildren {
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ApiMcpServersRoute: typeof ApiMcpServersRoute
   ApiMcpToolsRoute: typeof ApiMcpToolsRoute
+  ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -565,12 +591,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArtifactsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent': {
+      id: '/api/agent'
+      path: '/api/agent'
+      fullPath: '/api/agent'
+      preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/threads/$threadId': {
       id: '/api/threads/$threadId'
       path: '/$threadId'
       fullPath: '/api/threads/$threadId'
       preLoaderRoute: typeof ApiThreadsThreadIdRouteImport
       parentRoute: typeof ApiThreadsRoute
+    }
+    '/api/settings/mcp-token': {
+      id: '/api/settings/mcp-token'
+      path: '/api/settings/mcp-token'
+      fullPath: '/api/settings/mcp-token'
+      preLoaderRoute: typeof ApiSettingsMcpTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/mcp/tools': {
       id: '/api/mcp/tools'
@@ -822,6 +862,7 @@ const rootRouteChildren: RootRouteChildren = {
   CanvasRoute: CanvasRouteWithChildren,
   HealthRoute: HealthRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  ApiAgentRoute: ApiAgentRoute,
   ApiArtifactsRoute: ApiArtifactsRouteWithChildren,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
   ApiCanvasRoute: ApiCanvasRouteWithChildren,
@@ -830,6 +871,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatThreadIdRoute: ChatThreadIdRoute,
   ApiMcpServersRoute: ApiMcpServersRoute,
   ApiMcpToolsRoute: ApiMcpToolsRoute,
+  ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

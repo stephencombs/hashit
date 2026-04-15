@@ -1,0 +1,12 @@
+resource_group_name = "rg-hashit"
+location            = "East US 2"
+app_name            = "hashit"
+image_tag           = "latest"
+
+azure_openai_api_key    = "..."
+azure_openai_endpoint   = "https://<resource>.openai.azure.com/"
+azure_openai_deployment = "<deployment-name>"
+
+mcp_subscription_key = "..."
+mcp_client_id        = "..."
+mcp_client_secret    = "..."

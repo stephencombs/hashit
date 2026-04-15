@@ -40,6 +40,7 @@ import {
 } from "~/components/ai-elements/prompt-input";
 import { JsonRenderDisplay } from "~/components/json-render-display";
 import { FormDisplay } from "~/components/form-display";
+import { ToolResultDisplay } from "~/components/tool-result-display";
 import { BrainIcon, CheckIcon, MessageSquare, WrenchIcon } from "lucide-react";
 import type { FormSpec } from "~/lib/form-tool";
 import type { ChatStatus } from "ai";
@@ -157,8 +158,8 @@ export function Chat({
   onThreadCreated,
 }: ChatProps) {
   const [input, setInput] = useState("");
-  const [specsMap, setSpecsMap] = useState<Map<string, Spec>>(new Map());
-  const [savedMessageIds, setSavedMessageIds] = useState<Set<string>>(
+  const [specsMap, setSpecsMap] = useState<Map<string, Spec[]>>(new Map());
+  const [savedArtifactKeys, setSavedArtifactKeys] = useState<Set<string>>(
     new Set(),
   );
   // Tracks form submissions by tool call ID → submitted field values.
@@ -177,12 +178,14 @@ export function Chat({
     if (!threadId) return;
     fetch("/api/artifacts")
       .then((r) => r.json())
-      .then((artifacts: Array<{ messageId: string | null; threadId: string | null }>) => {
-        const ids = new Set<string>();
+      .then((artifacts: Array<{ messageId: string | null; threadId: string | null; specIndex?: number }>) => {
+        const keys = new Set<string>();
         for (const a of artifacts) {
-          if (a.threadId === threadId && a.messageId) ids.add(a.messageId);
+          if (a.threadId === threadId && a.messageId) {
+            keys.add(`${a.messageId}:${a.specIndex ?? 0}`);
+          }
         }
-        setSavedMessageIds(ids);
+        setSavedArtifactKeys(keys);
       })
       .catch(() => {});
   }, [threadId]);
@@ -224,10 +227,16 @@ export function Chat({
         navigateIfReady();
       }
       if (eventType === "spec_patch" || eventType === "spec_complete") {
-        const spec = (data as { spec: Spec }).spec;
+        const { spec, specIndex: idx } = data as { spec: Spec; specIndex: number };
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         if (lastMsg) {
-          setSpecsMap((prev) => new Map(prev).set(lastMsg.id, spec));
+          setSpecsMap((prev) => {
+            const next = new Map(prev);
+            const arr = [...(next.get(lastMsg.id) ?? [])];
+            arr[idx] = spec;
+            next.set(lastMsg.id, arr);
+            return next;
+          });
         }
       }
     },
@@ -286,7 +295,7 @@ export function Chat({
   };
 
   const handleSaveArtifact = useCallback(
-    async (spec: Spec, messageId?: string) => {
+    async (spec: Spec, messageId?: string, specIndex = 0) => {
       const root = spec.elements?.[spec.root] as
         | { props?: { title?: string } }
         | undefined;
@@ -298,10 +307,10 @@ export function Chat({
         const res = await fetch("/api/artifacts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, spec, threadId, messageId }),
+          body: JSON.stringify({ title, spec, threadId, messageId, specIndex }),
         });
         if (res.ok && messageId) {
-          setSavedMessageIds((prev) => new Set(prev).add(messageId));
+          setSavedArtifactKeys((prev) => new Set(prev).add(`${messageId}:${specIndex}`));
         }
       } catch {
         // best-effort
@@ -420,7 +429,11 @@ export function Chat({
                                       : "Running..."
                                   }
                                   status={step.done ? "complete" : "active"}
-                                />
+                                >
+                                  {step.done && step.resultContent != null && (
+                                    <ToolResultDisplay output={step.resultContent} />
+                                  )}
+                                </ChainOfThoughtStep>
                               );
                             })}
                             {allDone && (
@@ -505,44 +518,50 @@ export function Chat({
                     })}
                   </MessageContent>
                   {(() => {
-                    const persistedSpec = message.parts.find(
-                      (p) => (p as { type: string }).type === "ui-spec",
-                    ) as { content: string } | undefined;
-                    const mapSpec = specsMap.get(message.id);
+                    const persistedSpecs = message.parts
+                      .filter((p) => (p as { type: string }).type === "ui-spec")
+                      .map((p, idx) => {
+                        try {
+                          return { spec: JSON.parse((p as { content: string }).content) as Spec, idx };
+                        } catch {
+                          return null;
+                        }
+                      })
+                      .filter((x): x is { spec: Spec; idx: number } => x !== null);
+                    const liveSpecs = specsMap.get(message.id);
 
-                    if (persistedSpec) {
-                      try {
-                        const spec = JSON.parse(persistedSpec.content) as Spec;
-                        return (
-                          <div className="w-full min-w-0">
-                            <JsonRenderDisplay
-                              spec={spec}
-                              isStreaming={false}
-                              saved={savedMessageIds.has(message.id)}
-                              onSaveArtifact={(s) =>
-                                handleSaveArtifact(s, message.id)
-                              }
-                            />
-                          </div>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    }
-
-                    if (mapSpec) {
-                      return (
-                        <div className="w-full min-w-0">
+                    if (persistedSpecs.length > 0) {
+                      return persistedSpecs.map(({ spec, idx }) => (
+                        <div key={`persisted-${idx}`} className="w-full min-w-0">
                           <JsonRenderDisplay
-                            spec={mapSpec}
-                            isStreaming={isLastMessage && isStreaming}
-                            saved={savedMessageIds.has(message.id)}
+                            spec={spec}
+                            isStreaming={false}
+                            saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
                             onSaveArtifact={(s) =>
-                              handleSaveArtifact(s, message.id)
+                              handleSaveArtifact(s, message.id, idx)
                             }
                           />
                         </div>
-                      );
+                      ));
+                    }
+
+                    if (liveSpecs && liveSpecs.length > 0) {
+                      return liveSpecs.map((spec, idx) => (
+                        <div key={`live-${idx}`} className="w-full min-w-0">
+                          <JsonRenderDisplay
+                            spec={spec}
+                            isStreaming={
+                              isLastMessage &&
+                              isStreaming &&
+                              idx === liveSpecs.length - 1
+                            }
+                            saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
+                            onSaveArtifact={(s) =>
+                              handleSaveArtifact(s, message.id, idx)
+                            }
+                          />
+                        </div>
+                      ));
                     }
 
                     return null;

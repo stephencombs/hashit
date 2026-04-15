@@ -1,0 +1,12 @@
+node_modules
+.output
+.vinxi
+.git
+data/
+drizzle/
+infra/
+.env
+.env.*
+.DS_Store
+*.swp
+*.swo

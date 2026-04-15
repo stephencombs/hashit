@@ -1,3 +1,7 @@
+import { eq } from 'drizzle-orm'
+import { db } from '~/db'
+import { appSettings } from '~/db/schema'
+
 const STS_URL =
   'https://api-quarterly.paycor.com/sts/v2/common/token'
 const ACCESS_TOKEN_CACHE_MS = 4 * 60 * 1000
@@ -29,6 +33,36 @@ export async function getMCPAccessToken(): Promise<string> {
   })
 
   return pendingRequest
+}
+
+export function resetMCPTokenCache(): void {
+  storedRefreshToken = null
+  cachedAccessToken = null
+  accessTokenExpiresAt = 0
+  pendingRequest = null
+}
+
+export async function isMCPTokenConfigured(): Promise<boolean> {
+  const row = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, 'mcp_api_token'))
+    .get()
+  return !!row
+}
+
+async function getMCPApiToken(): Promise<string> {
+  const row = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, 'mcp_api_token'))
+    .get()
+  if (!row) {
+    throw new Error(
+      'MCP API Token is not configured. Enter it via Settings in the user menu.',
+    )
+  }
+  return row.value.replace(/^Bearer\s+/i, '')
 }
 
 function requireEnv(name: string): string {
@@ -64,6 +98,8 @@ async function stsRequest(
 }
 
 async function obtainRefreshToken(): Promise<string> {
+  const apiToken = await getMCPApiToken()
+
   const data = await stsRequest(
     new URLSearchParams({
       grant_type: 'delegation',
@@ -71,7 +107,7 @@ async function obtainRefreshToken(): Promise<string> {
       client_secret: requireEnv('MCP_CLIENT_SECRET'),
       scope: 'offline_access',
     }),
-    { Authorization: `Bearer ${requireEnv('MCP_API_TOKEN')}` },
+    { Authorization: `Bearer ${apiToken}` },
   )
 
   if (!data.refresh_token) {

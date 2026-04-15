@@ -80,7 +80,9 @@ function ArtifactsPage() {
     queryKey: ['artifacts'],
     queryFn: async () => {
       const res = await fetch('/api/artifacts')
-      return res.json()
+      if (!res.ok) throw new Error('Failed to fetch artifacts')
+      const data = await res.json()
+      return Array.isArray(data) ? data : []
     },
   })
 

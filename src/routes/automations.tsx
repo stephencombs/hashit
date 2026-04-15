@@ -253,11 +253,15 @@ function RunDetailDialog({
 
 function RunRows({ automationId }: { automationId: string }) {
   const [page, setPage] = useState(1)
-  const [selectedRun, setSelectedRun] = useState<AutomationRun | null>(null)
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const { data } = useQuery({
     ...automationRunsQuery(automationId, page),
     placeholderData: (prev) => prev,
   })
+
+  const selectedRun = selectedRunId
+    ? data?.runs.find((r) => r.id === selectedRunId) ?? null
+    : null
 
   if (!data || data.total === 0) {
     return (
@@ -287,7 +291,7 @@ function RunRows({ automationId }: { automationId: string }) {
             className="cursor-pointer bg-muted/30"
             onClick={(e) => {
               e.stopPropagation()
-              setSelectedRun(run)
+              setSelectedRunId(run.id)
             }}
           >
             <TableCell />
@@ -351,7 +355,7 @@ function RunRows({ automationId }: { automationId: string }) {
           <TableCell />
         </TableRow>
       )}
-      <RunDetailDialog run={selectedRun} onClose={() => setSelectedRun(null)} />
+      <RunDetailDialog run={selectedRun} onClose={() => setSelectedRunId(null)} />
     </>
   )
 }
