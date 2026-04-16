@@ -43,20 +43,20 @@ export function resetMCPTokenCache(): void {
 }
 
 export async function isMCPTokenConfigured(): Promise<boolean> {
-  const row = await db
+  const [row] = await db
     .select()
     .from(appSettings)
     .where(eq(appSettings.key, 'mcp_api_token'))
-    .get()
+    .limit(1)
   return !!row
 }
 
 async function getMCPApiToken(): Promise<string> {
-  const row = await db
+  const [row] = await db
     .select()
     .from(appSettings)
     .where(eq(appSettings.key, 'mcp_api_token'))
-    .get()
+    .limit(1)
   if (!row) {
     throw new Error(
       'MCP API Token is not configured. Enter it via Settings in the user menu.',

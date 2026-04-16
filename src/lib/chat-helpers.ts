@@ -107,11 +107,11 @@ export async function maybeGenerateTitle(threadId: string, userContent: string) 
 
   if (msgCount[0].n > 2) return
 
-  const thread = await db
+  const [thread] = await db
     .select({ title: threads.title })
     .from(threads)
     .where(eq(threads.id, threadId))
-    .get()
+    .limit(1)
 
   if (!thread) return
 

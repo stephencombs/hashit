@@ -12,11 +12,11 @@ export const Route = createFileRoute('/api/settings/mcp-token')({
   server: {
     handlers: {
       GET: async () => {
-        const row = await db
+        const [row] = await db
           .select()
           .from(appSettings)
           .where(eq(appSettings.key, 'mcp_api_token'))
-          .get()
+          .limit(1)
 
         const configured = !!row
         let hint: string | undefined

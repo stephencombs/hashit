@@ -7,11 +7,11 @@ export const Route = createFileRoute('/api/artifacts/$artifactId')({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const artifact = await db
+        const [artifact] = await db
           .select()
           .from(artifacts)
           .where(eq(artifacts.id, params.artifactId))
-          .get()
+          .limit(1)
 
         if (!artifact) {
           return Response.json({ error: 'Artifact not found' }, { status: 404 })

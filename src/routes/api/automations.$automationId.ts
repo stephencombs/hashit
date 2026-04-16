@@ -9,11 +9,11 @@ export const Route = createFileRoute('/api/automations/$automationId')({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const row = await db
+        const [row] = await db
           .select()
           .from(automations)
           .where(eq(automations.id, params.automationId))
-          .get()
+          .limit(1)
 
         if (!row) {
           return Response.json(
@@ -39,11 +39,11 @@ export const Route = createFileRoute('/api/automations/$automationId')({
           }
         }
 
-        const existing = await db
+        const [existing] = await db
           .select()
           .from(automations)
           .where(eq(automations.id, params.automationId))
-          .get()
+          .limit(1)
 
         if (!existing) {
           return Response.json(
@@ -67,11 +67,11 @@ export const Route = createFileRoute('/api/automations/$automationId')({
           .set(set)
           .where(eq(automations.id, params.automationId))
 
-        const updated = await db
+        const [updated] = await db
           .select()
           .from(automations)
           .where(eq(automations.id, params.automationId))
-          .get()
+          .limit(1)
 
         return Response.json(updated)
       },

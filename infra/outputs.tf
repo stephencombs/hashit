@@ -7,3 +7,8 @@ output "acr_login_server" {
   description = "ACR login server for docker push"
   value       = azurerm_container_registry.this.login_server
 }
+
+output "postgres_fqdn" {
+  description = "PostgreSQL Flexible Server FQDN"
+  value       = azurerm_postgresql_flexible_server.this.fqdn
+}

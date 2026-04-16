@@ -9,11 +9,11 @@ export const Route = createFileRoute('/api/canvas/$canvasId')({
       GET: async ({ params }) => {
         const { canvasId } = params
 
-        const canvas = await db
+        const [canvas] = await db
           .select()
           .from(canvases)
           .where(eq(canvases.id, canvasId))
-          .get()
+          .limit(1)
 
         if (!canvas) {
           return Response.json({ error: 'Canvas not found' }, { status: 404 })

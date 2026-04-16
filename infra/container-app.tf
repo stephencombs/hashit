@@ -1,30 +1,21 @@
 resource "azurerm_log_analytics_workspace" "this" {
   name                = "${var.app_name}-logs"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
+  resource_group_name = data.azurerm_resource_group.this.name
+  location            = data.azurerm_resource_group.this.location
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
 resource "azurerm_container_app_environment" "this" {
   name                       = "${var.app_name}-env"
-  resource_group_name        = azurerm_resource_group.this.name
-  location                   = azurerm_resource_group.this.location
+  resource_group_name        = data.azurerm_resource_group.this.name
+  location                   = data.azurerm_resource_group.this.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
-}
-
-resource "azurerm_container_app_environment_storage" "data" {
-  name                         = "${var.app_name}-data"
-  container_app_environment_id = azurerm_container_app_environment.this.id
-  account_name                 = azurerm_storage_account.this.name
-  share_name                   = azurerm_storage_share.data.name
-  access_key                   = azurerm_storage_account.this.primary_access_key
-  access_mode                  = "ReadWrite"
 }
 
 resource "azurerm_container_app" "this" {
   name                         = var.app_name
-  resource_group_name          = azurerm_resource_group.this.name
+  resource_group_name          = data.azurerm_resource_group.this.name
   container_app_environment_id = azurerm_container_app_environment.this.id
   revision_mode                = "Single"
 
@@ -69,6 +60,11 @@ resource "azurerm_container_app" "this" {
     value = var.mcp_client_secret
   }
 
+  secret {
+    name  = "database-url"
+    value = "postgresql://${var.postgres_admin_login}:${urlencode(var.postgres_admin_password)}@${azurerm_postgresql_flexible_server.this.fqdn}:5432/${azurerm_postgresql_flexible_server_database.this.name}?sslmode=require"
+  }
+
   ingress {
     external_enabled = true
     target_port      = 3000
@@ -83,21 +79,15 @@ resource "azurerm_container_app" "this" {
     min_replicas = 1
     max_replicas = 1
 
-    volume {
-      name         = "data-volume"
-      storage_name = azurerm_container_app_environment_storage.data.name
-      storage_type = "AzureFile"
-    }
-
     container {
       name   = var.app_name
       image  = "${azurerm_container_registry.this.login_server}/${var.app_name}:${var.image_tag}"
       cpu    = 0.5
       memory = "1Gi"
 
-      volume_mounts {
-        name = "data-volume"
-        path = "/app/data"
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "database-url"
       }
 
       env {

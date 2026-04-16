@@ -19,11 +19,11 @@ import { SidebarTrigger } from '~/components/ui/sidebar'
 export const getCanvas = createServerFn({ method: 'GET' })
   .inputValidator(zodValidator(z.string()))
   .handler(async ({ data: canvasId }) => {
-    const canvas = await db
+    const [canvas] = await db
       .select()
       .from(canvases)
       .where(eq(canvases.id, canvasId))
-      .get()
+      .limit(1)
 
     if (!canvas) {
       throw new Error('Canvas not found')

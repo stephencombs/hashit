@@ -1,7 +1,10 @@
-resource_group_name = "rg-hashit"
-location            = "East US 2"
+resource_group_name = "scombs-dev"
 app_name            = "hashit"
 image_tag           = "latest"
+
+postgres_location       = "eastus2"
+postgres_admin_login    = "hashitadmin"
+postgres_admin_password = "..."
 
 azure_openai_api_key    = "..."
 azure_openai_endpoint   = "https://<resource>.openai.azure.com/"

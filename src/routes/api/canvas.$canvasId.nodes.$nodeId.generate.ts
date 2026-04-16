@@ -33,11 +33,11 @@ async function getUpstreamContents(canvasId: string, nodeId: string) {
 
   const sourceNodes = await Promise.all(
     sourceNodeIds.map(async (id) => {
-      const node = await db
+      const [node] = await db
         .select()
         .from(canvasNodes)
         .where(eq(canvasNodes.id, id))
-        .get()
+        .limit(1)
       return node
     }),
   )
@@ -171,11 +171,11 @@ export const Route = createFileRoute(
           })
         }
 
-        const node = await db
+        const [node] = await db
           .select()
           .from(canvasNodes)
           .where(eq(canvasNodes.id, nodeId))
-          .get()
+          .limit(1)
 
         if (!node) {
           return Response.json({ error: 'Node not found' }, { status: 404 })

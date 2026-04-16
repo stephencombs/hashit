@@ -13,11 +13,11 @@ export const Route = createFileRoute(
         const { nodeId, versionId } = params
         const now = new Date()
 
-        const version = await db
+        const [version] = await db
           .select()
           .from(nodeVersions)
           .where(eq(nodeVersions.id, versionId))
-          .get()
+          .limit(1)
 
         if (!version) {
           return Response.json(

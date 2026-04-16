@@ -6,6 +6,7 @@ export default defineConfig({
     asyncContext: true,
     tasks: true,
   },
+  plugins: ['./server/plugins/00.migrate.ts'],
   tasks: {
     'automations:tick': {
       handler: './tasks/automations/tick.ts',

@@ -2,10 +2,13 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+RUN echo "strict-ssl=false" > /root/.npmrc && \
+    npm install -g pnpm@10.28.1
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN echo "strict-ssl=false" > .npmrc && \
+    NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --frozen-lockfile && \
+    rm .npmrc
 
 COPY . .
 RUN pnpm build
@@ -14,11 +17,14 @@ RUN pnpm build
 
 FROM node:22-alpine AS runtime
 
+RUN addgroup -S hashit && adduser -S hashit -G hashit
+
 WORKDIR /app
 
-RUN mkdir -p /app/data
+COPY --from=build --chown=hashit:hashit /app/.output .output
+COPY --from=build --chown=hashit:hashit /app/drizzle ./drizzle
 
-COPY --from=build /app/.output .output
+USER hashit
 
 ENV NODE_ENV=production
 EXPOSE 3000
