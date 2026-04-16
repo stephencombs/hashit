@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-router'
 import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import { ModelSettingsProvider } from '~/hooks/use-model-settings'
 import { McpSettingsProvider } from '~/hooks/use-mcp-settings'
@@ -75,6 +76,12 @@ function RootErrorComponent({ error }: { error: Error }) {
 }
 
 function RootComponent() {
+  useEffect(() => {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      import('react-scan').then(({ scan }) => scan({ enabled: true }))
+    }
+  }, [])
+
   return (
     <RootDocument>
       <ThemeProvider>
@@ -82,6 +89,12 @@ function RootComponent() {
           <McpSettingsProvider>
             <TooltipProvider>
               <Outlet />
+              {import.meta.env.DEV && (
+                <ReactQueryDevtools
+                  initialIsOpen={false}
+                  buttonPosition="bottom-left"
+                />
+              )}
             </TooltipProvider>
           </McpSettingsProvider>
         </ModelSettingsProvider>
