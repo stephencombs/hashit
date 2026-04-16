@@ -3,7 +3,6 @@ dist
 .output
 .vinxi
 data/
-drizzle/
 count.txt
 
 # Environment

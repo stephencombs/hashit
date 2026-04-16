@@ -1,13 +1,7 @@
 variable "resource_group_name" {
   description = "Name of the Azure resource group"
   type        = string
-  default     = "rg-hashit"
-}
-
-variable "location" {
-  description = "Azure region for all resources"
-  type        = string
-  default     = "East US 2"
+  default     = "scombs-dev"
 }
 
 variable "app_name" {
@@ -20,6 +14,26 @@ variable "image_tag" {
   description = "Container image tag to deploy"
   type        = string
   default     = "latest"
+}
+
+# --- PostgreSQL ---
+
+variable "postgres_location" {
+  description = "Azure region for PostgreSQL Flexible Server (may differ from resource group location if that region is restricted)"
+  type        = string
+  default     = "eastus2"
+}
+
+variable "postgres_admin_login" {
+  description = "Administrator login for PostgreSQL Flexible Server"
+  type        = string
+  default     = "hashitadmin"
+}
+
+variable "postgres_admin_password" {
+  description = "Administrator password for PostgreSQL Flexible Server"
+  type        = string
+  sensitive   = true
 }
 
 # --- Secrets ---

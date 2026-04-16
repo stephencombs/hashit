@@ -21,11 +21,11 @@ import {
 export const getThread = createServerFn({ method: 'GET' })
   .inputValidator(zodValidator(z.string()))
   .handler(async ({ data: threadId }) => {
-    const thread = await db
+    const [thread] = await db
       .select()
       .from(threads)
       .where(eq(threads.id, threadId))
-      .get()
+      .limit(1)
 
     if (!thread) {
       throw new Error('Thread not found')

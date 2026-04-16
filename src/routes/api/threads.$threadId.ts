@@ -9,11 +9,11 @@ export const Route = createFileRoute('/api/threads/$threadId')({
       GET: async ({ params }) => {
         const { threadId } = params
 
-        const thread = await db
+        const [thread] = await db
           .select()
           .from(threads)
           .where(eq(threads.id, threadId))
-          .get()
+          .limit(1)
 
         if (!thread) {
           return Response.json({ error: 'Thread not found' }, { status: 404 })
