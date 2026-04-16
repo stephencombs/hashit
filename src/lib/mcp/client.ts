@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import type { Tool as MCPTool } from '@modelcontextprotocol/sdk/types.js'
 import type { ServerTool } from '@tanstack/ai'
 import { getMCPAccessToken } from './auth'
 import { MCP_SERVERS, type MCPServerConfig } from './config'
@@ -8,6 +9,7 @@ import { mcpToolToServerTool } from './tools'
 interface CachedConnection {
   client: Client
   token: string
+  tools: MCPTool[] | null
 }
 
 const connections = new Map<string, CachedConnection>()
@@ -41,8 +43,20 @@ async function getOrConnect(
   )
 
   await client.connect(transport)
-  connections.set(config.name, { client, token })
+  connections.set(config.name, { client, token, tools: null })
   return client
+}
+
+async function getCachedTools(
+  config: MCPServerConfig,
+  client: Client,
+): Promise<MCPTool[]> {
+  const cached = connections.get(config.name)
+  if (cached?.tools) return cached.tools
+
+  const { tools } = await client.listTools()
+  if (cached) cached.tools = tools
+  return tools
 }
 
 export async function listToolsForServer(
@@ -58,7 +72,7 @@ export async function listToolsForServer(
   if (!config) return []
 
   const client = await getOrConnect(config, token)
-  const { tools } = await client.listTools()
+  const tools = await getCachedTools(config, client)
 
   return tools.map((t) => ({
     name: t.name,
@@ -89,7 +103,7 @@ export async function getMcpTools(
   const results = await Promise.allSettled(
     servers.map(async (config) => {
       const client = await getOrConnect(config, token)
-      const { tools } = await client.listTools()
+      const tools = await getCachedTools(config, client)
 
       const allowedNames = enabledTools?.[config.name]
       const filtered = allowedNames
@@ -97,6 +111,40 @@ export async function getMcpTools(
         : tools
 
       return filtered.map((mcpTool) => mcpToolToServerTool(mcpTool, client, config))
+    }),
+  )
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      allTools.push(...result.value)
+    } else {
+      console.error(
+        '[mcp] Failed to connect:',
+        result.reason instanceof Error
+          ? result.reason.message
+          : result.reason,
+      )
+    }
+  }
+
+  return allTools
+}
+
+export async function getAllMcpTools(): Promise<ServerTool[]> {
+  let token: string
+  try {
+    token = await getMCPAccessToken()
+  } catch {
+    return []
+  }
+
+  const allTools: ServerTool[] = []
+
+  const results = await Promise.allSettled(
+    MCP_SERVERS.map(async (config) => {
+      const client = await getOrConnect(config, token)
+      const tools = await getCachedTools(config, client)
+      return tools.map((mcpTool) => mcpToolToServerTool(mcpTool, client, config))
     }),
   )
 

@@ -176,12 +176,12 @@ export function Chat({
 
   useEffect(() => {
     if (!threadId) return;
-    fetch("/api/artifacts")
+    fetch(`/api/artifacts?threadId=${encodeURIComponent(threadId)}`)
       .then((r) => r.json())
       .then((artifacts: Array<{ messageId: string | null; threadId: string | null; specIndex?: number }>) => {
         const keys = new Set<string>();
         for (const a of artifacts) {
-          if (a.threadId === threadId && a.messageId) {
+          if (a.messageId) {
             keys.add(`${a.messageId}:${a.specIndex ?? 0}`);
           }
         }

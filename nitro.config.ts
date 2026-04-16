@@ -11,9 +11,18 @@ export default defineConfig({
       handler: './tasks/automations/tick.ts',
       description: 'Poll and execute due automations',
     },
+    'dashboard:generate': {
+      handler: './tasks/dashboard/generate.ts',
+      description: 'Generate dashboard widgets in the background',
+    },
+    'dashboard:check': {
+      handler: './tasks/dashboard/check.ts',
+      description: 'Check if dashboard needs regeneration',
+    },
   },
   scheduledTasks: {
     '* * * * *': ['automations:tick'],
+    '0 0 * * *': ['dashboard:check'],
   },
   modules: [
     evlog({

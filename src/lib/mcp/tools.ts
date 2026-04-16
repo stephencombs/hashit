@@ -1,6 +1,6 @@
 import { toolDefinition, type Tool } from '@tanstack/ai'
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import type { Tool as MCPTool } from '@modelcontextprotocol/sdk/types.js'
+import { CallToolResultSchema, type Tool as MCPTool } from '@modelcontextprotocol/sdk/types.js'
 import type { MCPServerConfig } from './config'
 
 /**
@@ -85,13 +85,33 @@ function sanitizeToolName(name: string): string {
 
 const MCP_TOOL_TIMEOUT_MS = 60_000
 
+function isOutputSchemaError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("does not match the tool's output schema")
+}
+
 async function callToolWithTimeout(
   client: Client,
   name: string,
   args: Record<string, unknown>,
 ) {
+  const doCall = async () => {
+    try {
+      return await client.callTool({ name, arguments: args })
+    } catch (err) {
+      if (isOutputSchemaError(err)) {
+        console.warn(`[mcp] Output schema validation failed for "${name}", retrying without validation`)
+        return (client as unknown as { request: (req: unknown, schema: unknown) => Promise<Awaited<ReturnType<Client['callTool']>>> })
+          .request(
+            { method: 'tools/call' as const, params: { name, arguments: args } },
+            CallToolResultSchema,
+          )
+      }
+      throw err
+    }
+  }
+
   return Promise.race([
-    client.callTool({ name, arguments: args }),
+    doCall(),
     new Promise<never>((_, reject) =>
       setTimeout(
         () => reject(new Error(`MCP tool "${name}" timed out after ${MCP_TOOL_TIMEOUT_MS / 1000}s`)),

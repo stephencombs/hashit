@@ -1,7 +1,9 @@
-import { useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  CheckSquare2Icon,
+  GaugeIcon,
   HashIcon,
   Layers,
   PenSquareIcon,
@@ -9,8 +11,10 @@ import {
   PinOffIcon,
   Trash2Icon,
   LayoutDashboardIcon,
+  XIcon,
   ZapIcon,
 } from "lucide-react"
+import { Checkbox } from "~/components/ui/checkbox"
 
 import { NavUser } from "~/components/nav-user"
 import {
@@ -127,6 +131,44 @@ function useDeleteThread() {
   })
 }
 
+function useBulkDeleteThreads() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  return useMutation({
+    mutationFn: async (threadIds: string[]) => {
+      await Promise.all(
+        threadIds.map((id) => fetch(`/api/threads/${id}`, { method: "DELETE" })),
+      )
+    },
+    onSuccess: (_data, threadIds) => {
+      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      if (threadIds.some((id) => window.location.pathname.includes(id))) {
+        navigate({ to: "/" })
+      }
+    },
+  })
+}
+
+function useBulkPinThreads() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ threadIds, pinned }: { threadIds: string[]; pinned: boolean }) => {
+      await Promise.all(
+        threadIds.map((id) =>
+          fetch(`/api/threads/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pinned }),
+          }),
+        ),
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads"] })
+    },
+  })
+}
+
 function usePinCanvas() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -163,13 +205,33 @@ function ThreadItem({
   conversation,
   pinThread,
   deleteThread,
+  bulkMode,
+  selected,
+  onToggleSelect,
 }: {
   conversation: Thread
   pinThread: ReturnType<typeof usePinThread>
   deleteThread: ReturnType<typeof useDeleteThread>
+  bulkMode: boolean
+  selected: boolean
+  onToggleSelect: (id: string) => void
 }) {
   const matchRoute = useMatchRoute()
   const isActive = !!matchRoute({ to: "/chat/$threadId", params: { threadId: conversation.id } })
+
+  if (bulkMode) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          isActive={selected}
+          onClick={() => onToggleSelect(conversation.id)}
+        >
+          <Checkbox checked={selected} tabIndex={-1} className="pointer-events-none" />
+          <ItemTitle title={conversation.title} />
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    )
+  }
 
   return (
     <SidebarMenuItem className="overflow-hidden">
@@ -246,6 +308,157 @@ function CanvasItem({
   )
 }
 
+function ThreadSection({
+  label,
+  threads,
+  pinThread,
+  deleteThread,
+  bulkAction,
+}: {
+  label: string
+  threads: Thread[]
+  pinThread: ReturnType<typeof usePinThread>
+  deleteThread: ReturnType<typeof useDeleteThread>
+  bulkAction: "pin" | "unpin"
+}) {
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const bulkDelete = useBulkDeleteThreads()
+  const bulkPin = useBulkPinThreads()
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const exitBulkMode = useCallback(() => {
+    setBulkMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const allSelected = selectedIds.size === threads.length && threads.length > 0
+
+  const handleToggleAll = useCallback(() => {
+    if (allSelected) setSelectedIds(new Set())
+    else setSelectedIds(new Set(threads.map((t) => t.id)))
+  }, [allSelected, threads])
+
+  const handleBulkDelete = useCallback(() => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    bulkDelete.mutate(ids, { onSuccess: () => exitBulkMode() })
+  }, [selectedIds, bulkDelete, exitBulkMode])
+
+  const handleBulkPinAction = useCallback(() => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    bulkPin.mutate(
+      { threadIds: ids, pinned: bulkAction === "unpin" },
+      { onSuccess: () => exitBulkMode() },
+    )
+  }, [selectedIds, bulkPin, bulkAction, exitBulkMode])
+
+  if (threads.length === 0) return null
+
+  return (
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel>
+        {bulkMode ? (
+          <span className="flex flex-1 items-center gap-2">
+            <button
+              className="flex items-center text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              onClick={handleToggleAll}
+            >
+              <Checkbox checked={allSelected} tabIndex={-1} className="pointer-events-none size-3.5" />
+            </button>
+            <span className="flex-1 truncate">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : label}
+            </span>
+            {selectedIds.size > 0 && (
+              <>
+                <TooltipProvider delay={300}>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
+                          onClick={handleBulkDelete}
+                        />
+                      }
+                    >
+                      <Trash2Icon className="size-3" />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Delete</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider delay={300}>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          onClick={handleBulkPinAction}
+                        />
+                      }
+                    >
+                      {bulkAction === "pin" ? (
+                        <PinIcon className="size-3" />
+                      ) : (
+                        <PinOffIcon className="size-3" />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {bulkAction === "pin" ? "Pin" : "Unpin"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
+            <button
+              className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              onClick={exitBulkMode}
+            >
+              <XIcon className="size-3" />
+            </button>
+          </span>
+        ) : (
+          <span className="flex flex-1 items-center justify-between">
+            <span>{label}</span>
+            {threads.length > 1 && (
+              <button
+                className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-normal text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                onClick={() => setBulkMode(true)}
+              >
+                <CheckSquare2Icon className="size-3" />
+                Select
+              </button>
+            )}
+          </span>
+        )}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {threads.map((conversation) => (
+            <ThreadItem
+              key={conversation.id}
+              conversation={conversation}
+              pinThread={pinThread}
+              deleteThread={deleteThread}
+              bulkMode={bulkMode}
+              selected={selectedIds.has(conversation.id)}
+              onToggleSelect={toggleSelect}
+            />
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
 function ChatSidebarContent() {
   const { data: conversations = [] } = useQuery(threadListQuery)
   const pinThread = usePinThread()
@@ -271,40 +484,20 @@ function ChatSidebarContent() {
 
   return (
     <>
-      {pinned.length > 0 && (
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Pinned</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {pinned.map((conversation) => (
-                <ThreadItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  pinThread={pinThread}
-                  deleteThread={deleteThread}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
-      {recents.length > 0 && (
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Recents</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {recents.map((conversation) => (
-                <ThreadItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  pinThread={pinThread}
-                  deleteThread={deleteThread}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
+      <ThreadSection
+        label="Pinned"
+        threads={pinned}
+        pinThread={pinThread}
+        deleteThread={deleteThread}
+        bulkAction="unpin"
+      />
+      <ThreadSection
+        label="Recents"
+        threads={recents}
+        pinThread={pinThread}
+        deleteThread={deleteThread}
+        bulkAction="pin"
+      />
     </>
   )
 }
@@ -408,6 +601,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <LayoutDashboardIcon />
               <span>Canvases</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={!!matchRoute({ to: "/dashboard" })}
+              render={<Link to="/dashboard" />}
+              tooltip="Dashboard"
+            >
+              <GaugeIcon />
+              <span>Dashboard</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

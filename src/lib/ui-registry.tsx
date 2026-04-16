@@ -7,6 +7,7 @@ import {
   Bar,
   BarChart as RechartsBarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart as RechartsLineChart,
   Pie,
@@ -139,9 +140,20 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
         ? props.data
         : []
       const keys = props.yKeys ?? []
-      const config = buildChartConfig(keys)
       const h = chartHeight(props.height)
       const isHorizontal = props.horizontal ?? false
+      const singleSeries = keys.length === 1
+
+      const config = singleSeries
+        ? (() => {
+            const c: ChartConfig = {}
+            items.forEach((item, i) => {
+              const label = String(item[props.xKey] ?? `Item ${i + 1}`)
+              c[cssKey(label)] = { label, color: COLORS[i % COLORS.length] }
+            })
+            return c
+          })()
+        : buildChartConfig(keys)
 
       if (items.length === 0) {
         return (
@@ -193,10 +205,18 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                 <Bar
                   key={key}
                   dataKey={key}
-                  fill={`var(--color-${cssKey(key)})`}
+                  fill={singleSeries ? undefined : `var(--color-${cssKey(key)})`}
                   radius={4}
                   stackId={props.stacked ? 'a' : undefined}
-                />
+                >
+                  {singleSeries &&
+                    items.map((item, i) => (
+                      <Cell
+                        key={i}
+                        fill={COLORS[i % COLORS.length]}
+                      />
+                    ))}
+                </Bar>
               ))}
             </RechartsBarChart>
           </ChartContainer>

@@ -1,17 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { db } from '~/db'
 import { artifacts } from '~/db/schema'
-import { desc } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 export const Route = createFileRoute('/api/artifacts')({
   server: {
     handlers: {
-      GET: async () => {
-        const all = await db
+      GET: async ({ request }) => {
+        const url = new URL(request.url)
+        const threadId = url.searchParams.get('threadId')
+
+        const query = db
           .select()
           .from(artifacts)
-          .orderBy(desc(artifacts.createdAt))
+
+        const all = threadId
+          ? await query.where(eq(artifacts.threadId, threadId)).orderBy(desc(artifacts.createdAt))
+          : await query.orderBy(desc(artifacts.createdAt))
 
         return Response.json(all)
       },

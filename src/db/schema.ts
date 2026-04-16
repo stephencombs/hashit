@@ -123,3 +123,34 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 })
+
+export type DashboardSnapshotStatus = 'generating' | 'complete' | 'failed'
+
+export interface PersistedWidget {
+  widgetId: string
+  title: string
+  insight: string
+  spec: Record<string, unknown> | null
+  skipReason?: string
+}
+
+export interface PersistedRecipe {
+  widgetId: string
+  title: string
+  insight: string
+  dataSources: Array<{ toolName: string; toolParams: Record<string, unknown>; label: string }>
+  render: string
+  score: number
+}
+
+export const dashboardSnapshots = sqliteTable('dashboard_snapshots', {
+  id: text('id').primaryKey(),
+  persona: text('persona').notNull(),
+  status: text('status').$type<DashboardSnapshotStatus>().notNull().default('generating'),
+  recipes: text('recipes', { mode: 'json' }).$type<PersistedRecipe[]>(),
+  widgets: text('widgets', { mode: 'json' }).$type<PersistedWidget[]>(),
+  previousWidgetIds: text('previous_widget_ids', { mode: 'json' }).$type<string[]>(),
+  error: text('error'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+})
