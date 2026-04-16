@@ -6,6 +6,8 @@ import {
   ExternalLinkIcon,
   GridIcon,
   LayersIcon,
+  LayoutGridIcon,
+  ListIcon,
   SearchIcon,
   TableIcon,
   Trash2Icon,
@@ -70,10 +72,13 @@ export const Route = createFileRoute('/artifacts')({
   component: ArtifactsPage,
 })
 
+type ViewMode = 'gallery' | 'list'
+
 function ArtifactsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'chart' | 'grid'>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selected, setSelected] = useState<Artifact | null>(null)
 
   const { data: artifacts = [] } = useQuery<Artifact[]>({
@@ -165,6 +170,34 @@ function ArtifactsPage() {
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
+                <div
+                  className="flex items-center rounded-md border p-0.5"
+                  role="group"
+                  aria-label="View mode"
+                >
+                  <Button
+                    type="button"
+                    variant={viewMode === 'gallery' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="size-7 p-0"
+                    aria-pressed={viewMode === 'gallery'}
+                    aria-label="Gallery view"
+                    onClick={() => setViewMode('gallery')}
+                  >
+                    <LayoutGridIcon className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="size-7 p-0"
+                    aria-pressed={viewMode === 'list'}
+                    aria-label="List view"
+                    onClick={() => setViewMode('list')}
+                  >
+                    <ListIcon className="size-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -184,6 +217,68 @@ function ArtifactsPage() {
                 <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                   Try a different search term or filter
                 </p>
+              </div>
+            ) : viewMode === 'list' ? (
+              <div className="divide-y rounded-xl border bg-card">
+                {filtered.map((artifact) => {
+                  const artType = getArtifactType(artifact.spec)
+                  return (
+                    <div
+                      key={artifact.id}
+                      className="group relative flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/30"
+                      onClick={() => setSelected(artifact)}
+                    >
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <TypeIcon type={artType} className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-medium">
+                          {artifact.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {typeLabel(artType)}
+                        </p>
+                      </div>
+                      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+                        {new Date(artifact.createdAt).toLocaleDateString(
+                          undefined,
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          },
+                        )}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {artifact.threadId && artifact.messageId && (
+                          <Link
+                            to="/chat/$threadId"
+                            params={{ threadId: artifact.threadId }}
+                            hash={`msg-${artifact.messageId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            aria-label="Open in chat"
+                          >
+                            <ExternalLinkIcon className="size-4" />
+                          </Link>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="size-8 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteArtifact.mutate(artifact.id)
+                          }}
+                          aria-label={`Delete ${artifact.title}`}
+                        >
+                          <Trash2Icon className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <>
@@ -230,7 +325,7 @@ function ArtifactsPage() {
                         </Link>
                       )}
                     </div>
-                    <div className="pointer-events-none max-h-[400px] overflow-hidden rounded-lg">
+                    <div className="pointer-events-none overflow-hidden rounded-lg">
                       <JsonRenderDisplay
                         spec={featured.spec as unknown as Spec}
                         isStreaming={false}
@@ -247,16 +342,16 @@ function ArtifactsPage() {
                       return (
                         <div
                           key={artifact.id}
-                          className="group relative flex cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
+                          className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
                           onClick={() => setSelected(artifact)}
                         >
-                          <div className="pointer-events-none min-h-[220px] overflow-hidden p-4">
+                          <div className="pointer-events-none min-h-[220px] flex-1 overflow-hidden p-4">
                             <JsonRenderDisplay
                               spec={artifact.spec as unknown as Spec}
                               isStreaming={false}
                             />
                           </div>
-                          <div className="flex items-center gap-3 border-t px-4 py-3">
+                          <div className="mt-auto flex items-center gap-3 border-t px-4 py-3">
                             <Badge variant="outline" className="shrink-0">
                               <TypeIcon
                                 type={artType}

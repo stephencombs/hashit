@@ -1,5 +1,7 @@
+import { createContext, useContext } from 'react'
 import { defineRegistry } from '@json-render/react'
 import { AllCommunityModule, themeQuartz, colorSchemeDarkBlue } from 'ag-grid-community'
+import type { GridReadyEvent } from 'ag-grid-community'
 import { AgGridProvider, AgGridReact } from 'ag-grid-react'
 import {
   Area,
@@ -39,6 +41,36 @@ const COLORS = [
   'var(--chart-5)',
 ]
 
+const FillModeContext = createContext(false)
+export const FillModeProvider = FillModeContext.Provider
+function useFillMode() {
+  return useContext(FillModeContext)
+}
+
+function chartWrapperClass(fill: boolean): string | undefined {
+  return fill ? 'flex h-full w-full flex-col' : undefined
+}
+
+function chartContainerProps(
+  fill: boolean,
+  height: number | null | undefined,
+): { className?: string; style?: React.CSSProperties } {
+  if (fill) {
+    return { className: 'aspect-auto w-full flex-1 min-h-[200px]' }
+  }
+  const minHeight = Math.max(200, height ?? 250)
+  return { style: { minHeight, width: '100%' } }
+}
+
+function dataGridInnerProps(
+  fill: boolean,
+  height: number | null | undefined,
+): { className?: string; style?: React.CSSProperties } {
+  if (fill) return { className: 'flex-1 min-h-[320px] w-full' }
+  if (typeof height === 'number') return { style: { height } }
+  return { className: 'w-full' }
+}
+
 function cssKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()
 }
@@ -51,35 +83,53 @@ function buildChartConfig(keys: string[]): ChartConfig {
   return config
 }
 
-function chartHeight(height: number | null | undefined): number {
-  return Math.max(200, height ?? 250)
+function FallbackMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="py-4 text-center text-sm text-muted-foreground">{children}</p>
+  )
+}
+
+function rowHas(items: Array<Record<string, unknown>>, key: string): boolean {
+  if (!key) return false
+  return items.some((row) => row != null && typeof row === 'object' && key in row)
+}
+
+function missingKeys(items: Array<Record<string, unknown>>, keys: string[]): string[] {
+  return keys.filter((k) => !rowHas(items, k))
 }
 
 export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
   components: {
     AreaChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
       const keys = props.yKeys ?? []
       const config = buildChartConfig(keys)
-      const h = chartHeight(props.height)
       const curve = props.curveType ?? 'monotone'
 
       if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (keys.length === 0) {
+        return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
+      }
+      const missing = missingKeys(items, keys)
+      if (missing.length === keys.length || !rowHas(items, props.xKey)) {
         return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
+          <FallbackMessage>
+            Unable to plot: series fields ({[props.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+          </FallbackMessage>
         )
       }
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsAreaChart data={items} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -136,13 +186,28 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     BarChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
       const keys = props.yKeys ?? []
-      const h = chartHeight(props.height)
       const isHorizontal = props.horizontal ?? false
       const singleSeries = keys.length === 1
+
+      if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (keys.length === 0) {
+        return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
+      }
+      const missing = missingKeys(items, keys)
+      if (missing.length === keys.length || !rowHas(items, props.xKey)) {
+        return (
+          <FallbackMessage>
+            Unable to plot: series fields ({[props.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+          </FallbackMessage>
+        )
+      }
 
       const config = singleSeries
         ? (() => {
@@ -155,20 +220,12 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
           })()
         : buildChartConfig(keys)
 
-      if (items.length === 0) {
-        return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
-        )
-      }
-
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsBarChart
               data={items}
               layout={isHorizontal ? 'vertical' : 'horizontal'}
@@ -225,28 +282,35 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     LineChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
       const keys = props.yKeys ?? []
       const config = buildChartConfig(keys)
-      const h = chartHeight(props.height)
       const curve = props.curveType ?? 'monotone'
 
       if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (keys.length === 0) {
+        return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
+      }
+      const missing = missingKeys(items, keys)
+      if (missing.length === keys.length || !rowHas(items, props.xKey)) {
         return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
+          <FallbackMessage>
+            Unable to plot: series fields ({[props.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+          </FallbackMessage>
         )
       }
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsLineChart data={items} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -279,17 +343,20 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     PieChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
-      const h = chartHeight(props.height)
       const isDonut = props.donut ?? false
 
       if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (!rowHas(items, props.nameKey) || !rowHas(items, props.valueKey)) {
         return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
+          <FallbackMessage>
+            Unable to plot: fields ({props.nameKey}, {props.valueKey}) not found in data.
+          </FallbackMessage>
         )
       }
 
@@ -306,11 +373,11 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
       })
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsPieChart accessibilityLayer>
               <ChartTooltip
                 content={<ChartTooltipContent nameKey="name" />}
@@ -332,27 +399,34 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     RadarChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
       const keys = props.dataKeys ?? []
       const config = buildChartConfig(keys)
-      const h = chartHeight(props.height)
 
       if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (keys.length === 0) {
+        return <FallbackMessage>Unable to plot: no series specified (dataKeys empty).</FallbackMessage>
+      }
+      const missing = missingKeys(items, keys)
+      if (missing.length === keys.length || !rowHas(items, props.axisKey)) {
         return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
+          <FallbackMessage>
+            Unable to plot: fields ({[props.axisKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+          </FallbackMessage>
         )
       }
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsRadarChart data={items} accessibilityLayer>
               <PolarGrid />
               <PolarAngleAxis dataKey={props.axisKey} />
@@ -380,16 +454,19 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     RadialChart: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
-      const h = chartHeight(props.height)
 
       if (items.length === 0) {
+        return <FallbackMessage>No data available</FallbackMessage>
+      }
+      if (!rowHas(items, props.nameKey) || !rowHas(items, props.valueKey)) {
         return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
+          <FallbackMessage>
+            Unable to plot: fields ({props.nameKey}, {props.valueKey}) not found in data.
+          </FallbackMessage>
         )
       }
 
@@ -406,11 +483,11 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
       })
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
-          <ChartContainer config={config} style={{ minHeight: h, width: '100%' }}>
+          <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
             <RechartsRadialBarChart
               data={barData}
               startAngle={180}
@@ -432,23 +509,19 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
     },
 
     DataGrid: ({ props }) => {
+      const fill = useFillMode()
       const items: Array<Record<string, unknown>> = Array.isArray(props.data)
         ? props.data
         : []
 
       if (items.length === 0) {
-        return (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No data available
-          </p>
-        )
+        return <FallbackMessage>No data available</FallbackMessage>
       }
 
       const columnDefs = props.columns
         ? props.columns.map((col) => ({
             field: col.field,
             headerName: col.headerName ?? col.field,
-            width: col.width ?? undefined,
             sortable: col.sortable ?? true,
             filter: col.filter ?? true,
           }))
@@ -459,7 +532,6 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
             filter: true,
           }))
 
-      const h = props.height ?? (items.length <= 20 ? undefined : 400)
       const usePagination = props.pagination ?? items.length > 50
 
       const isDark = typeof document !== 'undefined'
@@ -469,20 +541,33 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
         : themeQuartz
 
       return (
-        <div>
+        <div className={chartWrapperClass(fill)}>
           {props.title && (
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
           <AgGridProvider modules={[AllCommunityModule]}>
-            <div style={h ? { height: h } : undefined}>
+            <div {...dataGridInnerProps(fill, props.height)}>
               <AgGridReact
                 theme={gridTheme}
                 rowData={items}
                 columnDefs={columnDefs}
-                domLayout={h ? 'normal' : 'autoHeight'}
+                domLayout={
+                  fill || typeof props.height === 'number'
+                    ? 'normal'
+                    : 'autoHeight'
+                }
                 pagination={usePagination}
                 paginationPageSize={props.pageSize ?? 10}
-                defaultColDef={{ resizable: true, flex: 1 }}
+                defaultColDef={{ resizable: true }}
+                onGridReady={(params: GridReadyEvent) => {
+                  params.api.autoSizeAllColumns()
+                  const cols = params.api.getColumns() ?? []
+                  const columnLimits = cols.map((c) => ({
+                    key: c.getColId(),
+                    minWidth: c.getActualWidth(),
+                  }))
+                  params.api.sizeColumnsToFit({ columnLimits })
+                }}
               />
             </div>
           </AgGridProvider>

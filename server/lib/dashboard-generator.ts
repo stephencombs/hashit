@@ -1,4 +1,5 @@
 import { chat, maxIterations, toolDefinition } from '@tanstack/ai'
+import { validateSpec as validateSpecStructure } from '@json-render/core'
 import { eq } from 'drizzle-orm'
 import { db } from '../../src/db'
 import { dashboardSnapshots } from '../../src/db/schema'
@@ -9,6 +10,123 @@ import { getAzureAdapter } from '../../src/lib/chat-helpers'
 import type { ServerTool, Tool } from '@tanstack/ai'
 import type { PersistedWidget, PersistedRecipe } from '../../src/db/schema'
 import type { Spec } from '@json-render/core'
+
+const PREFERRED_ROW_KEYS = ['data', 'items', 'rows', 'results', 'records', 'list', 'entries']
+
+function extractRows(result: unknown, depth = 0): unknown[] | null {
+  if (depth > 3 || result == null) return null
+  if (Array.isArray(result)) return result.length > 0 ? result : null
+  if (typeof result === 'string') {
+    const trimmed = result.trim()
+    if (!trimmed) return null
+    try {
+      return extractRows(JSON.parse(trimmed), depth)
+    } catch {
+      return null
+    }
+  }
+  if (typeof result !== 'object') return null
+  const obj = result as Record<string, unknown>
+  for (const key of PREFERRED_ROW_KEYS) {
+    const val = obj[key]
+    if (Array.isArray(val) && val.length > 0) return val
+  }
+  const arrayEntries = Object.entries(obj).filter(
+    ([, v]) => Array.isArray(v) && (v as unknown[]).length > 0,
+  )
+  if (arrayEntries.length === 1) return arrayEntries[0][1] as unknown[]
+  const objectEntries = Object.entries(obj).filter(
+    ([, v]) => v != null && typeof v === 'object' && !Array.isArray(v),
+  )
+  if (objectEntries.length === 1) return extractRows(objectEntries[0][1], depth + 1)
+  return null
+}
+
+const SERIES_KEY_PROPS = ['yKeys', 'dataKeys'] as const
+
+type ValidationOutcome = { valid: true } | { valid: false; reason: string }
+
+function validateWidgetSpec(spec: Spec | null): ValidationOutcome {
+  if (!spec || !spec.root || !spec.elements) {
+    return { valid: false, reason: 'Spec missing root or elements' }
+  }
+  const errors = validateSpecStructure(spec).issues.filter(
+    (i) => i.severity === 'error',
+  )
+  if (errors.length > 0) {
+    return {
+      valid: false,
+      reason: `Structural: ${errors.map((e) => e.message).join('; ')}`,
+    }
+  }
+  const parsed = uiCatalog.validate(spec)
+  if (!parsed.success) {
+    const first = parsed.error?.issues?.[0]
+    const detail = first
+      ? `${first.path.join('.')}: ${first.message}`
+      : parsed.error?.message ?? 'unknown zod error'
+    return { valid: false, reason: `Props/catalog: ${detail.slice(0, 240)}` }
+  }
+  for (const [key, element] of Object.entries(spec.elements)) {
+    const props = (element.props ?? {}) as Record<string, unknown>
+    if (Array.isArray(props.data) && props.data.length === 0) {
+      return { valid: false, reason: `${element.type} "${key}" has empty data array` }
+    }
+    for (const seriesKey of SERIES_KEY_PROPS) {
+      const val = props[seriesKey]
+      if (Array.isArray(val) && val.length === 0) {
+        return { valid: false, reason: `${element.type} "${key}" has empty ${seriesKey}` }
+      }
+    }
+  }
+  return { valid: true }
+}
+
+const CATALOG_PROMPT = uiCatalog.prompt({
+  mode: 'standalone',
+  customRules: [
+    'Generate exactly one visualization from the provided data.',
+    'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
+    'When using DataGrid, include ALL rows with pagination enabled.',
+    'Choose the most appropriate chart type: bar charts for comparisons, line/area for trends, pie/donut for proportions.',
+    'Set the "title" prop to null - the widget title is rendered separately by the host.',
+    'The "data" prop MUST be a non-empty array of row objects copied from the provided data. Never set data to [] or invent placeholder rows.',
+    'For charts, xKey/nameKey/axisKey and yKeys/dataKeys/valueKey MUST reference fields that actually exist on the row objects, and yKeys/dataKeys must be non-empty.',
+  ],
+})
+
+const MAX_DATA_CHARS = 30_000
+
+function formatDataSources(
+  sources: Record<string, { rows: unknown[] | null; raw: unknown }>,
+): string {
+  return Object.entries(sources)
+    .map(([label, { rows, raw }]) => {
+      if (raw == null) return `### ${label}\n(no data available)`
+      if (rows && rows.length > 0) {
+        const rowsStr = JSON.stringify(rows, null, 2)
+        const truncated =
+          rowsStr.length > MAX_DATA_CHARS
+            ? rowsStr.slice(0, MAX_DATA_CHARS) + '\n... (truncated)'
+            : rowsStr
+        const sample = rows[0]
+        const fields =
+          sample && typeof sample === 'object' && !Array.isArray(sample)
+            ? Object.keys(sample as Record<string, unknown>)
+            : []
+        const fieldsLine =
+          fields.length > 0 ? `\nAvailable fields: ${fields.join(', ')}` : ''
+        return `### ${label} (${rows.length} row${rows.length === 1 ? '' : 's'}, pre-extracted as an array)${fieldsLine}\n${truncated}`
+      }
+      const rawStr = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2)
+      const truncated =
+        rawStr.length > MAX_DATA_CHARS
+          ? rawStr.slice(0, MAX_DATA_CHARS) + '\n... (truncated)'
+          : rawStr
+      return `### ${label} (non-tabular; original shape)\n${truncated}`
+    })
+    .join('\n\n')
+}
 
 interface DataSource {
   toolName: string
@@ -393,17 +511,6 @@ function isEmptyResult(result: unknown): boolean {
   return false
 }
 
-const CATALOG_PROMPT = uiCatalog.prompt({
-  mode: 'standalone',
-  customRules: [
-    'Generate exactly one visualization from the provided data.',
-    'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
-    'When using DataGrid, include ALL rows with pagination enabled.',
-    'Choose the most appropriate chart type: bar charts for comparisons, line/area for trends, pie/donut for proportions.',
-    'Always include a descriptive title.',
-  ],
-})
-
 function toPersistedRecipes(recipes: WidgetRecipe[]): PersistedRecipe[] {
   return recipes.map((r) => ({
     widgetId: r.widgetId,
@@ -448,8 +555,13 @@ async function renderWidget(
     }
   }
 
-  const hasAnyData = Object.values(results).some((v) => v !== null)
-  if (!hasAnyData) {
+  const normalized: Record<string, { rows: unknown[] | null; raw: unknown }> = {}
+  for (const [label, raw] of Object.entries(results)) {
+    normalized[label] = { rows: extractRows(raw), raw }
+  }
+
+  const hasAnyRows = Object.values(normalized).some((v) => v.rows && v.rows.length > 0)
+  if (!hasAnyRows) {
     return {
       widgetId: recipe.widgetId,
       title: recipe.title,
@@ -459,36 +571,29 @@ async function renderWidget(
     }
   }
 
-  const adapter = getAzureAdapter()
-
-  const dataSourceSections = Object.entries(results)
-    .map(([label, data]) => {
-      if (data === null) return `### ${label}\n(no data available)`
-      const dataStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
-      const truncated = dataStr.length > 30_000 ? dataStr.slice(0, 30_000) + '\n... (truncated)' : dataStr
-      return `### ${label}\n${truncated}`
-    })
-    .join('\n\n')
-
-  const uiPrompt = `You are a dashboard widget renderer for an ${recipe.title} widget.
+  const uiPrompt = `You are a dashboard widget renderer for "${recipe.title}".
 
 ## Insight Question
 ${recipe.insight}
 
 ## Data Sources
-${dataSourceSections}
+Each labelled section is either (a) a pre-extracted array of row objects you can copy directly into the component's "data" prop, or (b) a non-tabular payload you must summarize into rows yourself before using.
+
+${formatDataSources(normalized)}
 
 ## Render Instructions
 ${recipe.render}
 
-Analyze the data to answer the insight question. Generate exactly one visualization that highlights the most important findings.
-Use charts (BarChart, PieChart, LineChart, AreaChart) for trends, comparisons, and distributions.
-Use DataGrid only for actionable item lists that the user needs to act on.
-If a data source is null, work with what's available — do not mention missing data unless it's critical.
-IMPORTANT: Do NOT set the "title" prop on the chart/grid component — the title is displayed separately in the card header. Set title to null.
-IMPORTANT: If the available data is insufficient to produce a meaningful visualization (e.g. all sources are null or the data is empty/trivial), output NOTHING — no spec block at all. Never generate placeholder or "No data available" visualizations.
-Do not output any text outside the spec block.`
+## Rules
+- Generate exactly one visualization that answers the insight question.
+- Use charts (BarChart, PieChart, LineChart, AreaChart) for trends, comparisons, and distributions; use DataGrid for actionable item lists.
+- The "data" prop MUST be a non-empty array of row objects. Prefer copying rows verbatim from the pre-extracted data; otherwise build rows by aggregating/grouping the raw payload.
+- xKey/nameKey/axisKey and yKeys/dataKeys/valueKey MUST reference fields that actually exist on the row objects you pass in "data". yKeys and dataKeys MUST be non-empty.
+- Set the "title" prop to null - the widget title is displayed separately by the host.
+- If the available data is insufficient to produce a meaningful visualization, output NOTHING - no spec block at all.
+- Do not output any text outside the spec block.`
 
+  const adapter = getAzureAdapter()
   const uiStream = chat({
     adapter,
     messages: [{ role: 'user' as const, content: uiPrompt }],
@@ -498,18 +603,22 @@ Do not output any text outside the spec block.`
   let spec: Spec | null = null
   for await (const chunk of withJsonRender(uiStream)) {
     if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
-      const value = chunk.value as { spec: Spec }
-      spec = value.spec
+      spec = (chunk.value as { spec: Spec }).spec
     }
   }
 
-  if (!spec || !spec.root || !spec.elements || Object.keys(spec.elements).length === 0) {
+  const validation = validateWidgetSpec(spec)
+  if (!spec || !validation.valid) {
+    const reason = validation.valid
+      ? 'UI generation produced no visualization'
+      : (validation as { valid: false; reason: string }).reason
+    console.warn(`[dashboard] Dropping spec for "${recipe.widgetId}": ${reason}`)
     return {
       widgetId: recipe.widgetId,
       title: recipe.title,
       insight: recipe.insight,
       spec: null,
-      skipReason: 'UI generation produced no visualization',
+      skipReason: reason,
     }
   }
 
@@ -577,14 +686,46 @@ export async function generateDashboard(params: GenerateDashboardParams): Promis
       return
     }
 
-    const widgets: PersistedWidget[] = [...carryForward]
+    const widgetsInOrder: Array<PersistedWidget | null> = Array(recipes.length).fill(null)
+    let writeQueue: Promise<void> = Promise.resolve()
 
-    for (const recipe of recipes) {
-      console.log(`[dashboard] Rendering widget "${recipe.widgetId}" for snapshot ${snapshotId}`)
-      const widget = await renderWidget(recipe, mcpTools)
-      widgets.push(widget)
-      await updateSnapshotWidgets(snapshotId, widgets)
+    function flushSnapshot() {
+      const current = [
+        ...widgetsInOrder.filter((w): w is PersistedWidget => w !== null),
+        ...carryForward,
+      ]
+      writeQueue = writeQueue
+        .then(() => updateSnapshotWidgets(snapshotId, current))
+        .catch((err) => {
+          console.warn(`[dashboard] Snapshot flush failed for ${snapshotId}:`, err)
+        })
     }
+
+    await Promise.all(
+      recipes.map(async (recipe, i) => {
+        console.log(`[dashboard] Rendering widget "${recipe.widgetId}" for snapshot ${snapshotId}`)
+        try {
+          widgetsInOrder[i] = await renderWidget(recipe, mcpTools)
+        } catch (err) {
+          console.error(`[dashboard] renderWidget failed for "${recipe.widgetId}":`, err)
+          widgetsInOrder[i] = {
+            widgetId: recipe.widgetId,
+            title: recipe.title,
+            insight: recipe.insight,
+            spec: null,
+            skipReason: `Render error — ${err instanceof Error ? err.message : String(err)}`,
+          }
+        }
+        flushSnapshot()
+      }),
+    )
+
+    await writeQueue
+
+    const widgets: PersistedWidget[] = [
+      ...widgetsInOrder.filter((w): w is PersistedWidget => w !== null),
+      ...carryForward,
+    ]
 
     await db
       .update(dashboardSnapshots)

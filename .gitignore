@@ -26,3 +26,6 @@ infra/*.tfstate.backup
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Worktrees
+.claude/worktrees/

@@ -33,7 +33,10 @@ import {
 } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import type { Spec } from '@json-render/core'
+import { uiCatalog } from '~/lib/ui-catalog'
 import type { PersistedWidget, PersistedRecipe } from '~/db/schema'
+
+const CATALOG_TYPES = new Set(uiCatalog.componentNames)
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -201,16 +204,17 @@ function Dashboard() {
             {renderableWidgets.map((widget) => (
               <Card
                 key={widget.widgetId}
-                className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+                className="flex h-full flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
               >
                 <CardHeader>
                   <CardTitle>{widget.title}</CardTitle>
                   <CardDescription>{widget.insight}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex h-[340px] min-h-0 flex-col overflow-hidden">
                   <JsonRenderDisplay
                     spec={widget.spec as unknown as Spec}
                     isStreaming={false}
+                    fill
                   />
                 </CardContent>
               </Card>
@@ -285,7 +289,10 @@ function SkeletonCard() {
 
 function isRenderableSpec(spec: Spec | undefined | null): spec is Spec {
   if (!spec?.root || !spec?.elements) return false
-  return Object.keys(spec.elements).length > 0
+  if (Object.keys(spec.elements).length === 0) return false
+  const rootElement = spec.elements[spec.root]
+  if (!rootElement) return false
+  return CATALOG_TYPES.has(rootElement.type)
 }
 
 function SpinnerIcon({

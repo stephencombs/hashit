@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckSquare2Icon,
   GaugeIcon,
-  HashIcon,
   Layers,
   PenSquareIcon,
   PinIcon,
   PinOffIcon,
+  SparklesIcon,
   Trash2Icon,
   LayoutDashboardIcon,
   XIcon,
@@ -575,10 +575,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <HashIcon className="size-4" />
+            <SparklesIcon className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate font-semibold">Hashit</span>
+            <span className="truncate font-semibold">Teammate</span>
             <span className="truncate text-xs">AI Chat</span>
           </div>
         </div>
