@@ -3,7 +3,11 @@ import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useModelSettings } from "~/hooks/use-model-settings";
 import { useMcpSettings } from "~/hooks/use-mcp-settings";
-import { artifactsByThreadQuery, type ThreadArtifact } from "~/lib/queries";
+import {
+  artifactsByThreadQuery,
+  threadDetailQuery,
+  type ThreadArtifact,
+} from "~/lib/queries";
 import {
   VirtualConversation,
   VirtualConversationEmptyState,
@@ -60,6 +64,25 @@ export function Chat({
     ...artifactsByThreadQuery(threadId ?? ""),
     enabled: !!threadId,
   });
+
+  // Cancel any in-flight fetches for this thread when <Chat> unmounts (the
+  // parent route remounts <Chat> per thread via key=threadId). Catches
+  // non-loader-initiated fetches (e.g. the artifacts query above or a stale
+  // background refetch) that would otherwise keep running server-side after
+  // the user has already moved on.
+  useEffect(() => {
+    return () => {
+      if (!threadId) return;
+      queryClient.cancelQueries({
+        queryKey: threadDetailQuery(threadId).queryKey,
+        exact: true,
+      });
+      queryClient.cancelQueries({
+        queryKey: artifactsByThreadQuery(threadId).queryKey,
+        exact: true,
+      });
+    };
+  }, [threadId, queryClient]);
 
   const savedArtifactKeys = useMemo(() => {
     const keys = new Set<string>();

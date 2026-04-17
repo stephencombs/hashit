@@ -15,9 +15,9 @@ export const threadListQuery = queryOptions({
 export const threadDetailQuery = (threadId: string) =>
   queryOptions({
     queryKey: ['threads', threadId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { getThread } = await import('~/routes/_app.chat.$threadId')
-      return getThread({ data: threadId })
+      return getThread({ data: threadId, signal })
     },
     staleTime: 60_000,
   })
@@ -33,9 +33,9 @@ export interface ThreadArtifact {
 export const artifactsByThreadQuery = (threadId: string) =>
   queryOptions({
     queryKey: ['artifacts', threadId],
-    queryFn: async (): Promise<ThreadArtifact[]> => {
+    queryFn: async ({ signal }): Promise<ThreadArtifact[]> => {
       const { getArtifactsByThread } = await import('~/lib/server/artifacts')
-      const rows = await getArtifactsByThread({ data: threadId })
+      const rows = await getArtifactsByThread({ data: threadId, signal })
       return rows as unknown as ThreadArtifact[]
     },
     staleTime: 60_000,

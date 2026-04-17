@@ -105,13 +105,20 @@ function ChatThreadPending() {
 }
 
 export const Route = createFileRoute('/_app/chat/$threadId')({
-  loader: ({ params, context }) =>
-    Promise.all([
+  loader: ({ params, context, abortController }) => {
+    const threadKey = threadDetailQuery(params.threadId).queryKey
+    const artifactsKey = artifactsByThreadQuery(params.threadId).queryKey
+    abortController.signal.addEventListener('abort', () => {
+      context.queryClient.cancelQueries({ queryKey: threadKey, exact: true })
+      context.queryClient.cancelQueries({ queryKey: artifactsKey, exact: true })
+    })
+    return Promise.all([
       context.queryClient.ensureQueryData(threadDetailQuery(params.threadId)),
       context.queryClient.ensureQueryData(
         artifactsByThreadQuery(params.threadId),
       ),
-    ]),
+    ])
+  },
   component: ChatThread,
   pendingComponent: ChatThreadPending,
 })

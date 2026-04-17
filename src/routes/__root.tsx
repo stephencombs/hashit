@@ -77,11 +77,11 @@ function RootErrorComponent({ error }: { error: Error }) {
 }
 
 function RootComponent() {
-  // useEffect(() => {
-  //   if (import.meta.env.DEV && typeof window !== 'undefined') {
-  //     import('react-scan').then(({ scan }) => scan())
-  //   }
-  // }, [])
+  useEffect(() => {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      import('react-scan').then(({ scan }) => scan())
+    }
+  }, [])
 
   return (
     <RootDocument>
