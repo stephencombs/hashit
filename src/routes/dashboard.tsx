@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { AppSidebar } from '~/components/app-sidebar'
 import { JsonRenderDisplay } from '~/components/json-render-display'
+import { VirtualGrid } from '~/components/virtual-grid'
 import { Separator } from '~/components/ui/separator'
 import {
   Card,
@@ -200,31 +201,39 @@ function Dashboard() {
             />
           )}
 
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {renderableWidgets.map((widget) => (
-              <Card
-                key={widget.widgetId}
-                className="flex h-full flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
-              >
-                <CardHeader>
-                  <CardTitle>{widget.title}</CardTitle>
-                  <CardDescription>{widget.insight}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex h-[340px] min-h-0 flex-col overflow-hidden">
-                  <JsonRenderDisplay
-                    spec={widget.spec as unknown as Spec}
-                    isStreaming={false}
-                    fill
-                  />
-                </CardContent>
-              </Card>
-            ))}
-
-            {isGenerating && renderableWidgets.length === 0 &&
-              Array.from({ length: 2 }).map((_, i) => (
-                <SkeletonCard key={`skeleton-${i}`} />
-              ))}
-          </div>
+          {renderableWidgets.length > 0 ? (
+            <VirtualGrid
+              items={renderableWidgets}
+              getKey={(w) => w.widgetId}
+              estimateSize={460}
+              gap={20}
+              overscan={2}
+              lanes={(w) => (w >= 1024 ? 2 : 1)}
+              renderItem={(widget) => (
+                <Card className="flex h-full flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                  <CardHeader>
+                    <CardTitle>{widget.title}</CardTitle>
+                    <CardDescription>{widget.insight}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex h-[340px] min-h-0 flex-col overflow-hidden">
+                    <JsonRenderDisplay
+                      spec={widget.spec as unknown as Spec}
+                      isStreaming={false}
+                      fill
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            />
+          ) : (
+            isGenerating && (
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <SkeletonCard key={`skeleton-${i}`} />
+                ))}
+              </div>
+            )
+          )}
 
           {initialLoaded &&
             !isGenerating &&

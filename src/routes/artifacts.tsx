@@ -20,6 +20,7 @@ import {
   SidebarTrigger,
 } from '~/components/ui/sidebar'
 import { JsonRenderDisplay } from '~/components/json-render-display'
+import { VirtualGrid } from '~/components/virtual-grid'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -71,6 +72,104 @@ function TypeIcon({ type, className }: { type: ArtifactType; className?: string 
 export const Route = createFileRoute('/artifacts')({
   component: ArtifactsPage,
 })
+
+function ArtifactListRow({
+  artifact,
+  onSelect,
+  onDelete,
+}: {
+  artifact: Artifact
+  onSelect: () => void
+  onDelete: () => void
+}) {
+  const artType = getArtifactType(artifact.spec)
+  return (
+    <div
+      className="group relative flex cursor-pointer items-center gap-4 border-b px-4 py-3 transition-colors hover:bg-accent/30 last:border-b-0"
+      onClick={onSelect}
+    >
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <TypeIcon type={artType} className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-medium">{artifact.title}</h3>
+        <p className="text-xs text-muted-foreground">{typeLabel(artType)}</p>
+      </div>
+      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+        {new Date(artifact.createdAt).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        {artifact.threadId && artifact.messageId && (
+          <Link
+            to="/chat/$threadId"
+            params={{ threadId: artifact.threadId }}
+            hash={`msg-${artifact.messageId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Open in chat"
+          >
+            <ExternalLinkIcon className="size-4" />
+          </Link>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="size-8 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label={`Delete ${artifact.title}`}
+        >
+          <Trash2Icon className="size-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ArtifactGalleryCard({
+  artifact,
+  onSelect,
+}: {
+  artifact: Artifact
+  onSelect: () => void
+}) {
+  const artType = getArtifactType(artifact.spec)
+  return (
+    <div
+      className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
+      onClick={onSelect}
+    >
+      <div className="pointer-events-none min-h-[220px] flex-1 overflow-hidden p-4">
+        <JsonRenderDisplay
+          spec={artifact.spec as unknown as Spec}
+          isStreaming={false}
+        />
+      </div>
+      <div className="mt-auto flex items-center gap-3 border-t px-4 py-3">
+        <Badge variant="outline" className="shrink-0">
+          <TypeIcon type={artType} className="size-3" />
+          {typeLabel(artType)}
+        </Badge>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-medium">{artifact.title}</h3>
+        </div>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {new Date(artifact.createdAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 type ViewMode = 'gallery' | 'list'
 
@@ -219,66 +318,21 @@ function ArtifactsPage() {
                 </p>
               </div>
             ) : viewMode === 'list' ? (
-              <div className="divide-y rounded-xl border bg-card">
-                {filtered.map((artifact) => {
-                  const artType = getArtifactType(artifact.spec)
-                  return (
-                    <div
-                      key={artifact.id}
-                      className="group relative flex cursor-pointer items-center gap-4 px-4 py-3 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/30"
-                      onClick={() => setSelected(artifact)}
-                    >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                        <TypeIcon type={artType} className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-medium">
-                          {artifact.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {typeLabel(artType)}
-                        </p>
-                      </div>
-                      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                        {new Date(artifact.createdAt).toLocaleDateString(
-                          undefined,
-                          {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          },
-                        )}
-                      </span>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {artifact.threadId && artifact.messageId && (
-                          <Link
-                            to="/chat/$threadId"
-                            params={{ threadId: artifact.threadId }}
-                            hash={`msg-${artifact.messageId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                            aria-label="Open in chat"
-                          >
-                            <ExternalLinkIcon className="size-4" />
-                          </Link>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="size-8 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteArtifact.mutate(artifact.id)
-                          }}
-                          aria-label={`Delete ${artifact.title}`}
-                        >
-                          <Trash2Icon className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <VirtualGrid
+                  items={filtered}
+                  getKey={(a) => a.id}
+                  estimateSize={64}
+                  gap={0}
+                  overscan={6}
+                  renderItem={(artifact) => (
+                    <ArtifactListRow
+                      artifact={artifact}
+                      onSelect={() => setSelected(artifact)}
+                      onDelete={() => deleteArtifact.mutate(artifact.id)}
+                    />
+                  )}
+                />
               </div>
             ) : (
               <>
@@ -336,47 +390,20 @@ function ArtifactsPage() {
 
                 {/* Grid */}
                 {rest.length > 0 && (
-                  <div className="grid gap-5 md:grid-cols-2">
-                    {rest.map((artifact) => {
-                      const artType = getArtifactType(artifact.spec)
-                      return (
-                        <div
-                          key={artifact.id}
-                          className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
-                          onClick={() => setSelected(artifact)}
-                        >
-                          <div className="pointer-events-none min-h-[220px] flex-1 overflow-hidden p-4">
-                            <JsonRenderDisplay
-                              spec={artifact.spec as unknown as Spec}
-                              isStreaming={false}
-                            />
-                          </div>
-                          <div className="mt-auto flex items-center gap-3 border-t px-4 py-3">
-                            <Badge variant="outline" className="shrink-0">
-                              <TypeIcon
-                                type={artType}
-                                className="size-3"
-                              />
-                              {typeLabel(artType)}
-                            </Badge>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="truncate text-sm font-medium">
-                                {artifact.title}
-                              </h3>
-                            </div>
-                            <span className="shrink-0 text-xs text-muted-foreground">
-                              {new Date(
-                                artifact.createdAt,
-                              ).toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <VirtualGrid
+                    items={rest}
+                    getKey={(a) => a.id}
+                    estimateSize={320}
+                    gap={20}
+                    overscan={2}
+                    lanes={(w) => (w >= 768 ? 2 : 1)}
+                    renderItem={(artifact) => (
+                      <ArtifactGalleryCard
+                        artifact={artifact}
+                        onSelect={() => setSelected(artifact)}
+                      />
+                    )}
+                  />
                 )}
               </>
             )}
