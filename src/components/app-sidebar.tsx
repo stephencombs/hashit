@@ -47,6 +47,7 @@ import {
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { useIsOverflowing } from "~/hooks/use-is-overflowing"
@@ -82,17 +83,18 @@ function ItemTitle({ title }: { title: string }) {
   const isOverflowing = useIsOverflowing(title, ref)
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        delay={THREAD_TOOLTIP_DELAY_MS}
-        render={<span ref={ref} className="min-w-0 truncate" />}
-      >
-        {title}
-      </TooltipTrigger>
-      {isOverflowing && (
-        <TooltipContent side="bottom">{title}</TooltipContent>
-      )}
-    </Tooltip>
+    <TooltipProvider delay={THREAD_TOOLTIP_DELAY_MS}>
+      <Tooltip>
+        <TooltipTrigger
+          render={<span ref={ref} className="min-w-0 truncate" />}
+        >
+          {title}
+        </TooltipTrigger>
+        {isOverflowing && (
+          <TooltipContent side="bottom">{title}</TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
