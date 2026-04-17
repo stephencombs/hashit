@@ -53,7 +53,6 @@ export function Chat({
   >(new Map());
   const createdThreadIdRef = useRef<string | null>(null);
   const messagesRef = useRef<typeof messages>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { model, temperature, systemPrompt } = useModelSettings();
   const { selectedServers, enabledTools } = useMcpSettings();
@@ -163,10 +162,6 @@ export function Chat({
       const el = document.querySelector(hash);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-  }, []);
-
-  useEffect(() => {
-    textareaRef.current?.focus({ preventScroll: true });
   }, []);
 
   const handleSubmit = (message: PromptInputMessage) => {
@@ -287,7 +282,6 @@ export function Chat({
       <PromptInput onSubmit={handleSubmit} className="mt-4">
         <PromptInputBody>
           <PromptInputTextarea
-            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.currentTarget.value)}
           />

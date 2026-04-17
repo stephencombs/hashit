@@ -53,8 +53,8 @@ function CanvasIndex() {
         <div className="mx-auto max-w-4xl">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">SDLC Canvases</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h2 className="text-2xl font-semibold text-balance">SDLC Canvases</h2>
+              <p className="mt-1 text-sm text-pretty text-muted-foreground">
                 Create and manage your product development workflows
               </p>
             </div>

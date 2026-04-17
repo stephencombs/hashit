@@ -223,10 +223,10 @@ function ArtifactsPage() {
             {/* Controls */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight">
+                <h2 className="text-2xl font-semibold tracking-tight text-balance">
                   Gallery
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-pretty text-muted-foreground">
                   {filtered.length === artifacts.length
                     ? `${artifacts.length} saved artifact${artifacts.length === 1 ? '' : 's'}`
                     : `${filtered.length} of ${artifacts.length} artifacts`}

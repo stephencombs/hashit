@@ -780,10 +780,10 @@ function AutomationsPage() {
           <div className="mx-auto max-w-5xl space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight">
+                <h2 className="text-2xl font-semibold tracking-tight text-balance">
                   Automations
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-pretty text-muted-foreground">
                   Schedule recurring tasks to run automatically.
                 </p>
               </div>
@@ -796,8 +796,8 @@ function AutomationsPage() {
             {automationsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-16 text-center">
                 <ZapIcon className="mb-4 size-12 text-muted-foreground/40" />
-                <h3 className="text-lg font-medium">No automations yet</h3>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                <h3 className="text-lg font-medium text-balance">No automations yet</h3>
+                <p className="mt-1 max-w-sm text-sm text-pretty text-muted-foreground">
                   Create your first automation to schedule recurring tasks like
                   chat prompts or webhooks.
                 </p>

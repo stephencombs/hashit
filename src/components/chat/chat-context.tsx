@@ -223,10 +223,6 @@ export function ChatProvider({
     });
   }, []);
 
-  useEffect(() => {
-    textareaRef.current?.focus({ preventScroll: true });
-  }, []);
-
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       if (!message.text.trim()) return;

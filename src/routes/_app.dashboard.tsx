@@ -234,10 +234,10 @@ function Dashboard() {
                   <>
                     <AlertCircleIcon className="size-12 text-muted-foreground" />
                     <div className="max-w-md space-y-2">
-                      <h2 className="text-lg font-medium">
+                      <h2 className="text-lg font-medium text-balance">
                         Generation failed
                       </h2>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-pretty text-muted-foreground">
                         {snapshot.error ||
                           'An error occurred while generating the dashboard. Try regenerating.'}
                       </p>
@@ -247,8 +247,8 @@ function Dashboard() {
                   <>
                     <SparklesIcon className="size-12 text-muted-foreground" />
                     <div>
-                      <h2 className="text-lg font-medium">Loading dashboard</h2>
-                      <p className="text-sm text-muted-foreground">
+                      <h2 className="text-lg font-medium text-balance">Loading dashboard</h2>
+                      <p className="text-sm text-pretty text-muted-foreground">
                         Checking for existing dashboard data...
                       </p>
                     </div>
@@ -257,8 +257,8 @@ function Dashboard() {
                   <>
                     <AlertCircleIcon className="size-12 text-muted-foreground" />
                     <div className="max-w-md space-y-2">
-                      <h2 className="text-lg font-medium">No data available</h2>
-                      <p className="text-sm text-muted-foreground">
+                      <h2 className="text-lg font-medium text-balance">No data available</h2>
+                      <p className="text-sm text-pretty text-muted-foreground">
                         All data sources returned empty results or errors. Try
                         regenerating the dashboard.
                       </p>
@@ -349,7 +349,7 @@ function GenerationProgress({
 
   return (
     <ChainOfThought open={isOpen} onOpenChange={setManualOpen}>
-      <ChainOfThoughtHeader>{headerText}</ChainOfThoughtHeader>
+      <ChainOfThoughtHeader className="tabular-nums">{headerText}</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
         {isGenerating && recipes.length === 0 && (
           <ChainOfThoughtStep

@@ -98,9 +98,22 @@ function ItemTitle({ title }: { title: string }) {
   )
 }
 
+/** Right-edge slide-in actions. Render inside `HoverActionsClip` so overflow does not clip the row link’s hit-area. */
 function HoverActions({ children }: { children: React.ReactNode }) {
   return (
-    <div className="absolute inset-y-0 right-0 flex translate-x-full items-center gap-1 pr-2 pl-6 bg-gradient-to-r from-transparent to-sidebar to-30% transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0 group-data-[collapsible=icon]:hidden">
+    <div className="absolute inset-0 flex translate-x-full items-center justify-end gap-1 pr-2 pl-6 bg-gradient-to-r from-transparent to-sidebar to-30% transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0">
+      {children}
+    </div>
+  )
+}
+
+/** Clips off-screen hover actions horizontally without clipping the thread/canvas link (hit-area ::before). */
+function HoverActionsClip({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="absolute inset-y-0 right-0 z-[1] w-[7rem] overflow-hidden group-data-[collapsible=icon]:hidden"
+      aria-hidden
+    >
       {children}
     </div>
   )
@@ -256,7 +269,6 @@ function ThreadItem({
       <SidebarMenuItem>
         <SidebarMenuButton
           isActive={selected}
-          className="hit-area-y-0.5"
           onMouseDown={(e) => {
             if (e.shiftKey) e.preventDefault()
           }}
@@ -270,13 +282,12 @@ function ThreadItem({
   }
 
   return (
-    <SidebarMenuItem className="overflow-hidden">
+    <SidebarMenuItem>
       <SidebarMenuButton isActive={isActive} asChild>
         <Link
           to="/chat/$threadId"
           params={{ threadId: conversation.id }}
           draggable={false}
-          className="hit-area-y-0.5"
         >
           {conversation.source === "automation" && (
             <Tooltip>
@@ -291,24 +302,26 @@ function ThreadItem({
           <ItemTitle title={conversation.title} />
         </Link>
       </SidebarMenuButton>
-      <HoverActions>
-        <HoverButton
-          onClick={() => pinThread.mutate({ threadId: conversation.id, pinned: !conversation.pinnedAt })}
-          label={conversation.pinnedAt ? "Unpin" : "Pin"}
-        >
-          {conversation.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
-        </HoverButton>
-        <HoverButton
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setDeleteOpen(true)
-          }}
-          label="Delete"
-        >
-          <Trash2Icon className="size-5" />
-        </HoverButton>
-      </HoverActions>
+      <HoverActionsClip>
+        <HoverActions>
+          <HoverButton
+            onClick={() => pinThread.mutate({ threadId: conversation.id, pinned: !conversation.pinnedAt })}
+            label={conversation.pinnedAt ? "Unpin" : "Pin"}
+          >
+            {conversation.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
+          </HoverButton>
+          <HoverButton
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setDeleteOpen(true)
+            }}
+            label="Delete"
+          >
+            <Trash2Icon className="size-5" />
+          </HoverButton>
+        </HoverActions>
+      </HoverActionsClip>
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
@@ -356,32 +369,33 @@ function CanvasItem({
   const isActive = !!matchRoute({ to: "/canvas/$canvasId", params: { canvasId: canvas.id } })
 
   return (
-    <SidebarMenuItem className="overflow-hidden">
+    <SidebarMenuItem>
       <SidebarMenuButton isActive={isActive} asChild>
         <Link
           to="/canvas/$canvasId"
           params={{ canvasId: canvas.id }}
           draggable={false}
-          className="hit-area-y-0.5"
         >
           <LayoutDashboardIcon className="size-4" />
           <ItemTitle title={canvas.title} />
         </Link>
       </SidebarMenuButton>
-      <HoverActions>
-        <HoverButton
-          onClick={() => pinCanvas.mutate({ canvasId: canvas.id, pinned: !canvas.pinnedAt })}
-          label={canvas.pinnedAt ? "Unpin" : "Pin"}
-        >
-          {canvas.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
-        </HoverButton>
-        <HoverButton
-          onClick={() => deleteCanvas.mutate(canvas.id)}
-          label="Delete"
-        >
-          <Trash2Icon className="size-5" />
-        </HoverButton>
-      </HoverActions>
+      <HoverActionsClip>
+        <HoverActions>
+          <HoverButton
+            onClick={() => pinCanvas.mutate({ canvasId: canvas.id, pinned: !canvas.pinnedAt })}
+            label={canvas.pinnedAt ? "Unpin" : "Pin"}
+          >
+            {canvas.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
+          </HoverButton>
+          <HoverButton
+            onClick={() => deleteCanvas.mutate(canvas.id)}
+            label="Delete"
+          >
+            <Trash2Icon className="size-5" />
+          </HoverButton>
+        </HoverActions>
+      </HoverActionsClip>
     </SidebarMenuItem>
   )
 }
