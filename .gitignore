@@ -1,0 +1,31 @@
+node_modules
+dist
+.output
+.vinxi
+data/
+count.txt
+
+# Environment
+.env
+.env.*
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/terraform.tfvars
+infra/*.tfstate
+infra/*.tfstate.backup
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Worktrees
+.claude/worktrees/
