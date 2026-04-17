@@ -7,18 +7,22 @@ import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckSquare2Icon,
-  GaugeIcon,
-  Layers,
-  PenSquareIcon,
   PinIcon,
   PinOffIcon,
-  SparklesIcon,
   Trash2Icon,
   LayoutDashboardIcon,
   TriangleAlertIcon,
   XIcon,
   ZapIcon,
 } from "lucide-react"
+import {
+  GaugeIcon,
+  LayersIcon,
+  SparklesIcon,
+  SquarePenIcon,
+  ZapIcon as AnimatedZapIcon,
+} from "lucide-animated"
+import { HoverIcon } from "~/components/animated-icon"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Button } from "~/components/ui/button"
 import {
@@ -738,7 +742,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <SparklesIcon className="size-4" />
+            <HoverIcon as={SparklesIcon} />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
             <span className="truncate font-semibold">Teammate</span>
@@ -753,21 +757,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               tooltip="New Chat"
             >
               <Link to="/" draggable={false}>
-                <PenSquareIcon />
-                <span>New Chat</span>
+                <HoverIcon as={SquarePenIcon} />
+                <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
                 <KbdHint keys="Mod+Shift+N" />
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={isCanvasSection && !!matchRoute({ to: "/canvas" })}
-              asChild
-              tooltip="Canvases"
-            >
-              <Link to="/canvas" draggable={false}>
-                <LayoutDashboardIcon />
-                <span>Canvases</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -778,8 +770,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               tooltip="Dashboard"
             >
               <Link to="/dashboard" draggable={false}>
-                <GaugeIcon />
-                <span>Dashboard</span>
+                <HoverIcon as={GaugeIcon} />
+                <span className="group-data-[collapsible=icon]:hidden">Dashboard</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -790,8 +782,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               tooltip="Artifacts"
             >
               <Link to="/artifacts" draggable={false}>
-                <Layers />
-                <span>Artifacts</span>
+                <HoverIcon as={LayersIcon} />
+                <span className="group-data-[collapsible=icon]:hidden">Artifacts</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -802,8 +794,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               tooltip="Automations"
             >
               <Link to="/automations" draggable={false}>
-                <ZapIcon />
-                <span>Automations</span>
+                <HoverIcon as={AnimatedZapIcon} />
+                <span className="group-data-[collapsible=icon]:hidden">Automations</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

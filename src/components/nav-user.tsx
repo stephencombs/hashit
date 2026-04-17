@@ -2,15 +2,18 @@ import { useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  ChevronsUpDownIcon,
   KeyRoundIcon,
   LoaderIcon,
-  LogOutIcon,
   MonitorIcon,
+} from "lucide-react"
+import {
+  ChevronsUpDownIcon,
+  LogoutIcon,
   MoonIcon,
   SettingsIcon,
   SunIcon,
-} from "lucide-react"
+} from "lucide-animated"
+import { HoverIcon } from "~/components/animated-icon"
 
 import {
   Avatar,
@@ -212,11 +215,15 @@ export function NavUser({
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDownIcon data-icon="inline-end" />
+              <HoverIcon
+                as={ChevronsUpDownIcon}
+                data-icon="inline-end"
+                className="group-data-[collapsible=icon]:hidden"
+              />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -243,7 +250,7 @@ export function NavUser({
                             setTheme(value)
                           }}
                         >
-                          <Icon />
+                          <Icon size={16} />
                           <span className="sr-only">{label}</span>
                         </Button>
                       </TooltipTrigger>
@@ -265,13 +272,13 @@ export function NavUser({
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/settings/appearance">
-                  <SettingsIcon />
+                  <HoverIcon as={SettingsIcon} />
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <LogOutIcon />
+                <HoverIcon as={LogoutIcon} />
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
