@@ -205,9 +205,9 @@ function Dashboard() {
             <VirtualGrid
               items={renderableWidgets}
               getKey={(w) => w.widgetId}
-              estimateSize={460}
+              estimateSize={500}
               gap={20}
-              overscan={2}
+              overscan={6}
               lanes={(w) => (w >= 1024 ? 2 : 1)}
               renderItem={(widget) => (
                 <Card className="flex h-full flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300">

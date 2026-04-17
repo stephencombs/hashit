@@ -393,9 +393,9 @@ function ArtifactsPage() {
                   <VirtualGrid
                     items={rest}
                     getKey={(a) => a.id}
-                    estimateSize={320}
+                    estimateSize={360}
                     gap={20}
-                    overscan={2}
+                    overscan={6}
                     lanes={(w) => (w >= 768 ? 2 : 1)}
                     renderItem={(artifact) => (
                       <ArtifactGalleryCard
