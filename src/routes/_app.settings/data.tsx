@@ -15,7 +15,7 @@ import {
 } from '~/components/ui/dialog'
 import { Separator } from '~/components/ui/separator'
 
-export const Route = createFileRoute('/settings/data')({
+export const Route = createFileRoute('/_app/settings/data')({
   component: DataSettings,
 })
 
@@ -107,17 +107,15 @@ function DataSettings() {
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger
-              render={
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="shrink-0"
-                />
-              }
-            >
-              <Trash2Icon data-icon="inline-start" />
-              Delete all
+            <DialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="shrink-0"
+              >
+                <Trash2Icon data-icon="inline-start" />
+                Delete all
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -131,8 +129,8 @@ function DataSettings() {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" />}>
-                  Cancel
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button
                   variant="destructive"

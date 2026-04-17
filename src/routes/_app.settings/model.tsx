@@ -12,7 +12,7 @@ import { Separator } from '~/components/ui/separator'
 import { Textarea } from '~/components/ui/textarea'
 import { useModelSettings } from '~/hooks/use-model-settings'
 
-export const Route = createFileRoute('/settings/model')({
+export const Route = createFileRoute('/_app/settings/model')({
   component: ModelSettings,
 })
 

@@ -19,7 +19,7 @@ const themeOptions = [
   { value: 'system', label: 'System', icon: MonitorIcon },
 ] as const
 
-export const Route = createFileRoute('/settings/appearance')({
+export const Route = createFileRoute('/_app/settings/appearance')({
   component: AppearanceSettings,
 })
 

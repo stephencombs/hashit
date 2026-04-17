@@ -20,7 +20,7 @@ import {
 } from '~/lib/mcp-queries'
 import { cn } from '~/lib/utils'
 
-export const Route = createFileRoute('/settings/mcp')({
+export const Route = createFileRoute('/_app/settings/mcp')({
   component: McpSettings,
 })
 
@@ -259,7 +259,7 @@ function McpSettings() {
               </div>
               <Accordion
                 key={filterServer ?? 'all'}
-                multiple
+                type="multiple"
                 defaultValue={filterServer ? [filterServer] : []}
               >
               {(filterServer ? [filterServer] : selectedServers).map((serverName) => {

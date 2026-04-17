@@ -42,7 +42,7 @@ export const getCanvas = createServerFn({ method: 'GET' })
     return { ...canvas, nodes, edges }
   })
 
-export const Route = createFileRoute('/canvas/$canvasId')({
+export const Route = createFileRoute('/_app/canvas/$canvasId')({
   loader: ({ params, context }) =>
     context.queryClient.ensureQueryData(canvasDetailQuery(params.canvasId)),
   component: CanvasPage,

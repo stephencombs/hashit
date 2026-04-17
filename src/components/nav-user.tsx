@@ -196,14 +196,11 @@ export function NavUser({
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
-                />
-              }
-            >
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
+              >
               <Avatar className="size-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg">
@@ -220,6 +217,7 @@ export function NavUser({
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <ChevronsUpDownIcon data-icon="inline-end" />
+              </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               className="min-w-56 rounded-lg"
@@ -236,20 +234,18 @@ export function NavUser({
                     { value: "system", icon: MonitorIcon, label: "System" },
                   ] as const).map(({ value, icon: Icon, label }) => (
                     <Tooltip key={value}>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant={theme === value ? "secondary" : "outline"}
-                            size="icon-xs"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setTheme(value)
-                            }}
-                          />
-                        }
-                      >
-                        <Icon />
-                        <span className="sr-only">{label}</span>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={theme === value ? "secondary" : "outline"}
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setTheme(value)
+                          }}
+                        >
+                          <Icon />
+                          <span className="sr-only">{label}</span>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">{label}</TooltipContent>
                     </Tooltip>
@@ -267,9 +263,11 @@ export function NavUser({
                   authenticated={mcpStatus?.authenticated ?? false}
                 />
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link to="/settings/appearance" />}>
-                <SettingsIcon />
-                Settings
+              <DropdownMenuItem asChild>
+                <Link to="/settings/appearance">
+                  <SettingsIcon />
+                  Settings
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>

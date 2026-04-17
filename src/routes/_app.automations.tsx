@@ -18,7 +18,6 @@ import {
   CircleXIcon,
   LoaderIcon,
 } from 'lucide-react'
-import { AppSidebar } from '~/components/app-sidebar'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -39,11 +38,7 @@ import {
   SelectValue,
 } from '~/components/ui/select'
 import { Separator } from '~/components/ui/separator'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '~/components/ui/sidebar'
+import { SidebarTrigger } from '~/components/ui/sidebar'
 import { Switch } from '~/components/ui/switch'
 import {
   Table,
@@ -85,7 +80,7 @@ function formatDate(date: Date | string | null | undefined): string {
   })
 }
 
-export const Route = createFileRoute('/automations')({
+export const Route = createFileRoute('/_app/automations')({
   component: AutomationsPage,
 })
 
@@ -771,19 +766,15 @@ function AutomationsPage() {
   }
 
   return (
-    <SidebarProvider
-      style={{ '--sidebar-width': '280px' } as React.CSSProperties}
-    >
-      <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-vertical:h-4 data-vertical:self-auto"
-          />
-          <h1 className="text-sm font-medium">Automations</h1>
-        </header>
+    <>
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+        />
+        <h1 className="text-sm font-medium">Automations</h1>
+      </header>
 
         <div className="flex-1 p-6">
           <div className="mx-auto max-w-5xl space-y-6">
@@ -844,12 +835,11 @@ function AutomationsPage() {
           </div>
         </div>
 
-        <AutomationDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          editing={editing}
-        />
-      </SidebarInset>
-    </SidebarProvider>
+      <AutomationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editing={editing}
+      />
+    </>
   )
 }

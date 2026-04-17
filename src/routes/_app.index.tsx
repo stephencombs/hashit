@@ -1,14 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { AppSidebar } from '~/components/app-sidebar'
 import { Chat } from '~/components/Chat'
 import { Separator } from '~/components/ui/separator'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '~/components/ui/sidebar'
+import { SidebarTrigger } from '~/components/ui/sidebar'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/_app/')({
   component: Home,
 })
 
@@ -36,25 +31,16 @@ function Home() {
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          '--sidebar-width': '280px',
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-vertical:h-4 data-vertical:self-auto"
-          />
-          <h1 className="text-sm font-medium">New Chat</h1>
-        </header>
-        <Chat onThreadCreated={handleThreadCreated} />
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+        />
+        <h1 className="text-sm font-medium">New Chat</h1>
+      </header>
+      <Chat onThreadCreated={handleThreadCreated} />
+    </>
   )
 }

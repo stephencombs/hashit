@@ -12,13 +12,8 @@ import {
   TableIcon,
   Trash2Icon,
 } from 'lucide-react'
-import { AppSidebar } from '~/components/app-sidebar'
 import { Separator } from '~/components/ui/separator'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '~/components/ui/sidebar'
+import { SidebarTrigger } from '~/components/ui/sidebar'
 import { JsonRenderDisplay } from '~/components/json-render-display'
 import { VirtualGrid } from '~/components/virtual-grid'
 import { Badge } from '~/components/ui/badge'
@@ -69,7 +64,7 @@ function TypeIcon({ type, className }: { type: ArtifactType; className?: string 
   return <BarChart3Icon className={className} />
 }
 
-export const Route = createFileRoute('/artifacts')({
+export const Route = createFileRoute('/_app/artifacts')({
   component: ArtifactsPage,
 })
 
@@ -213,18 +208,14 @@ function ArtifactsPage() {
   const rest = filtered.slice(1)
 
   return (
-    <SidebarProvider
-      style={{ '--sidebar-width': '280px' } as React.CSSProperties}
-    >
-      <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-vertical:h-4 data-vertical:self-auto"
-          />
-          <h1 className="text-sm font-medium">Artifacts</h1>
+    <>
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+        />
+        <h1 className="text-sm font-medium">Artifacts</h1>
         </header>
 
         <div className="flex-1 p-6">
@@ -472,7 +463,6 @@ function ArtifactsPage() {
             </DialogContent>
           )}
         </Dialog>
-      </SidebarInset>
-    </SidebarProvider>
+    </>
   )
 }

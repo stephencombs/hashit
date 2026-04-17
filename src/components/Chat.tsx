@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useModelSettings } from "~/hooks/use-model-settings";
 import { useMcpSettings } from "~/hooks/use-mcp-settings";
+import { artifactsByThreadQuery, type ThreadArtifact } from "~/lib/queries";
 import {
   VirtualConversation,
   VirtualConversationEmptyState,
@@ -40,9 +41,6 @@ export function Chat({
 }: ChatProps) {
   const [input, setInput] = useState("");
   const [specsMap, setSpecsMap] = useState<Map<string, Spec[]>>(new Map());
-  const [savedArtifactKeys, setSavedArtifactKeys] = useState<Set<string>>(
-    new Set(),
-  );
   // Tracks form submissions by tool call ID → submitted field values.
   // Driven by user interaction only (not by server tool execution state)
   // so the form never auto-submits due to TanStack AI's server-side auto-complete.
@@ -56,21 +54,22 @@ export function Chat({
   const { model, temperature, systemPrompt } = useModelSettings();
   const { selectedServers, enabledTools } = useMcpSettings();
 
-  useEffect(() => {
-    if (!threadId) return;
-    fetch(`/api/artifacts?threadId=${encodeURIComponent(threadId)}`)
-      .then((r) => r.json())
-      .then((artifacts: Array<{ messageId: string | null; threadId: string | null; specIndex?: number }>) => {
-        const keys = new Set<string>();
-        for (const a of artifacts) {
-          if (a.messageId) {
-            keys.add(`${a.messageId}:${a.specIndex ?? 0}`);
-          }
-        }
-        setSavedArtifactKeys(keys);
-      })
-      .catch(() => {});
-  }, [threadId]);
+  // Prefetched by the thread route loader, so this is an immediate cache hit
+  // after route navigation. Using a query here also dedupes concurrent calls.
+  const { data: threadArtifacts } = useQuery({
+    ...artifactsByThreadQuery(threadId ?? ""),
+    enabled: !!threadId,
+  });
+
+  const savedArtifactKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const a of threadArtifacts ?? []) {
+      if (a.messageId) {
+        keys.add(`${a.messageId}:${a.specIndex ?? 0}`);
+      }
+    }
+    return keys;
+  }, [threadArtifacts]);
 
   const navigateIfReady = () => {
     if (!threadId && createdThreadIdRef.current && onThreadCreated) {
@@ -195,14 +194,18 @@ export function Chat({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, spec, threadId, messageId, specIndex }),
         });
-        if (res.ok && messageId) {
-          setSavedArtifactKeys((prev) => new Set(prev).add(`${messageId}:${specIndex}`));
+        if (res.ok && threadId) {
+          const created = (await res.json()) as ThreadArtifact;
+          queryClient.setQueryData<ThreadArtifact[]>(
+            artifactsByThreadQuery(threadId).queryKey,
+            (prev = []) => [created, ...prev],
+          );
         }
       } catch {
         // best-effort
       }
     },
-    [threadId],
+    [threadId, queryClient],
   );
 
   const handleFormSubmit = useCallback(

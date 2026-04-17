@@ -83,12 +83,12 @@ function ItemTitle({ title }: { title: string }) {
   const isOverflowing = useIsOverflowing(title, ref)
 
   return (
-    <TooltipProvider delay={THREAD_TOOLTIP_DELAY_MS}>
+    <TooltipProvider delayDuration={THREAD_TOOLTIP_DELAY_MS}>
       <Tooltip>
-        <TooltipTrigger
-          render={<span ref={ref} className="min-w-0 truncate" />}
-        >
-          {title}
+        <TooltipTrigger asChild>
+          <span ref={ref} className="min-w-0 truncate">
+            {title}
+          </span>
         </TooltipTrigger>
         {isOverflowing && (
           <TooltipContent side="bottom">{title}</TooltipContent>
@@ -256,6 +256,7 @@ function ThreadItem({
       <SidebarMenuItem>
         <SidebarMenuButton
           isActive={selected}
+          className="hit-area-y-0.5"
           onMouseDown={(e) => {
             if (e.shiftKey) e.preventDefault()
           }}
@@ -270,19 +271,25 @@ function ThreadItem({
 
   return (
     <SidebarMenuItem className="overflow-hidden">
-      <SidebarMenuButton
-        isActive={isActive}
-        render={<Link to="/chat/$threadId" params={{ threadId: conversation.id }} />}
-      >
-        {conversation.source === "automation" && (
-          <Tooltip>
-            <TooltipTrigger render={<span className="flex shrink-0" />}>
-              <ZapIcon className="size-4 text-amber-500" />
-            </TooltipTrigger>
-            <TooltipContent side="right">Created by automation</TooltipContent>
-          </Tooltip>
-        )}
-        <ItemTitle title={conversation.title} />
+      <SidebarMenuButton isActive={isActive} asChild>
+        <Link
+          to="/chat/$threadId"
+          params={{ threadId: conversation.id }}
+          draggable={false}
+          className="hit-area-y-0.5"
+        >
+          {conversation.source === "automation" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex shrink-0">
+                  <ZapIcon className="size-4 text-amber-500" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right">Created by automation</TooltipContent>
+            </Tooltip>
+          )}
+          <ItemTitle title={conversation.title} />
+        </Link>
       </SidebarMenuButton>
       <HoverActions>
         <HoverButton
@@ -314,8 +321,8 @@ function ThreadItem({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
             <Button
               type="button"
@@ -350,12 +357,16 @@ function CanvasItem({
 
   return (
     <SidebarMenuItem className="overflow-hidden">
-      <SidebarMenuButton
-        isActive={isActive}
-        render={<Link to="/canvas/$canvasId" params={{ canvasId: canvas.id }} />}
-      >
-        <LayoutDashboardIcon className="size-4" />
-        <ItemTitle title={canvas.title} />
+      <SidebarMenuButton isActive={isActive} asChild>
+        <Link
+          to="/canvas/$canvasId"
+          params={{ canvasId: canvas.id }}
+          draggable={false}
+          className="hit-area-y-0.5"
+        >
+          <LayoutDashboardIcon className="size-4" />
+          <ItemTitle title={canvas.title} />
+        </Link>
       </SidebarMenuButton>
       <HoverActions>
         <HoverButton
@@ -495,33 +506,29 @@ function ThreadSection({
             {selectedIds.size > 0 && (
               <>
                 <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
-                        onClick={() => setBulkDeleteOpen(true)}
-                      />
-                    }
-                  >
-                    <Trash2Icon className="size-3" />
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
+                      onClick={() => setBulkDeleteOpen(true)}
+                    >
+                      <Trash2Icon className="size-3" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Delete</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        onClick={handleBulkPinAction}
-                      />
-                    }
-                  >
-                    {bulkAction === "pin" ? (
-                      <PinIcon className="size-3" />
-                    ) : (
-                      <PinOffIcon className="size-3" />
-                    )}
+                  <TooltipTrigger asChild>
+                    <button
+                      className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      onClick={handleBulkPinAction}
+                    >
+                      {bulkAction === "pin" ? (
+                        <PinIcon className="size-3" />
+                      ) : (
+                        <PinOffIcon className="size-3" />
+                      )}
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     {bulkAction === "pin" ? "Pin" : "Unpin"}
@@ -579,8 +586,8 @@ function ThreadSection({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
             <Button
               type="button"
@@ -728,52 +735,62 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={isNewChatActive}
-              render={<Link to="/" />}
+              asChild
               tooltip="New Chat"
             >
-              <PenSquareIcon />
-              <span>New Chat</span>
-              <KbdHint keys="Mod+Shift+N" />
+              <Link to="/" draggable={false}>
+                <PenSquareIcon />
+                <span>New Chat</span>
+                <KbdHint keys="Mod+Shift+N" />
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={isCanvasSection && !!matchRoute({ to: "/canvas" })}
-              render={<Link to="/canvas" />}
+              asChild
               tooltip="Canvases"
             >
-              <LayoutDashboardIcon />
-              <span>Canvases</span>
+              <Link to="/canvas" draggable={false}>
+                <LayoutDashboardIcon />
+                <span>Canvases</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={!!matchRoute({ to: "/dashboard" })}
-              render={<Link to="/dashboard" />}
+              asChild
               tooltip="Dashboard"
             >
-              <GaugeIcon />
-              <span>Dashboard</span>
+              <Link to="/dashboard" draggable={false}>
+                <GaugeIcon />
+                <span>Dashboard</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={!!matchRoute({ to: "/artifacts" })}
-              render={<Link to="/artifacts" />}
+              asChild
               tooltip="Artifacts"
             >
-              <Layers />
-              <span>Artifacts</span>
+              <Link to="/artifacts" draggable={false}>
+                <Layers />
+                <span>Artifacts</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={!!matchRoute({ to: "/automations" })}
-              render={<Link to="/automations" />}
+              asChild
               tooltip="Automations"
             >
-              <ZapIcon />
-              <span>Automations</span>
+              <Link to="/automations" draggable={false}>
+                <ZapIcon />
+                <span>Automations</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

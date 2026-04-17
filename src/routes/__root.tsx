@@ -77,11 +77,11 @@ function RootErrorComponent({ error }: { error: Error }) {
 }
 
 function RootComponent() {
-  useEffect(() => {
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      import('react-scan').then(({ scan }) => scan())
-    }
-  }, [])
+  // useEffect(() => {
+  //   if (import.meta.env.DEV && typeof window !== 'undefined') {
+  //     import('react-scan').then(({ scan }) => scan())
+  //   }
+  // }, [])
 
   return (
     <RootDocument>
@@ -94,12 +94,12 @@ function RootComponent() {
               >
                 <Outlet />
               </HotkeysProvider>
-              {import.meta.env.DEV && (
+              {/* {import.meta.env.DEV && (
                 <ReactQueryDevtools
                   initialIsOpen={false}
                   buttonPosition="bottom-left"
                 />
-              )}
+              )} */}
             </TooltipProvider>
           </McpSettingsProvider>
         </ModelSettingsProvider>

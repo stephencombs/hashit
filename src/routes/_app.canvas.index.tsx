@@ -5,7 +5,7 @@ import { Separator } from '~/components/ui/separator'
 import { SidebarTrigger } from '~/components/ui/sidebar'
 import { canvasListQuery } from '~/lib/canvas-queries'
 
-export const Route = createFileRoute('/canvas/')({
+export const Route = createFileRoute('/_app/canvas/')({
   component: CanvasIndex,
 })
 

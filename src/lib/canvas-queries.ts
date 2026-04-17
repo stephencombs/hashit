@@ -17,7 +17,7 @@ export const canvasDetailQuery = (canvasId: string) =>
   queryOptions({
     queryKey: ['canvases', canvasId],
     queryFn: async () => {
-      const { getCanvas } = await import('~/routes/canvas.$canvasId')
+      const { getCanvas } = await import('~/routes/_app.canvas.$canvasId')
       return getCanvas({ data: canvasId })
     },
   })

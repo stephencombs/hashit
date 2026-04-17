@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { AppSidebar } from '~/components/app-sidebar'
 import { JsonRenderDisplay } from '~/components/json-render-display'
 import { VirtualGrid } from '~/components/virtual-grid'
 import { Separator } from '~/components/ui/separator'
@@ -20,11 +19,7 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from '~/components/ai-elements/chain-of-thought'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '~/components/ui/sidebar'
+import { SidebarTrigger } from '~/components/ui/sidebar'
 import {
   AlertCircleIcon,
   CheckIcon,
@@ -39,7 +34,7 @@ import type { PersistedWidget, PersistedRecipe } from '~/db/schema'
 
 const CATALOG_TYPES = new Set(uiCatalog.componentNames)
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute('/_app/dashboard')({
   component: Dashboard,
 })
 
@@ -161,12 +156,8 @@ function Dashboard() {
   )
 
   return (
-    <SidebarProvider
-      style={{ '--sidebar-width': '280px' } as React.CSSProperties}
-    >
-      <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+    <>
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
             orientation="vertical"
@@ -277,8 +268,7 @@ function Dashboard() {
               </div>
             )}
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </>
   )
 }
 
