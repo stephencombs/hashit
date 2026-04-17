@@ -10,6 +10,7 @@ import {
 import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import { ModelSettingsProvider } from '~/hooks/use-model-settings'
 import { McpSettingsProvider } from '~/hooks/use-mcp-settings'
@@ -78,7 +79,7 @@ function RootErrorComponent({ error }: { error: Error }) {
 function RootComponent() {
   useEffect(() => {
     if (import.meta.env.DEV && typeof window !== 'undefined') {
-      import('react-scan').then(({ scan }) => scan({ enabled: true }))
+      import('react-scan').then(({ scan }) => scan())
     }
   }, [])
 
@@ -88,7 +89,11 @@ function RootComponent() {
         <ModelSettingsProvider>
           <McpSettingsProvider>
             <TooltipProvider>
-              <Outlet />
+              <HotkeysProvider
+                defaultOptions={{ hotkey: { preventDefault: false } }}
+              >
+                <Outlet />
+              </HotkeysProvider>
               {import.meta.env.DEV && (
                 <ReactQueryDevtools
                   initialIsOpen={false}

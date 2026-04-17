@@ -11,6 +11,8 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient })

@@ -50,12 +50,16 @@ export const JsonRenderDisplay = memo(function JsonRenderDisplay({
   onSaveArtifact,
   saved,
   fill = false,
+  messageId,
+  specIndex,
 }: {
   spec: Spec
   isStreaming: boolean
-  onSaveArtifact?: (spec: Spec) => void
+  onSaveArtifact?: (spec: Spec, messageId?: string, specIndex?: number) => void
   saved?: boolean
   fill?: boolean
+  messageId?: string
+  specIndex?: number
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -100,7 +104,7 @@ export const JsonRenderDisplay = memo(function JsonRenderDisplay({
             >
               <DropdownMenuItem
                 disabled={saved}
-                onClick={() => { onSaveArtifact(spec); setMenuOpen(false) }}
+                onClick={() => { onSaveArtifact(spec, messageId, specIndex); setMenuOpen(false) }}
               >
                 {saved ? (
                   <Check className="size-4" />

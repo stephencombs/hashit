@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react"
+import { AppHotkeys } from "~/hooks/use-app-hotkeys"
+import { CommandPalette } from "~/components/command-palette"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -32,7 +34,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { useIsOverflowing } from "~/hooks/use-is-overflowing"
@@ -52,18 +53,16 @@ function ItemTitle({ title }: { title: string }) {
   const isOverflowing = useIsOverflowing(title, ref)
 
   return (
-    <TooltipProvider delay={300}>
-      <Tooltip>
-        <TooltipTrigger
-          render={<span ref={ref} className="min-w-0 truncate" />}
-        >
-          {title}
-        </TooltipTrigger>
-        {isOverflowing && (
-          <TooltipContent side="bottom">{title}</TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger
+        render={<span ref={ref} className="min-w-0 truncate" />}
+      >
+        {title}
+      </TooltipTrigger>
+      {isOverflowing && (
+        <TooltipContent side="bottom">{title}</TooltipContent>
+      )}
+    </Tooltip>
   )
 }
 
@@ -240,14 +239,12 @@ function ThreadItem({
         render={<Link to="/chat/$threadId" params={{ threadId: conversation.id }} />}
       >
         {conversation.source === "automation" && (
-          <TooltipProvider delay={300}>
-            <Tooltip>
-              <TooltipTrigger render={<span className="flex shrink-0" />}>
-                <ZapIcon className="size-4 text-amber-500" />
-              </TooltipTrigger>
-              <TooltipContent side="right">Created by automation</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger render={<span className="flex shrink-0" />}>
+              <ZapIcon className="size-4 text-amber-500" />
+            </TooltipTrigger>
+            <TooltipContent side="right">Created by automation</TooltipContent>
+          </Tooltip>
         )}
         <ItemTitle title={conversation.title} />
       </SidebarMenuButton>
@@ -380,42 +377,38 @@ function ThreadSection({
             </span>
             {selectedIds.size > 0 && (
               <>
-                <TooltipProvider delay={300}>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
-                          onClick={handleBulkDelete}
-                        />
-                      }
-                    >
-                      <Trash2Icon className="size-3" />
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Delete</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider delay={300}>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                          onClick={handleBulkPinAction}
-                        />
-                      }
-                    >
-                      {bulkAction === "pin" ? (
-                        <PinIcon className="size-3" />
-                      ) : (
-                        <PinOffIcon className="size-3" />
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {bulkAction === "pin" ? "Pin" : "Unpin"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
+                        onClick={handleBulkDelete}
+                      />
+                    }
+                  >
+                    <Trash2Icon className="size-3" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Delete</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        onClick={handleBulkPinAction}
+                      />
+                    }
+                  >
+                    {bulkAction === "pin" ? (
+                      <PinIcon className="size-3" />
+                    ) : (
+                      <PinOffIcon className="size-3" />
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {bulkAction === "pin" ? "Pin" : "Unpin"}
+                  </TooltipContent>
+                </Tooltip>
               </>
             )}
             <button
@@ -569,8 +562,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute()
   const isNewChatActive = !!matchRoute({ to: "/" })
   const isCanvasSection = !!matchRoute({ to: "/canvas", fuzzy: true })
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   return (
+    <>
+    <AppHotkeys onOpenCommandPalette={() => setPaletteOpen(true)} />
+    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
@@ -644,5 +641,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
+    </>
   )
 }
