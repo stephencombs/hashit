@@ -12,17 +12,20 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import type { Spec } from "@json-render/core";
 import { MessageRow, type ChatMessage } from "~/components/chat/message-row";
+import { PendingAssistantMessage } from "~/components/chat/pending-assistant-message";
 import { usePinToBottom } from "~/components/chat/use-pin-to-bottom";
 import { threadScrollMemory } from "~/components/chat/thread-scroll-memory";
 
 const ESTIMATED_ROW_HEIGHT = 200;
 const OVERSCAN = 4;
 const AT_BOTTOM_THRESHOLD_PX = 32;
+const PENDING_ROW_KEY = "__pending_assistant__";
 
 export interface VirtualConversationProps {
   threadId?: string;
   messages: ChatMessage[];
   isStreaming: boolean;
+  isAwaitingResponse?: boolean;
   specsMap: Map<string, Spec[]>;
   savedArtifactKeys: Set<string>;
   submittedFormData: Map<string, Record<string, unknown>>;
@@ -39,6 +42,7 @@ export function VirtualConversation({
   threadId,
   messages,
   isStreaming,
+  isAwaitingResponse = false,
   specsMap,
   savedArtifactKeys,
   submittedFormData,
@@ -52,13 +56,15 @@ export function VirtualConversation({
   );
   const lastTotalSizeRef = useRef(0);
 
+  const totalRowCount = messages.length + (isAwaitingResponse ? 1 : 0);
+
   const getItemKey = useCallback(
-    (i: number) => messages[i]?.id ?? i,
+    (i: number) => (i === messages.length ? PENDING_ROW_KEY : messages[i]?.id ?? i),
     [messages],
   );
 
   const virtualizer = useVirtualizer({
-    count: messages.length,
+    count: totalRowCount,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: OVERSCAN,
@@ -160,6 +166,19 @@ export function VirtualConversation({
             }}
           >
             {items.map((vi) => {
+              if (vi.index === messages.length) {
+                if (!isAwaitingResponse) return null;
+                return (
+                  <div
+                    key={vi.key}
+                    data-index={vi.index}
+                    ref={virtualizer.measureElement}
+                    className="px-4 pb-8 first:pt-4"
+                  >
+                    <PendingAssistantMessage />
+                  </div>
+                );
+              }
               const message = messages[vi.index];
               if (!message) return null;
               const isLast = vi.index === messages.length - 1;

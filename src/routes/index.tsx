@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { AppSidebar } from '~/components/app-sidebar'
 import { Chat } from '~/components/Chat'
 import { Separator } from '~/components/ui/separator'
@@ -13,14 +13,26 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const navigate = useNavigate()
-
+  // Update the URL in place so the active <Chat> (and its live SSE stream,
+  // input state, scroll position) stays mounted.
+  //
+  // We deliberately bypass TanStack Router by invoking the native
+  // `History.prototype.replaceState` directly. The router monkey-patches
+  // `window.history.replaceState` on this instance and notifies its
+  // subscribers on every call, which would re-match the URL, trigger the
+  // `/chat/$threadId` route's Suspense boundary (briefly showing the
+  // pending skeleton), and remount <Chat> — exactly the flash we want to
+  // avoid. The prototype method is untouched by the patch, so calling it
+  // via `.call(history, ...)` updates the URL silently. A page reload
+  // still resolves to the correct `/chat/$threadId` route.
   const handleThreadCreated = (threadId: string) => {
-    navigate({
-      to: '/chat/$threadId',
-      params: { threadId },
-      replace: true,
-    })
+    if (typeof window === 'undefined') return
+    History.prototype.replaceState.call(
+      window.history,
+      null,
+      '',
+      `/chat/${threadId}`,
+    )
   }
 
   return (

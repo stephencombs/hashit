@@ -1,8 +1,118 @@
-import { createContext, useContext } from 'react'
+import { createContext, memo, useContext, useEffect, useMemo, useState } from 'react'
 import { defineRegistry } from '@json-render/react'
 import { AllCommunityModule, themeQuartz, colorSchemeDarkBlue } from 'ag-grid-community'
 import type { GridReadyEvent } from 'ag-grid-community'
 import { AgGridProvider, AgGridReact } from 'ag-grid-react'
+
+const AG_GRID_MODULES = [AllCommunityModule]
+const AG_GRID_THEME_LIGHT = themeQuartz
+const AG_GRID_THEME_DARK = themeQuartz.withPart(colorSchemeDarkBlue)
+const AG_GRID_DEFAULT_COL_DEF = { resizable: true }
+
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined'
+      && document.documentElement.classList.contains('dark'),
+  )
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const el = document.documentElement
+    const observer = new MutationObserver(() => {
+      setIsDark(el.classList.contains('dark'))
+    })
+    observer.observe(el, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+  return isDark
+}
+
+interface DataGridColumnSpec {
+  field: string
+  headerName?: string | null
+  sortable?: boolean | null
+  filter?: boolean | null
+}
+
+interface DataGridInnerProps {
+  items: Array<Record<string, unknown>>
+  columns?: DataGridColumnSpec[] | null
+  title?: string | null
+  height?: number | null
+  pagination?: boolean | null
+  pageSize?: number | null
+  fill: boolean
+}
+
+const DataGridInner = memo(function DataGridInner({
+  items,
+  columns,
+  title,
+  height,
+  pagination,
+  pageSize,
+  fill,
+}: DataGridInnerProps) {
+  const columnKeys = useMemo(() => {
+    if (columns && columns.length > 0) {
+      return columns.map((c) => `${c.field}|${c.headerName ?? ''}|${c.sortable ?? ''}|${c.filter ?? ''}`).join(',')
+    }
+    if (items[0]) return Object.keys(items[0]).join(',')
+    return ''
+  }, [columns, items])
+
+  const columnDefs = useMemo(() => {
+    if (columns && columns.length > 0) {
+      return columns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName ?? col.field,
+        sortable: col.sortable ?? true,
+        filter: col.filter ?? true,
+      }))
+    }
+    if (!items[0]) return []
+    return Object.keys(items[0]).map((key) => ({
+      field: key,
+      headerName: key,
+      sortable: true,
+      filter: true,
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnKeys])
+
+  const usePagination = pagination ?? items.length > 50
+  const isDark = useIsDarkMode()
+  const gridTheme = isDark ? AG_GRID_THEME_DARK : AG_GRID_THEME_LIGHT
+  const domLayout =
+    fill || typeof height === 'number' ? 'normal' : 'autoHeight'
+
+  return (
+    <div className={chartWrapperClass(fill)}>
+      {title && <p className="mb-2 text-sm font-medium">{title}</p>}
+      <AgGridProvider modules={AG_GRID_MODULES}>
+        <div {...dataGridInnerProps(fill, height)}>
+          <AgGridReact
+            theme={gridTheme}
+            rowData={items}
+            columnDefs={columnDefs}
+            domLayout={domLayout}
+            pagination={usePagination}
+            paginationPageSize={pageSize ?? 10}
+            defaultColDef={AG_GRID_DEFAULT_COL_DEF}
+            onGridReady={(params: GridReadyEvent) => {
+              params.api.autoSizeAllColumns()
+              const cols = params.api.getColumns() ?? []
+              const columnLimits = cols.map((c) => ({
+                key: c.getColId(),
+                minWidth: c.getActualWidth(),
+              }))
+              params.api.sizeColumnsToFit({ columnLimits })
+            }}
+          />
+        </div>
+      </AgGridProvider>
+    </div>
+  )
+})
 import {
   Area,
   AreaChart as RechartsAreaChart,
@@ -518,60 +628,16 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
         return <FallbackMessage>No data available</FallbackMessage>
       }
 
-      const columnDefs = props.columns
-        ? props.columns.map((col) => ({
-            field: col.field,
-            headerName: col.headerName ?? col.field,
-            sortable: col.sortable ?? true,
-            filter: col.filter ?? true,
-          }))
-        : Object.keys(items[0]).map((key) => ({
-            field: key,
-            headerName: key,
-            sortable: true,
-            filter: true,
-          }))
-
-      const usePagination = props.pagination ?? items.length > 50
-
-      const isDark = typeof document !== 'undefined'
-        && document.documentElement.classList.contains('dark')
-      const gridTheme = isDark
-        ? themeQuartz.withPart(colorSchemeDarkBlue)
-        : themeQuartz
-
       return (
-        <div className={chartWrapperClass(fill)}>
-          {props.title && (
-            <p className="mb-2 text-sm font-medium">{props.title}</p>
-          )}
-          <AgGridProvider modules={[AllCommunityModule]}>
-            <div {...dataGridInnerProps(fill, props.height)}>
-              <AgGridReact
-                theme={gridTheme}
-                rowData={items}
-                columnDefs={columnDefs}
-                domLayout={
-                  fill || typeof props.height === 'number'
-                    ? 'normal'
-                    : 'autoHeight'
-                }
-                pagination={usePagination}
-                paginationPageSize={props.pageSize ?? 10}
-                defaultColDef={{ resizable: true }}
-                onGridReady={(params: GridReadyEvent) => {
-                  params.api.autoSizeAllColumns()
-                  const cols = params.api.getColumns() ?? []
-                  const columnLimits = cols.map((c) => ({
-                    key: c.getColId(),
-                    minWidth: c.getActualWidth(),
-                  }))
-                  params.api.sizeColumnsToFit({ columnLimits })
-                }}
-              />
-            </div>
-          </AgGridProvider>
-        </div>
+        <DataGridInner
+          items={items}
+          columns={props.columns}
+          title={props.title}
+          height={props.height}
+          pagination={props.pagination}
+          pageSize={props.pageSize}
+          fill={fill}
+        />
       )
     },
   },

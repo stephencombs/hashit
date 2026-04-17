@@ -198,35 +198,22 @@ export async function* withPersistence(
 
   let accumulated = ''
   let accumulatedThinking = ''
-  let batchThinking = ''
-  let pendingThinkingChunk: StreamChunk | null = null
   const assistantParts: Array<MessagePart> = []
   const toolCalls = new Map<string, { name: string; args: string }>()
   let summaryEmitted = false
-
-  function* flushThinking(): Iterable<StreamChunk> {
-    if (pendingThinkingChunk && batchThinking) {
-      yield {
-        ...pendingThinkingChunk,
-        delta: batchThinking,
-        content: accumulatedThinking,
-      } as StreamChunk
-    }
-    batchThinking = ''
-    pendingThinkingChunk = null
-  }
 
   try {
     for await (const chunk of stream) {
       if (chunk.type === 'STEP_FINISHED') {
         const delta = (chunk as { delta?: string }).delta || ''
-        batchThinking += delta
-        accumulatedThinking += delta
-        pendingThinkingChunk = chunk
+        if (delta) accumulatedThinking += delta
+        yield {
+          ...chunk,
+          delta,
+          content: accumulatedThinking,
+        } as StreamChunk
         continue
       }
-
-      yield* flushThinking()
 
       if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
         if (chunk.content) {
@@ -275,8 +262,6 @@ export async function* withPersistence(
       }
       yield chunk
     }
-
-    yield* flushThinking()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     log.set({ streamError: msg })

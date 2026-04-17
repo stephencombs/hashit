@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from "react"
+import { formatForDisplay } from "@tanstack/react-hotkeys"
 import { AppHotkeys } from "~/hooks/use-app-hotkeys"
 import { CommandPalette } from "~/components/command-palette"
+import { Kbd, KbdGroup } from "~/components/ui/kbd"
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -13,10 +15,21 @@ import {
   SparklesIcon,
   Trash2Icon,
   LayoutDashboardIcon,
+  TriangleAlertIcon,
   XIcon,
   ZapIcon,
 } from "lucide-react"
 import { Checkbox } from "~/components/ui/checkbox"
+import { Button } from "~/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
 
 import { NavUser } from "~/components/nav-user"
 import {
@@ -48,6 +61,22 @@ const user = {
   avatar: "",
 }
 
+function KbdHint({ keys }: { keys: string }) {
+  const parts = formatForDisplay(keys).split(/\s+/).filter(Boolean)
+  return (
+    <KbdGroup className="ml-auto hidden group-data-[collapsible=icon]:hidden md:inline-flex">
+      {parts.map((part, i) => (
+        <Kbd key={i}>{part}</Kbd>
+      ))}
+    </KbdGroup>
+  )
+}
+
+// Delay (ms) before a thread-title tooltip appears on hover. Long enough
+// that casually scanning the thread list doesn't flash tooltips on every
+// row, short enough to feel responsive when you actually pause on one.
+const THREAD_TOOLTIP_DELAY_MS = 500
+
 function ItemTitle({ title }: { title: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const isOverflowing = useIsOverflowing(title, ref)
@@ -55,6 +84,7 @@ function ItemTitle({ title }: { title: string }) {
   return (
     <Tooltip>
       <TooltipTrigger
+        delay={THREAD_TOOLTIP_DELAY_MS}
         render={<span ref={ref} className="min-w-0 truncate" />}
       >
         {title}
@@ -213,17 +243,21 @@ function ThreadItem({
   deleteThread: ReturnType<typeof useDeleteThread>
   bulkMode: boolean
   selected: boolean
-  onToggleSelect: (id: string) => void
+  onToggleSelect: (id: string, shiftKey: boolean) => void
 }) {
   const matchRoute = useMatchRoute()
   const isActive = !!matchRoute({ to: "/chat/$threadId", params: { threadId: conversation.id } })
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   if (bulkMode) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
           isActive={selected}
-          onClick={() => onToggleSelect(conversation.id)}
+          onMouseDown={(e) => {
+            if (e.shiftKey) e.preventDefault()
+          }}
+          onClick={(e) => onToggleSelect(conversation.id, e.shiftKey)}
         >
           <Checkbox checked={selected} tabIndex={-1} className="pointer-events-none" />
           <ItemTitle title={conversation.title} />
@@ -256,12 +290,46 @@ function ThreadItem({
           {conversation.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
         </HoverButton>
         <HoverButton
-          onClick={() => deleteThread.mutate(conversation.id)}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setDeleteOpen(true)
+          }}
           label="Delete"
         >
           <Trash2Icon className="size-5" />
         </HoverButton>
       </HoverActions>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
+              <TriangleAlertIcon className="size-5 text-destructive" />
+            </div>
+            <DialogTitle>Delete conversation?</DialogTitle>
+            <DialogDescription>
+              Permanently delete &quot;{conversation.title}&quot;? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteThread.isPending}
+              onClick={() =>
+                deleteThread.mutate(conversation.id, {
+                  onSuccess: () => setDeleteOpen(false),
+                })
+              }
+            >
+              {deleteThread.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarMenuItem>
   )
 }
@@ -320,21 +388,62 @@ function ThreadSection({
 }) {
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [anchorId, setAnchorId] = useState<string | null>(null)
+  // Set of rows that belong to the active shift-drag range anchored at
+  // `anchorId`. When the user shift+clicks again from the same anchor, we
+  // remove the previous range and apply the new one — this is what makes
+  // the selection "shrink" correctly when the second shift+click lands
+  // between the anchor and the prior shift+click (macOS Finder behavior).
+  const [rangeIds, setRangeIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const bulkDelete = useBulkDeleteThreads()
   const bulkPin = useBulkPinThreads()
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
+  const handleSelect = useCallback(
+    (id: string, shiftKey: boolean) => {
+      if (shiftKey && anchorId) {
+        const ids = threads.map((t) => t.id)
+        const a = ids.indexOf(anchorId)
+        const b = ids.indexOf(id)
+        if (a === -1 || b === -1) return
+        const [lo, hi] = a < b ? [a, b] : [b, a]
+        const newRange = ids.slice(lo, hi + 1)
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          // Remove the previous shift-drag range, then reapply the new one.
+          // If the anchor itself is not selected, treat the shift-drag as a
+          // deselect sweep (Finder behavior when the anchor row was toggled
+          // off before the shift+click).
+          for (const rid of rangeIds) next.delete(rid)
+          const anchorSelected = next.has(anchorId) || newRange.includes(anchorId)
+          for (const rid of newRange) {
+            if (anchorSelected) next.add(rid)
+            else next.delete(rid)
+          }
+          return next
+        })
+        setRangeIds(new Set(newRange))
+        // Anchor does NOT move on shift+click — that's the carry-forward part.
+        return
+      }
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+      setAnchorId(id)
+      setRangeIds(new Set())
+    },
+    [anchorId, rangeIds, threads],
+  )
 
   const exitBulkMode = useCallback(() => {
     setBulkMode(false)
     setSelectedIds(new Set())
+    setAnchorId(null)
+    setRangeIds(new Set())
   }, [])
 
   const allSelected = selectedIds.size === threads.length && threads.length > 0
@@ -342,19 +451,25 @@ function ThreadSection({
   const handleToggleAll = useCallback(() => {
     if (allSelected) setSelectedIds(new Set())
     else setSelectedIds(new Set(threads.map((t) => t.id)))
+    setRangeIds(new Set())
   }, [allSelected, threads])
 
   const handleBulkDelete = useCallback(() => {
     const ids = [...selectedIds]
     if (ids.length === 0) return
-    bulkDelete.mutate(ids, { onSuccess: () => exitBulkMode() })
+    bulkDelete.mutate(ids, {
+      onSuccess: () => {
+        setBulkDeleteOpen(false)
+        exitBulkMode()
+      },
+    })
   }, [selectedIds, bulkDelete, exitBulkMode])
 
   const handleBulkPinAction = useCallback(() => {
     const ids = [...selectedIds]
     if (ids.length === 0) return
     bulkPin.mutate(
-      { threadIds: ids, pinned: bulkAction === "unpin" },
+      { threadIds: ids, pinned: bulkAction === "pin" },
       { onSuccess: () => exitBulkMode() },
     )
   }, [selectedIds, bulkPin, bulkAction, exitBulkMode])
@@ -381,8 +496,9 @@ function ThreadSection({
                   <TooltipTrigger
                     render={
                       <button
+                        type="button"
                         className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
-                        onClick={handleBulkDelete}
+                        onClick={() => setBulkDeleteOpen(true)}
                       />
                     }
                   >
@@ -443,11 +559,38 @@ function ThreadSection({
               deleteThread={deleteThread}
               bulkMode={bulkMode}
               selected={selectedIds.has(conversation.id)}
-              onToggleSelect={toggleSelect}
+              onToggleSelect={handleSelect}
             />
           ))}
         </SidebarMenu>
       </SidebarGroupContent>
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
+              <TriangleAlertIcon className="size-5 text-destructive" />
+            </div>
+            <DialogTitle>Delete conversations?</DialogTitle>
+            <DialogDescription>
+              Permanently delete {selectedIds.size} conversation
+              {selectedIds.size === 1 ? "" : "s"}? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={bulkDelete.isPending || selectedIds.size === 0}
+              onClick={handleBulkDelete}
+            >
+              {bulkDelete.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarGroup>
   )
 }
@@ -568,7 +711,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <>
     <AppHotkeys onOpenCommandPalette={() => setPaletteOpen(true)} />
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" className="select-none" {...props}>
       <SidebarHeader>
         <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
@@ -588,6 +731,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <PenSquareIcon />
               <span>New Chat</span>
+              <KbdHint keys="Mod+Shift+N" />
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

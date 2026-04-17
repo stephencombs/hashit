@@ -1,6 +1,6 @@
 import {
-  createMixedStreamParser,
   createSpecStreamCompiler,
+  parseSpecStreamLine,
 } from '@json-render/core'
 import type { Spec } from '@json-render/core'
 import type { StreamChunk } from '@tanstack/ai'
@@ -11,6 +11,12 @@ import type { StreamChunk } from '@tanstack/ai'
  * into a progressive Spec, and emits the spec as CUSTOM events.
  *
  * Non-text chunks (TOOL_CALL_*, RUN_*, etc.) pass through unchanged.
+ *
+ * Prose outside ```spec fences is passed through **verbatim** (preserving `\n`),
+ * including blank lines — so markdown lists stay tight and paragraph breaks stay
+ * intact. (The stock createMixedStreamParser drops empty lines and the old fix of
+ * appending `\n\n` after every non-empty line turned `- a\n- b` into loose lists
+ * and confused Streamdown.)
  */
 export async function* withJsonRender(
   stream: AsyncIterable<StreamChunk>,
@@ -23,22 +29,70 @@ export async function* withJsonRender(
   const patchQueue: Array<{ spec: Spec; specIndex: number }> = []
   const completeQueue: Array<{ spec: Spec; specIndex: number }> = []
 
-  const parser = createMixedStreamParser({
-    onText: (text) => {
-      if (hasSpec) {
-        completeQueue.push({ spec: compiler.getResult(), specIndex })
-        hasSpec = false
-        specIndex++
-        compiler = createSpecStreamCompiler<Spec>()
+  let parseBuffer = ''
+  let inSpecFence = false
+
+  function enqueueProse(fragment: string) {
+    if (hasSpec) {
+      completeQueue.push({ spec: compiler.getResult(), specIndex })
+      hasSpec = false
+      specIndex++
+      compiler = createSpecStreamCompiler<Spec>()
+    }
+    textQueue.push(fragment)
+  }
+
+  function enqueuePatch(patch: ReturnType<typeof parseSpecStreamLine>) {
+    if (!patch) return
+    hasSpec = true
+    compiler.push(JSON.stringify(patch) + '\n')
+    patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex })
+  }
+
+  function processLine(line: string) {
+    const trimmed = line.trim()
+    if (!inSpecFence && trimmed.startsWith('```spec')) {
+      inSpecFence = true
+      return
+    }
+    if (inSpecFence && trimmed === '```') {
+      inSpecFence = false
+      return
+    }
+    if (!trimmed) {
+      if (!inSpecFence) {
+        enqueueProse('\n')
       }
-      textQueue.push(text)
-    },
-    onPatch: (patch) => {
-      hasSpec = true
-      compiler.push(JSON.stringify(patch) + '\n')
-      patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex })
-    },
-  })
+      return
+    }
+    if (inSpecFence) {
+      const patch = parseSpecStreamLine(trimmed)
+      if (patch) enqueuePatch(patch)
+      return
+    }
+    const patch = parseSpecStreamLine(trimmed)
+    if (patch) {
+      enqueuePatch(patch)
+    } else {
+      enqueueProse(line + '\n')
+    }
+  }
+
+  function pushChunk(chunk: string) {
+    parseBuffer += chunk
+    const lines = parseBuffer.split('\n')
+    parseBuffer = lines.pop() ?? ''
+    for (const line of lines) {
+      processLine(line)
+    }
+  }
+
+  function flushParser() {
+    if (parseBuffer.trim()) {
+      processLine(parseBuffer)
+    }
+    parseBuffer = ''
+  }
 
   function* drainTextQueue(templateChunk?: StreamChunk) {
     while (textQueue.length > 0) {
@@ -95,7 +149,7 @@ export async function* withJsonRender(
 
   for await (const chunk of stream) {
     if (chunk.type === 'TEXT_MESSAGE_CONTENT' && chunk.delta) {
-      parser.push(chunk.delta)
+      pushChunk(chunk.delta)
       yield* drainCompleteQueue()
       yield* drainTextQueue(chunk)
       yield* drainPatchQueue()
@@ -104,7 +158,7 @@ export async function* withJsonRender(
 
     if (chunk.type === 'TEXT_MESSAGE_END' && !flushed) {
       flushed = true
-      parser.flush()
+      flushParser()
       yield* drainCompleteQueue()
       yield* drainTextQueue()
       yield* drainPatchQueue()
@@ -115,7 +169,7 @@ export async function* withJsonRender(
   }
 
   if (!flushed) {
-    parser.flush()
+    flushParser()
     yield* drainCompleteQueue()
     yield* drainTextQueue()
     yield* drainPatchQueue()

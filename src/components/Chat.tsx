@@ -223,6 +223,17 @@ export function Chat({
 
   const isStreaming = status !== "ready";
 
+  // True immediately after submit and until the assistant produces any
+  // visible content (text, reasoning, tool call, or live UI spec). This
+  // drives the "Thinking…" indicator so the chat never feels frozen while
+  // the model spins up.
+  const lastMessage = messages[messages.length - 1];
+  const hasAssistantContent =
+    lastMessage?.role === "assistant" &&
+    (lastMessage.parts.length > 0 ||
+      (specsMap.get(lastMessage.id)?.length ?? 0) > 0);
+  const isAwaitingResponse = isStreaming && !hasAssistantContent;
+
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col p-6">
       {messages.length === 0 ? (
@@ -238,6 +249,7 @@ export function Chat({
           threadId={threadId}
           messages={messages}
           isStreaming={isStreaming}
+          isAwaitingResponse={isAwaitingResponse}
           specsMap={specsMap}
           savedArtifactKeys={savedArtifactKeys}
           submittedFormData={submittedFormData}
