@@ -84,6 +84,7 @@ function ChatThreadPending() {
         />
         <div className="h-4 w-48 rounded bg-muted/50" />
       </header>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col p-6">
         <div className="flex flex-1 min-h-0 flex-col justify-end gap-8 overflow-hidden px-4">
           <AssistantBlockSkeleton lines={[92, 76, 88, 60]} withChart />
@@ -99,6 +100,7 @@ function ChatThreadPending() {
             <div className="h-8 w-8 rounded-md bg-muted/40" />
           </div>
         </div>
+      </div>
       </div>
     </>
   )
@@ -217,11 +219,13 @@ function ChatThread() {
         />
         <EditableTitle threadId={thread.id} title={thread.title} />
       </header>
-      <Chat
-        key={thread.id}
-        threadId={thread.id}
-        initialMessages={initialMessages}
-      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Chat
+          key={thread.id}
+          threadId={thread.id}
+          initialMessages={initialMessages}
+        />
+      </div>
     </>
   )
 }

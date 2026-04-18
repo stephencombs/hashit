@@ -142,7 +142,7 @@ function CanvasPage() {
         />
         <EditableCanvasTitle canvasId={canvas.id} title={canvas.title} />
       </header>
-      <div className="flex-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <CanvasView key={canvas.id} canvas={canvas} />
       </div>
     </>

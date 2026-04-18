@@ -18,9 +18,9 @@ function SettingsLayout() {
         />
         <h1 className="text-sm font-medium">Settings</h1>
       </header>
-      <div className="flex min-h-0 min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <SettingsNav />
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto scrollbar-gutter-stable">
           <Outlet />
         </main>
       </div>

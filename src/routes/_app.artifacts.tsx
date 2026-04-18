@@ -218,7 +218,7 @@ function ArtifactsPage() {
         <h1 className="text-sm font-medium">Artifacts</h1>
         </header>
 
-        <div className="flex-1 p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             {/* Controls */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

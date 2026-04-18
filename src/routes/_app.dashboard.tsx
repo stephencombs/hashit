@@ -182,7 +182,7 @@ function Dashboard() {
           </Button>
         </header>
 
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto scrollbar-gutter-stable p-6">
           {initialLoaded && (isGenerating || recipes.length > 0) && (
             <GenerationProgress
               recipes={recipes}

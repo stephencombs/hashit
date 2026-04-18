@@ -776,7 +776,7 @@ function AutomationsPage() {
         <h1 className="text-sm font-medium">Automations</h1>
       </header>
 
-        <div className="flex-1 p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
           <div className="mx-auto max-w-5xl space-y-6">
             <div className="flex items-center justify-between">
               <div>
