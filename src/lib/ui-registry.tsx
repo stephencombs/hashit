@@ -240,7 +240,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
           <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
-            <RechartsAreaChart data={items} accessibilityLayer>
+            <RechartsAreaChart data={items} accessibilityLayer isAnimationActive={false}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey={props.xKey}
@@ -287,6 +287,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                   stroke={`var(--color-${cssKey(key)})`}
                   strokeWidth={2}
                   stackId={props.stacked ? 'a' : undefined}
+                  isAnimationActive={false}
                 />
               ))}
             </RechartsAreaChart>
@@ -340,6 +341,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
               data={items}
               layout={isHorizontal ? 'vertical' : 'horizontal'}
               accessibilityLayer
+              isAnimationActive={false}
             >
               <CartesianGrid vertical={false} />
               {isHorizontal ? (
@@ -375,6 +377,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                   fill={singleSeries ? undefined : `var(--color-${cssKey(key)})`}
                   radius={4}
                   stackId={props.stacked ? 'a' : undefined}
+                  isAnimationActive={false}
                 >
                   {singleSeries &&
                     items.map((item, i) => (
@@ -421,7 +424,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
           <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
-            <RechartsLineChart data={items} accessibilityLayer>
+            <RechartsLineChart data={items} accessibilityLayer isAnimationActive={false}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey={props.xKey}
@@ -444,6 +447,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                   stroke={`var(--color-${cssKey(key)})`}
                   strokeWidth={2}
                   dot={false}
+                  isAnimationActive={false}
                 />
               ))}
             </RechartsLineChart>
@@ -488,7 +492,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
           <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
-            <RechartsPieChart accessibilityLayer>
+            <RechartsPieChart accessibilityLayer isAnimationActive={false}>
               <ChartTooltip
                 content={<ChartTooltipContent nameKey="name" />}
                 isAnimationActive={false}
@@ -501,6 +505,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                 innerRadius={isDonut ? '40%' : undefined}
                 outerRadius="70%"
                 paddingAngle={2}
+                isAnimationActive={false}
               />
             </RechartsPieChart>
           </ChartContainer>
@@ -537,7 +542,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
             <p className="mb-2 text-sm font-medium">{props.title}</p>
           )}
           <ChartContainer config={config} {...chartContainerProps(fill, props.height)}>
-            <RechartsRadarChart data={items} accessibilityLayer>
+            <RechartsRadarChart data={items} accessibilityLayer isAnimationActive={false}>
               <PolarGrid />
               <PolarAngleAxis dataKey={props.axisKey} />
               <ChartTooltip
@@ -555,6 +560,7 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
                   fillOpacity={0.3}
                   stroke={`var(--color-${cssKey(key)})`}
                   strokeWidth={2}
+                  isAnimationActive={false}
                 />
               ))}
             </RechartsRadarChart>
@@ -605,13 +611,14 @@ export const { registry: uiRegistry } = defineRegistry(uiCatalog, {
               innerRadius="30%"
               outerRadius="100%"
               accessibilityLayer
+              isAnimationActive={false}
             >
               <ChartTooltip
                 content={<ChartTooltipContent nameKey="name" />}
                 isAnimationActive={false}
               />
               <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-              <RadialBar dataKey="value" background />
+              <RadialBar dataKey="value" background isAnimationActive={false} />
             </RechartsRadialBarChart>
           </ChartContainer>
         </div>

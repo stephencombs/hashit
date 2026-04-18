@@ -4,8 +4,13 @@ import { nanoid } from 'nanoid'
 import { desc, eq, and } from 'drizzle-orm'
 import { db } from '~/db'
 import { dashboardSnapshots } from '~/db/schema'
-import { generateDashboard } from '../../../server/lib/dashboard-generator'
-import type { PersistedWidget, PersistedRecipe } from '~/db/schema'
+import type { PersistedWidget } from '~/db/schema'
+import {
+  persistedWidgetSchema,
+  postDashboardBodySchema,
+  postDashboardGenerationResultSchema,
+  snapshotResponseSchema,
+} from '~/lib/dashboard-schemas'
 
 const STALE_MS = 24 * 60 * 60 * 1000
 const GENERATING_TIMEOUT_MS = 10 * 60 * 1000
@@ -45,21 +50,22 @@ export const Route = createFileRoute('/api/dashboard')({
           || latest.status === 'failed'
           || (Date.now() - latest.createdAt.getTime()) > STALE_MS
 
-        return Response.json({
+        const payload = {
           snapshot: latest
             ? {
                 id: latest.id,
                 status: latest.status,
                 persona: latest.persona,
-                recipes: latest.recipes as PersistedRecipe[] | null,
-                widgets: latest.widgets as PersistedWidget[] | null,
-                error: latest.error,
+                recipes: latest.recipes ?? null,
+                widgets: latest.widgets ?? null,
+                error: latest.error ?? null,
                 createdAt: latest.createdAt.toISOString(),
                 completedAt: latest.completedAt?.toISOString() ?? null,
               }
             : null,
           isStale,
-        })
+        }
+        return Response.json(snapshotResponseSchema.parse(payload))
       },
 
       POST: async ({ request }) => {
@@ -78,7 +84,17 @@ export const Route = createFileRoute('/api/dashboard')({
 
         const url = new URL(request.url)
         const force = url.searchParams.get('force') === 'true'
-        const body = await request.json().catch(() => ({})) as { persona?: string }
+        const rawBody = await request.json().catch(() => ({}))
+        const parsedBody = postDashboardBodySchema.safeParse(rawBody)
+        if (!parsedBody.success) {
+          throw createError({
+            message: 'Invalid dashboard generation request body',
+            status: 400,
+            why: parsedBody.error.issues.map((issue) => issue.message).join('; '),
+            fix: 'Provide a JSON body matching { persona?: string }',
+          })
+        }
+        const body = parsedBody.data
         const persona = body.persona || 'HR Admin'
 
         const existing = await db
@@ -97,7 +113,12 @@ export const Route = createFileRoute('/api/dashboard')({
         if (existing && !force) {
           const isStuck = (Date.now() - existing.createdAt.getTime()) > GENERATING_TIMEOUT_MS
           if (!isStuck) {
-            return Response.json({ snapshotId: existing.id, status: 'already_generating' })
+            return Response.json(
+              postDashboardGenerationResultSchema.parse({
+                snapshotId: existing.id,
+                status: 'already_generating',
+              }),
+            )
           }
           await db
             .update(dashboardSnapshots)
@@ -121,9 +142,16 @@ export const Route = createFileRoute('/api/dashboard')({
           .then((rows) => rows[0] ?? null)
 
         if (lastComplete?.widgets) {
-          const allWidgets = lastComplete.widgets as PersistedWidget[]
-          previousWidgets = allWidgets.filter((w) => w.spec !== null)
-          previousWidgetIds = previousWidgets.map((w) => w.widgetId)
+          const parsedWidgets = persistedWidgetSchema.array().safeParse(lastComplete.widgets)
+          if (parsedWidgets.success) {
+            previousWidgets = parsedWidgets.data.filter((w) => w.spec !== null)
+            previousWidgetIds = previousWidgets.map((w) => w.widgetId)
+          } else {
+            console.warn(
+              `[dashboard] Invalid persisted widgets for snapshot ${lastComplete.id}:`,
+              parsedWidgets.error.message,
+            )
+          }
         }
 
         const snapshotId = nanoid()
@@ -137,13 +165,16 @@ export const Route = createFileRoute('/api/dashboard')({
           createdAt: now,
         })
 
+        const { generateDashboard } = await import('../../../server/lib/dashboard-generator')
         generateDashboard({ snapshotId, persona, previousWidgetIds, previousWidgets }).catch(
           (err: unknown) => {
             console.error(`[dashboard] Generation failed for snapshot ${snapshotId}:`, err)
           },
         )
 
-        return Response.json({ snapshotId, status: 'started' })
+        return Response.json(
+          postDashboardGenerationResultSchema.parse({ snapshotId, status: 'started' }),
+        )
       },
     },
   },

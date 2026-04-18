@@ -1,0 +1,6 @@
+{
+  "memory_search_fts": {
+    "enabled": true,
+    "beta": true
+  }
+}

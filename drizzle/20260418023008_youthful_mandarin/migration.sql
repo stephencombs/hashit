@@ -1,0 +1,1 @@
+CREATE INDEX "dashboard_snapshots_persona_created_at_idx" ON "dashboard_snapshots" ("persona","created_at");

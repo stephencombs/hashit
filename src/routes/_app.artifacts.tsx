@@ -128,6 +128,9 @@ function ArtifactListRow({
   )
 }
 
+const CARD_HEIGHT = 360
+const CARD_FOOTER_HEIGHT = 52
+
 function ArtifactGalleryCard({
   artifact,
   onSelect,
@@ -138,16 +141,24 @@ function ArtifactGalleryCard({
   const artType = getArtifactType(artifact.spec)
   return (
     <div
-      className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
+      className="group relative flex cursor-pointer flex-col rounded-xl border bg-card overflow-hidden transition-colors hover:bg-accent/30"
+      style={{ height: CARD_HEIGHT }}
       onClick={onSelect}
     >
-      <div className="pointer-events-none min-h-[220px] flex-1 overflow-hidden p-4">
+      <div
+        className="pointer-events-none flex min-h-0 flex-col overflow-hidden p-4"
+        style={{ height: CARD_HEIGHT - CARD_FOOTER_HEIGHT }}
+      >
         <JsonRenderDisplay
           spec={artifact.spec as unknown as Spec}
           isStreaming={false}
+          fill
         />
       </div>
-      <div className="mt-auto flex items-center gap-3 border-t px-4 py-3">
+      <div
+        className="flex shrink-0 items-center gap-3 border-t px-4"
+        style={{ height: CARD_FOOTER_HEIGHT }}
+      >
         <Badge variant="outline" className="shrink-0">
           <TypeIcon type={artType} className="size-3" />
           {typeLabel(artType)}
@@ -384,9 +395,11 @@ function ArtifactsPage() {
                   <VirtualGrid
                     items={rest}
                     getKey={(a) => a.id}
-                    estimateSize={360}
+                    estimateSize={CARD_HEIGHT}
                     gap={20}
                     overscan={6}
+                    measureItems={false}
+                    spanLastItem={false}
                     lanes={(w) => (w >= 768 ? 2 : 1)}
                     renderItem={(artifact) => (
                       <ArtifactGalleryCard

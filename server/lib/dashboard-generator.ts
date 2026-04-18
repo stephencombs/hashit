@@ -141,6 +141,327 @@ interface WidgetRecipe {
   dataSources: DataSource[]
   render: string
   score: number
+  /** Set by uniqueness pass for observability */
+  uniquenessScore?: number
+  uniquenessReasons?: string[]
+}
+
+/** Business vs uniqueness blend for ordering (configurable). */
+const RANK_WEIGHT_SCORE = 0.6
+const RANK_WEIGHT_UNIQUENESS = 0.4
+
+/** Components of uniquenessScore (0–100 each → weighted sum). */
+const UNIQ_WEIGHT_ID = 0.4
+const UNIQ_WEIGHT_INSIGHT = 0.35
+const UNIQ_WEIGHT_SOURCE = 0.25
+
+const TARGET_RECIPE_COUNT = 6
+
+const INSIGHT_STOPWORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else', 'how', 'what',
+  'when', 'where', 'which', 'who', 'whom', 'this', 'that', 'these', 'those',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+  'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+  'must', 'shall', 'can', 'need', 'to', 'of', 'in', 'on', 'at', 'by', 'for',
+  'with', 'about', 'into', 'through', 'during', 'before', 'after', 'from',
+  'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further', 'once',
+  'here', 'there', 'all', 'each', 'both', 'few', 'more', 'most', 'other',
+  'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than',
+  'too', 'very', 'just', 'are', 'my', 'our', 'your', 'their', 'its',
+])
+
+function normalizeInsightText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function insightTokenSet(s: string): Set<string> {
+  const out = new Set<string>()
+  for (const w of normalizeInsightText(s).split(/\s+/)) {
+    if (w.length > 1 && !INSIGHT_STOPWORDS.has(w)) out.add(w)
+  }
+  return out
+}
+
+/** Token Jaccard similarity in [0, 1]. */
+function insightSimilarity(a: string, b: string): number {
+  const A = insightTokenSet(a)
+  const B = insightTokenSet(b)
+  if (A.size === 0 && B.size === 0) return 1
+  if (A.size === 0 || B.size === 0) return 0
+  let inter = 0
+  for (const t of A) {
+    if (B.has(t)) inter++
+  }
+  const union = A.size + B.size - inter
+  return union === 0 ? 0 : inter / union
+}
+
+function maxInsightSimilarityTo(insight: string, others: string[]): number {
+  let m = 0
+  for (const o of others) {
+    const sim = insightSimilarity(insight, o)
+    if (sim > m) m = sim
+  }
+  return m
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value)
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => stableStringify(v)).join(',')}]`
+  }
+  const obj = value as Record<string, unknown>
+  const keys = Object.keys(obj).sort()
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`
+}
+
+/** Primary tool family: segment before `__`, else full name. */
+function getToolFamily(toolName: string): string {
+  const idx = toolName.indexOf('__')
+  return idx === -1 ? toolName : toolName.slice(0, idx)
+}
+
+function dataSourceSignature(ds: DataSource): string {
+  return `${getToolFamily(ds.toolName)}|${stableStringify(ds.toolParams)}`
+}
+
+function recipeFamilySet(recipe: WidgetRecipe): Set<string> {
+  return new Set(recipe.dataSources.map((ds) => getToolFamily(ds.toolName)))
+}
+
+function computeUniquenessScore(
+  recipe: WidgetRecipe,
+  previousWidgetIdSet: Set<string>,
+  previousInsightTexts: string[],
+  selectedInsights: string[],
+  selectedSignatures: Set<string>,
+): { score: number; reasons: string[] } {
+  const reasons: string[] = []
+
+  const idOk = !previousWidgetIdSet.has(recipe.widgetId.trim().toLowerCase())
+  const idScore = idOk ? 100 : 0
+  if (!idOk) reasons.push('id:reused_historical_widget_id')
+
+  const pool = [...previousInsightTexts, ...selectedInsights]
+  const maxSim = maxInsightSimilarityTo(recipe.insight, pool)
+  const insightScore = Math.round(100 * (1 - Math.min(1, maxSim)))
+  reasons.push(`insight:maxSim=${maxSim.toFixed(3)}→${insightScore}`)
+
+  const sigs = [...new Set(recipe.dataSources.map(dataSourceSignature))]
+  let overlap = 0
+  for (const s of sigs) {
+    if (selectedSignatures.has(s)) overlap++
+  }
+  const overlapRatio = sigs.length === 0 ? 0 : overlap / sigs.length
+  const sourceScore = Math.round(100 * (1 - overlapRatio))
+  reasons.push(`source:sigOverlap=${overlapRatio.toFixed(3)}→${sourceScore}`)
+
+  const uniquenessScore = Math.round(
+    UNIQ_WEIGHT_ID * idScore +
+      UNIQ_WEIGHT_INSIGHT * insightScore +
+      UNIQ_WEIGHT_SOURCE * sourceScore,
+  )
+  return { score: uniquenessScore, reasons }
+}
+
+function combinedRank(score: number, uniquenessScore: number): number {
+  return RANK_WEIGHT_SCORE * score + RANK_WEIGHT_UNIQUENESS * uniquenessScore
+}
+
+type RelaxationLevel = { insightThreshold: number; maxPerFamily: number }
+
+const RELAXATION_LEVELS: RelaxationLevel[] = [
+  { insightThreshold: 0.82, maxPerFamily: 2 },
+  { insightThreshold: 0.88, maxPerFamily: 3 },
+  { insightThreshold: 0.92, maxPerFamily: 4 },
+  { insightThreshold: 0.96, maxPerFamily: 6 },
+  { insightThreshold: 1.0, maxPerFamily: 99 },
+]
+
+type GateStats = {
+  duplicateInBatch: number
+  duplicateHistoricalId: number
+  insightSimilarity: number
+  familyCap: number
+}
+
+function dedupeRecipesByWidgetId(recipes: WidgetRecipe[]): WidgetRecipe[] {
+  const map = new Map<string, WidgetRecipe>()
+  for (const r of recipes) {
+    const key = r.widgetId.trim().toLowerCase()
+    const prev = map.get(key)
+    if (!prev || r.score > prev.score) map.set(key, r)
+  }
+  return [...map.values()].sort((a, b) => b.score - a.score)
+}
+
+/**
+ * Deterministic selection: hard gates (ids, optional similarity/family), combined
+ * ranking, relaxation ladder until up to TARGET_RECIPE_COUNT recipes or exhausted.
+ */
+function selectUniqueRecipes(
+  recipes: WidgetRecipe[],
+  previousWidgetIds: string[],
+  previousWidgets: PersistedWidget[],
+): WidgetRecipe[] {
+  const previousIdSet = new Set(
+    previousWidgetIds.map((id) => id.trim().toLowerCase()),
+  )
+  const previousInsightTexts = previousWidgets
+    .map((w) => w.insight)
+    .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+
+  const deduped = dedupeRecipesByWidgetId(recipes)
+
+  let bestResult: WidgetRecipe[] = []
+  let bestLevel = -1
+  let bestStats: GateStats | null = null
+  let bestPool = 0
+  let bestAvgUniq = 0
+
+  for (let levelIdx = 0; levelIdx < RELAXATION_LEVELS.length; levelIdx++) {
+    const level = RELAXATION_LEVELS[levelIdx]!
+    const stats: GateStats = {
+      duplicateInBatch: 0,
+      duplicateHistoricalId: 0,
+      insightSimilarity: 0,
+      familyCap: 0,
+    }
+
+    const pool = deduped.filter((r) => {
+      const key = r.widgetId.trim().toLowerCase()
+      if (previousIdSet.has(key)) {
+        stats.duplicateHistoricalId++
+        return false
+      }
+      return true
+    })
+
+    const ranked = [...pool].sort((a, b) => {
+      const ua = computeUniquenessScore(
+        a,
+        previousIdSet,
+        previousInsightTexts,
+        [],
+        new Set(),
+      ).score
+      const ub = computeUniquenessScore(
+        b,
+        previousIdSet,
+        previousInsightTexts,
+        [],
+        new Set(),
+      ).score
+      const ra = combinedRank(a.score, ua)
+      const rb = combinedRank(b.score, ub)
+      if (rb !== ra) return rb - ra
+      return b.score - a.score
+    })
+
+    const selected: WidgetRecipe[] = []
+    const selectedInsights: string[] = []
+    const selectedSignatures = new Set<string>()
+    const familyRecipeCount = new Map<string, number>()
+    const seenInSelection = new Set<string>()
+
+    for (const recipe of ranked) {
+      if (selected.length >= TARGET_RECIPE_COUNT) break
+
+      const wid = recipe.widgetId.trim().toLowerCase()
+      if (seenInSelection.has(wid)) {
+        stats.duplicateInBatch++
+        continue
+      }
+
+      const maxSim = maxInsightSimilarityTo(recipe.insight, [
+        ...previousInsightTexts,
+        ...selectedInsights,
+      ])
+      if (maxSim > level.insightThreshold) {
+        stats.insightSimilarity++
+        continue
+      }
+
+      const families = recipeFamilySet(recipe)
+      let blockedByFamily = false
+      for (const fam of families) {
+        const n = familyRecipeCount.get(fam) ?? 0
+        if (n + 1 > level.maxPerFamily) {
+          blockedByFamily = true
+          break
+        }
+      }
+      if (blockedByFamily) {
+        stats.familyCap++
+        continue
+      }
+
+      const { score: uniquenessScore, reasons } = computeUniquenessScore(
+        recipe,
+        previousIdSet,
+        previousInsightTexts,
+        selectedInsights,
+        selectedSignatures,
+      )
+
+      seenInSelection.add(wid)
+      selectedInsights.push(recipe.insight)
+      for (const ds of recipe.dataSources) {
+        selectedSignatures.add(dataSourceSignature(ds))
+      }
+      for (const fam of families) {
+        familyRecipeCount.set(fam, (familyRecipeCount.get(fam) ?? 0) + 1)
+      }
+
+      selected.push({
+        ...recipe,
+        uniquenessScore,
+        uniquenessReasons: reasons,
+      })
+    }
+
+    const avgUniq =
+      selected.length === 0
+        ? 0
+        : selected.reduce((s, r) => s + (r.uniquenessScore ?? 0), 0) /
+          selected.length
+
+    if (selected.length > bestResult.length) {
+      bestResult = selected
+      bestLevel = levelIdx
+      bestStats = stats
+      bestPool = pool.length
+      bestAvgUniq = avgUniq
+    }
+
+    if (selected.length >= TARGET_RECIPE_COUNT) {
+      console.log(
+        `[dashboard][uniqueness] level=${levelIdx} threshold=${level.insightThreshold} maxFamily=${level.maxPerFamily} ` +
+          `planned=${recipes.length} deduped=${deduped.length} pool=${pool.length} ` +
+          `accepted=${selected.length} avgUniq=${avgUniq.toFixed(1)} target_met=1 ` +
+          `rej_histId=${stats.duplicateHistoricalId} rej_batchDup=${stats.duplicateInBatch} ` +
+          `rej_insight=${stats.insightSimilarity} rej_family=${stats.familyCap}`,
+      )
+      return selected
+    }
+  }
+
+  const lvl = bestLevel >= 0 ? RELAXATION_LEVELS[bestLevel]! : null
+  const st = bestStats
+  console.log(
+    `[dashboard][uniqueness] level=${bestLevel} threshold=${lvl?.insightThreshold ?? 'n/a'} maxFamily=${lvl?.maxPerFamily ?? 'n/a'} ` +
+      `planned=${recipes.length} deduped=${deduped.length} pool=${bestPool} ` +
+      `accepted=${bestResult.length} avgUniq=${bestAvgUniq.toFixed(1)} target_met=0 ` +
+      `rej_histId=${st?.duplicateHistoricalId ?? 0} rej_batchDup=${st?.duplicateInBatch ?? 0} ` +
+      `rej_insight=${st?.insightSimilarity ?? 0} rej_family=${st?.familyCap ?? 0}`,
+  )
+  return bestResult
 }
 
 const submitRecipesTool = toolDefinition({
@@ -512,14 +833,19 @@ function isEmptyResult(result: unknown): boolean {
 }
 
 function toPersistedRecipes(recipes: WidgetRecipe[]): PersistedRecipe[] {
-  return recipes.map((r) => ({
-    widgetId: r.widgetId,
-    title: r.title,
-    insight: r.insight,
-    dataSources: r.dataSources,
-    render: r.render,
-    score: r.score,
-  }))
+  return recipes.map((r) => {
+    const base: PersistedRecipe = {
+      widgetId: r.widgetId,
+      title: r.title,
+      insight: r.insight,
+      dataSources: r.dataSources,
+      render: r.render,
+      score: r.score,
+    }
+    if (r.uniquenessScore !== undefined) base.uniquenessScore = r.uniquenessScore
+    if (r.uniquenessReasons !== undefined) base.uniquenessReasons = r.uniquenessReasons
+    return base
+  })
 }
 
 async function updateSnapshotWidgets(snapshotId: string, widgets: PersistedWidget[]) {
@@ -664,9 +990,12 @@ export async function generateDashboard(params: GenerateDashboardParams): Promis
     }
 
     const rawRecipes = await runPlanningPhase(persona, mcpTools, previousWidgetIds)
-    const recipes = validateRecipes(rawRecipes, mcpTools)
+    const validated = validateRecipes(rawRecipes, mcpTools)
+    const recipes = selectUniqueRecipes(validated, previousWidgetIds, previousWidgets)
 
-    console.log(`[dashboard] Planning: ${rawRecipes.length} raw → ${recipes.length} validated recipes`)
+    console.log(
+      `[dashboard] Planning: ${rawRecipes.length} raw → ${validated.length} validated → ${recipes.length} unique recipes`,
+    )
 
     await db
       .update(dashboardSnapshots)

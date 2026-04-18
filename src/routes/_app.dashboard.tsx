@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { JsonRenderDisplay } from '~/components/json-render-display'
 import { VirtualGrid } from '~/components/virtual-grid'
 import { Separator } from '~/components/ui/separator'
@@ -13,24 +14,30 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtStep,
-} from '~/components/ai-elements/chain-of-thought'
 import { SidebarTrigger } from '~/components/ui/sidebar'
 import {
+  GenerationProgressStepper,
+  useGenerationProgressMetrics,
+  type GenerationProgressMetrics,
+} from '~/components/dashboard/generation-progress-views'
+import { HistorySheet } from '~/components/dashboard/history-sheet'
+import {
   AlertCircleIcon,
-  CheckIcon,
+  HistoryIcon,
   Loader2Icon,
   RefreshCwIcon,
-  SparklesIcon,
 } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import type { Spec } from '@json-render/core'
 import { uiCatalog } from '~/lib/ui-catalog'
 import type { PersistedWidget, PersistedRecipe } from '~/db/schema'
+import { dashboardRenderableSpecSchema } from '~/lib/dashboard-schemas'
+import {
+  dashboardHistoryQueryKey,
+  dashboardSnapshotQuery,
+  dashboardSnapshotQueryKey,
+  postDashboardGeneration,
+} from '~/lib/dashboard-queries'
 
 const CATALOG_TYPES = new Set(uiCatalog.componentNames)
 
@@ -39,236 +46,318 @@ export const Route = createFileRoute('/_app/dashboard')({
 })
 
 const PERSONA = 'HR Admin'
-const POLL_INTERVAL_MS = 3000
-
-interface SnapshotResponse {
-  snapshot: {
-    id: string
-    status: 'generating' | 'complete' | 'failed'
-    persona: string
-    recipes: PersistedRecipe[] | null
-    widgets: PersistedWidget[] | null
-    error: string | null
-    createdAt: string
-    completedAt: string | null
-  } | null
-  isStale: boolean
-}
+type RenderableWidget = PersistedWidget & { spec: Spec }
 
 function Dashboard() {
-  const [snapshot, setSnapshot] = useState<SnapshotResponse['snapshot']>(null)
-  const [isStale, setIsStale] = useState(true)
-  const [isPolling, setIsPolling] = useState(false)
-  const [isTriggering, setIsTriggering] = useState(false)
-  const [initialLoaded, setInitialLoaded] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const queryClient = useQueryClient()
+  const initDoneRef = useRef(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-    setIsPolling(false)
-  }, [])
-
-  const fetchLatest = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/dashboard?persona=${encodeURIComponent(PERSONA)}`)
-      if (!res.ok) return null
-      const data = (await res.json()) as SnapshotResponse
-      setSnapshot(data.snapshot)
-      setIsStale(data.isStale)
-      return data
-    } catch {
-      return null
-    }
-  }, [])
-
-  const startPolling = useCallback(() => {
-    if (pollRef.current) return
-    setIsPolling(true)
-    pollRef.current = setInterval(async () => {
-      const data = await fetchLatest()
-      if (data?.snapshot?.status === 'complete' || data?.snapshot?.status === 'failed') {
-        stopPolling()
-      }
-    }, POLL_INTERVAL_MS)
-  }, [fetchLatest, stopPolling])
-
-  const triggerGeneration = useCallback(
-    async (force = false) => {
-      setIsTriggering(true)
-      try {
-        const res = await fetch(`/api/dashboard${force ? '?force=true' : ''}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ persona: PERSONA }),
-        })
-        if (res.ok) {
-          await fetchLatest()
-          startPolling()
-        }
-      } finally {
-        setIsTriggering(false)
-      }
-    },
-    [fetchLatest, startPolling],
+  const { data, isFetched, isError, error: queryError } = useQuery(
+    dashboardSnapshotQuery(PERSONA),
   )
 
+  const triggerGeneration = useMutation({
+    mutationFn: ({ force }: { force: boolean }) =>
+      postDashboardGeneration(PERSONA, force),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: dashboardSnapshotQueryKey(PERSONA),
+      })
+      queryClient.invalidateQueries({
+        queryKey: dashboardHistoryQueryKey(PERSONA),
+      })
+    },
+  })
+
   useEffect(() => {
-    let cancelled = false
+    if (!isFetched) return
+    if (initDoneRef.current) return
+    initDoneRef.current = true
 
-    async function init() {
-      const data = await fetchLatest()
-      if (cancelled) return
-      setInitialLoaded(true)
+    const snapshot = data?.snapshot ?? null
+    const isStale = data?.isStale ?? true
 
-      if (!data?.snapshot || data.isStale) {
-        if (data?.snapshot?.status === 'generating') {
-          startPolling()
-        } else {
-          await triggerGeneration()
-        }
-      } else if (data.snapshot.status === 'generating') {
-        startPolling()
+    if (!snapshot || isStale) {
+      if (snapshot?.status === 'generating') {
+        // Polling via dashboardSnapshotQuery.refetchInterval
+      } else {
+        triggerGeneration.mutate({ force: false })
       }
+    } else if (snapshot.status === 'generating') {
+      // Polling via dashboardSnapshotQuery.refetchInterval
     }
-
-    init()
-    return () => {
-      cancelled = true
-      stopPolling()
-    }
-  }, [fetchLatest, startPolling, stopPolling, triggerGeneration])
+  }, [isFetched, data, triggerGeneration])
 
   const handleRegenerate = useCallback(() => {
-    stopPolling()
-    triggerGeneration(true)
-  }, [stopPolling, triggerGeneration])
+    triggerGeneration.mutate({ force: true })
+  }, [triggerGeneration])
 
-  const isGenerating = snapshot?.status === 'generating' || isTriggering
+  const snapshot = data?.snapshot ?? null
+  const isGenerating =
+    snapshot?.status === 'generating' || triggerGeneration.isPending
   const widgets = snapshot?.widgets ?? []
   const recipes = snapshot?.recipes ?? []
 
-  const renderableWidgets = widgets.filter(
-    (w): w is PersistedWidget & { spec: Record<string, unknown> } =>
-      w.spec !== null && isRenderableSpec(w.spec as unknown as Spec),
+  const renderableWidgets: RenderableWidget[] = useMemo(
+    () => widgets.flatMap((widget) => {
+      if (widget.spec === null) return []
+      const parsedSpec = dashboardRenderableSpecSchema.safeParse(widget.spec)
+      if (!parsedSpec.success) return []
+      if (!isRenderableSpec(parsedSpec.data)) return []
+      return [{ ...widget, spec: parsedSpec.data }]
+    }),
+    [widgets],
   )
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-vertical:h-4 data-vertical:self-auto"
-          />
-          <div className="flex flex-1 items-center gap-3">
-            <h1 className="text-sm font-medium">Dashboard</h1>
-            <Badge variant="secondary">{PERSONA}</Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRegenerate}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <SpinnerIcon className="size-4" />
-            ) : (
-              <RefreshCwIcon className="size-4" />
-            )}
-            Regenerate
-          </Button>
-        </header>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto scrollbar-gutter-stable p-6">
-          {initialLoaded && (isGenerating || recipes.length > 0) && (
-            <GenerationProgress
-              recipes={recipes}
-              widgets={widgets}
-              isGenerating={isGenerating}
-              error={snapshot?.status === 'failed' ? snapshot.error : null}
-            />
-          )}
-
-          {renderableWidgets.length > 0 ? (
-            <VirtualGrid
-              items={renderableWidgets}
-              getKey={(w) => w.widgetId}
-              estimateSize={500}
-              gap={20}
-              overscan={6}
-              lanes={(w) => (w >= 1024 ? 2 : 1)}
-              renderItem={(widget) => (
-                <Card className="flex h-full flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                  <CardHeader>
-                    <CardTitle>{widget.title}</CardTitle>
-                    <CardDescription>{widget.insight}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex h-[340px] min-h-0 flex-col overflow-hidden">
-                    <JsonRenderDisplay
-                      spec={widget.spec as unknown as Spec}
-                      isStreaming={false}
-                      fill
-                    />
-                  </CardContent>
-                </Card>
-              )}
-            />
-          ) : (
-            isGenerating && (
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <SkeletonCard key={`skeleton-${i}`} />
-                ))}
-              </div>
-            )
-          )}
-
-          {initialLoaded &&
-            !isGenerating &&
-            renderableWidgets.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-                {snapshot?.status === 'failed' ? (
-                  <>
-                    <AlertCircleIcon className="size-12 text-muted-foreground" />
-                    <div className="max-w-md space-y-2">
-                      <h2 className="text-lg font-medium text-balance">
-                        Generation failed
-                      </h2>
-                      <p className="text-sm text-pretty text-muted-foreground">
-                        {snapshot.error ||
-                          'An error occurred while generating the dashboard. Try regenerating.'}
-                      </p>
-                    </div>
-                  </>
-                ) : !initialLoaded ? (
-                  <>
-                    <SparklesIcon className="size-12 text-muted-foreground" />
-                    <div>
-                      <h2 className="text-lg font-medium text-balance">Loading dashboard</h2>
-                      <p className="text-sm text-pretty text-muted-foreground">
-                        Checking for existing dashboard data...
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircleIcon className="size-12 text-muted-foreground" />
-                    <div className="max-w-md space-y-2">
-                      <h2 className="text-lg font-medium text-balance">No data available</h2>
-                      <p className="text-sm text-pretty text-muted-foreground">
-                        All data sources returned empty results or errors. Try
-                        regenerating the dashboard.
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-        </div>
+      <DashboardHeader
+        persona={PERSONA}
+        isGenerating={isGenerating}
+        onRegenerate={handleRegenerate}
+        onOpenHistory={() => setHistoryOpen(true)}
+      />
+      <DashboardContent
+        isFetched={isFetched}
+        isGenerating={isGenerating}
+        recipes={recipes}
+        widgets={widgets}
+        renderableWidgets={renderableWidgets}
+        snapshotStatus={snapshot?.status}
+        snapshotError={snapshot?.error}
+        snapshotCompletedAt={snapshot?.completedAt ?? null}
+        persona={PERSONA}
+        isError={isError}
+        queryError={queryError}
+      />
+      <HistorySheet
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        persona={PERSONA}
+      />
     </>
+  )
+}
+
+function DashboardHeader({
+  persona,
+  isGenerating,
+  onRegenerate,
+  onOpenHistory,
+}: {
+  persona: string
+  isGenerating: boolean
+  onRegenerate: () => void
+  onOpenHistory: () => void
+}) {
+  return (
+    <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator
+        orientation="vertical"
+        className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+      />
+      <div className="flex flex-1 items-center gap-3">
+        <h1 className="text-sm font-medium">Dashboard</h1>
+        <Badge variant="secondary">{persona}</Badge>
+      </div>
+      <Button
+        variant="ghost"
+        size="default"
+        className="min-h-10"
+        onClick={onOpenHistory}
+      >
+        <HistoryIcon className="size-4" aria-hidden />
+        History
+      </Button>
+      <Button
+        variant="ghost"
+        size="default"
+        className="min-h-10"
+        onClick={onRegenerate}
+        disabled={isGenerating}
+      >
+        <RegenerateStatusIcon isGenerating={isGenerating} />
+        Regenerate
+      </Button>
+    </header>
+  )
+}
+
+function RegenerateStatusIcon({ isGenerating }: { isGenerating: boolean }) {
+  if (isGenerating) {
+    return <SpinnerIcon className="size-4" aria-hidden="true" />
+  }
+  return <RefreshCwIcon className="size-4" aria-hidden="true" />
+}
+
+function DashboardContent({
+  isFetched,
+  isGenerating,
+  recipes,
+  widgets,
+  renderableWidgets,
+  snapshotStatus,
+  snapshotError,
+  snapshotCompletedAt,
+  persona,
+  isError,
+  queryError,
+}: {
+  isFetched: boolean
+  isGenerating: boolean
+  recipes: PersistedRecipe[]
+  widgets: PersistedWidget[]
+  renderableWidgets: RenderableWidget[]
+  snapshotStatus: 'generating' | 'complete' | 'failed' | undefined
+  snapshotError: string | null | undefined
+  snapshotCompletedAt: string | null
+  persona: string
+  isError: boolean
+  queryError: unknown
+}) {
+  const genError =
+    snapshotStatus === 'failed' ? snapshotError : null
+  const metrics = useGenerationProgressMetrics(
+    recipes,
+    widgets,
+    isGenerating,
+    genError,
+  )
+  const dashboardScrollRef = useRef<HTMLDivElement>(null)
+  const mainScroll = (
+    <>
+      {isFetched && (
+        <GenerationProgressInline
+          recipes={recipes}
+          widgets={widgets}
+          isGenerating={isGenerating}
+          error={genError}
+          persona={persona}
+          snapshotCompletedAt={snapshotCompletedAt}
+          metrics={metrics}
+        />
+      )}
+
+      {renderableWidgets.length > 0 ? (
+        <VirtualGrid
+          scrollElementRef={dashboardScrollRef}
+          items={renderableWidgets}
+          getKey={(w) => w.widgetId}
+          estimateSize={500}
+          gap={20}
+          overscan={1}
+          measureItems={false}
+          lanes={(w) => (w >= 720 ? 2 : 1)}
+          renderItem={(widget) => (
+            <Card
+              className="flex h-[500px] min-h-[500px] max-h-[500px] flex-col overflow-hidden"
+            >
+              <CardHeader className="shrink-0">
+                <CardTitle className="line-clamp-1">{widget.title}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {widget.insight}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="min-h-0 flex-1 overflow-hidden">
+                <JsonRenderDisplay
+                  spec={widget.spec}
+                  isStreaming={false}
+                  fill
+                />
+              </CardContent>
+            </Card>
+          )}
+        />
+      ) : (
+        isGenerating && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <SkeletonCard key={`skeleton-${i}`} />
+            ))}
+          </div>
+        )
+      )}
+
+      {isFetched &&
+        !isGenerating &&
+        renderableWidgets.length === 0 && (
+          <DashboardEmptyState
+            snapshotStatus={snapshotStatus}
+            snapshotError={snapshotError}
+            isError={isError}
+            queryError={queryError}
+          />
+        )}
+    </>
+  )
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        ref={dashboardScrollRef}
+        className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-6 overflow-x-hidden overflow-y-auto p-6 [scrollbar-gutter:stable_both-edges]"
+      >
+        {mainScroll}
+      </div>
+    </div>
+  )
+}
+
+function DashboardEmptyState({
+  snapshotStatus,
+  snapshotError,
+  isError,
+  queryError,
+}: {
+  snapshotStatus: 'generating' | 'complete' | 'failed' | undefined
+  snapshotError: string | null | undefined
+  isError: boolean
+  queryError: unknown
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      {snapshotStatus === 'failed' ? (
+        <>
+          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <div className="max-w-md space-y-2">
+            <h2 className="text-lg font-medium text-balance">
+              Generation failed
+            </h2>
+            <p className="text-sm text-pretty text-muted-foreground">
+              {snapshotError ||
+                'An error occurred while generating the dashboard. Try regenerating.'}
+            </p>
+          </div>
+        </>
+      ) : isError ? (
+        <>
+          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <div className="max-w-md space-y-2">
+            <h2 className="text-lg font-medium text-balance">
+              Could not load dashboard
+            </h2>
+            <p className="text-sm text-pretty text-muted-foreground">
+              {queryError instanceof Error
+                ? queryError.message
+                : 'Request failed. Try again or regenerate.'}
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <div className="max-w-md space-y-2">
+            <h2 className="text-lg font-medium text-balance">No data available</h2>
+            <p className="text-sm text-pretty text-muted-foreground">
+              All data sources returned empty results or errors. Try
+              regenerating the dashboard.
+            </p>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -301,151 +390,100 @@ function SpinnerIcon({
   return <Loader2Icon className={cn('animate-spin', className)} {...props} />
 }
 
-function formatWidgetName(widgetId: string): string {
-  return widgetId
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}
+/** Show the stepper for this long after completion before collapsing. */
+const INLINE_STEPPER_LINGER_MS = 3000
+/** Must match the transition duration on the CollapsibleFade wrapper. */
+const INLINE_STEPPER_TRANSITION_MS = 500
 
-function GenerationProgress({
+function GenerationProgressInline({
   recipes,
   widgets,
   isGenerating,
   error,
+  persona,
+  snapshotCompletedAt,
+  metrics,
 }: {
   recipes: PersistedRecipe[]
   widgets: PersistedWidget[]
   isGenerating: boolean
   error: string | null | undefined
+  persona: string
+  snapshotCompletedAt: string | null
+  metrics: GenerationProgressMetrics
 }) {
-  const [manualOpen, setManualOpen] = useState<boolean | undefined>(undefined)
+  const active = isGenerating || Boolean(error)
+  const [open, setOpen] = useState(false)
 
-  const completedCount = widgets.filter((w) => w.spec !== null).length
-  const skippedCount = widgets.filter(
-    (w) => w.spec === null && w.skipReason,
-  ).length
-  const processedCount = completedCount + skippedCount
-  const totalCount = recipes.length
-
-  const prevGeneratingRef = useRef(isGenerating)
   useEffect(() => {
-    if (prevGeneratingRef.current && !isGenerating) {
-      setManualOpen(false)
+    if (active) {
+      setOpen(true)
+      return
     }
-    prevGeneratingRef.current = isGenerating
-  }, [isGenerating])
-
-  const isOpen = manualOpen ?? isGenerating
-
-  const headerText = isGenerating
-    ? totalCount > 0
-      ? `Processing widgets (${processedCount}/${totalCount})...`
-      : 'Planning dashboard...'
-    : error
-      ? 'Dashboard generation failed'
-      : completedCount > 0
-        ? `Dashboard generated (${completedCount} widget${completedCount !== 1 ? 's' : ''})`
-        : 'Dashboard complete'
+    const id = window.setTimeout(
+      () => setOpen(false),
+      INLINE_STEPPER_LINGER_MS,
+    )
+    return () => window.clearTimeout(id)
+  }, [active])
 
   return (
-    <ChainOfThought open={isOpen} onOpenChange={setManualOpen}>
-      <ChainOfThoughtHeader className="tabular-nums">{headerText}</ChainOfThoughtHeader>
-      <ChainOfThoughtContent>
-        {isGenerating && recipes.length === 0 && (
-          <ChainOfThoughtStep
-            icon={SpinnerIcon}
-            label="Identifying key insights for persona..."
-            status="active"
-          />
-        )}
+    <CollapsibleFade open={open}>
+      <GenerationProgressStepper
+        recipes={recipes}
+        widgets={widgets}
+        isGenerating={isGenerating}
+        error={error}
+        metrics={metrics}
+        persona={persona}
+        snapshotCompletedAt={snapshotCompletedAt}
+      />
+    </CollapsibleFade>
+  )
+}
 
-        {recipes.length > 0 && (
-          <ChainOfThoughtStep
-            icon={SparklesIcon}
-            label={`Planned ${totalCount} insight widgets`}
-            status="complete"
-          >
-            <div className="flex flex-wrap gap-1.5">
-              {recipes.map((r) => (
-                <Badge key={r.widgetId} variant="outline" className="text-xs">
-                  {r.title || formatWidgetName(r.widgetId)}
-                </Badge>
-              ))}
-            </div>
-          </ChainOfThoughtStep>
-        )}
+/**
+ * Animates children in on mount and smoothly collapses+fades them out when
+ * `open` flips to false. Uses a negative bottom margin while collapsed so the
+ * parent flex gap disappears alongside the content instead of leaving a pop.
+ */
+function CollapsibleFade({
+  open,
+  children,
+}: {
+  open: boolean
+  children: React.ReactNode
+}) {
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
 
-        {recipes.map((recipe) => {
-          const widget = widgets.find((w) => w.widgetId === recipe.widgetId)
-          if (!widget) {
-            if (isGenerating && widgets.length > 0) {
-              const isNext =
-                recipes.indexOf(recipe) === widgets.length
-              if (isNext) {
-                return (
-                  <ChainOfThoughtStep
-                    key={recipe.widgetId}
-                    icon={SpinnerIcon}
-                    label={`Processing ${recipe.title || formatWidgetName(recipe.widgetId)}...`}
-                    status="active"
-                  />
-                )
-              }
-            }
-            return null
-          }
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      const id = requestAnimationFrame(() => setVisible(true))
+      return () => cancelAnimationFrame(id)
+    }
+    setVisible(false)
+    const id = window.setTimeout(
+      () => setMounted(false),
+      INLINE_STEPPER_TRANSITION_MS,
+    )
+    return () => window.clearTimeout(id)
+  }, [open])
 
-          const displayName = widget.title || formatWidgetName(widget.widgetId)
+  if (!mounted) return null
 
-          if (widget.spec !== null) {
-            return (
-              <ChainOfThoughtStep
-                key={recipe.widgetId}
-                icon={CheckIcon}
-                label={displayName}
-                status="complete"
-              />
-            )
-          }
-
-          return (
-            <ChainOfThoughtStep
-              key={recipe.widgetId}
-              icon={AlertCircleIcon}
-              label={
-                <span>
-                  {displayName}
-                  <span className="text-muted-foreground">
-                    {' '}
-                    — {widget.skipReason}
-                  </span>
-                </span>
-              }
-              status="complete"
-            />
-          )
-        })}
-
-        {error && (
-          <ChainOfThoughtStep
-            icon={AlertCircleIcon}
-            label={
-              <span className="text-destructive">
-                Error: {error}
-              </span>
-            }
-            status="complete"
-          />
-        )}
-
-        {!isGenerating && !error && processedCount === totalCount && totalCount > 0 && (
-          <ChainOfThoughtStep
-            icon={CheckIcon}
-            label="Done"
-            status="complete"
-          />
-        )}
-      </ChainOfThoughtContent>
-    </ChainOfThought>
+  return (
+    <div
+      className={cn(
+        'grid w-full min-w-0 transition-[grid-template-rows,opacity,margin] duration-500 ease-out motion-reduce:transition-none',
+        visible
+          ? 'mb-0 grid-rows-[1fr] opacity-100'
+          : '-mb-6 grid-rows-[0fr] opacity-0',
+      )}
+      aria-hidden={!visible}
+    >
+      <div className="min-h-0 w-full min-w-0 overflow-hidden">{children}</div>
+    </div>
   )
 }

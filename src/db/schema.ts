@@ -1,5 +1,6 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
 import type { MessagePart } from '@tanstack/ai'
+import type { PersistedRecipe, PersistedWidget } from '~/lib/dashboard-schemas'
 
 export const threads = pgTable('threads', {
   id: text('id').primaryKey(),
@@ -126,22 +127,7 @@ export const appSettings = pgTable('app_settings', {
 
 export type DashboardSnapshotStatus = 'generating' | 'complete' | 'failed'
 
-export interface PersistedWidget {
-  widgetId: string
-  title: string
-  insight: string
-  spec: Record<string, unknown> | null
-  skipReason?: string
-}
-
-export interface PersistedRecipe {
-  widgetId: string
-  title: string
-  insight: string
-  dataSources: Array<{ toolName: string; toolParams: Record<string, unknown>; label: string }>
-  render: string
-  score: number
-}
+export type { PersistedRecipe, PersistedWidget } from '~/lib/dashboard-schemas'
 
 export const dashboardSnapshots = pgTable('dashboard_snapshots', {
   id: text('id').primaryKey(),
@@ -153,4 +139,6 @@ export const dashboardSnapshots = pgTable('dashboard_snapshots', {
   error: text('error'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
   completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
-})
+}, (t) => [
+  index('dashboard_snapshots_persona_created_at_idx').on(t.persona, t.createdAt),
+])
