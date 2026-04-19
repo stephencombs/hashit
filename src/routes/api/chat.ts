@@ -1,4 +1,4 @@
-import { chat, maxIterations, toServerSentEventsResponse } from '@tanstack/ai'
+import { toServerSentEventsResponse } from '@tanstack/ai'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRequest } from 'nitro/context'
 import { createError } from 'evlog'
@@ -7,15 +7,15 @@ import { createPlanTool } from '~/lib/tools'
 import { collectFormDataTool } from '~/lib/form-tool'
 import { uiCatalog } from '~/lib/ui-catalog'
 import { withJsonRender } from '~/lib/json-render-stream'
-import { getMcpTools } from '~/lib/mcp/client'
 import {
-  getAzureAdapter,
   createThread,
   extractUserMessage,
   withPersistence,
 } from '~/lib/chat-helpers'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk } from '@tanstack/ai'
+import { createAgentRun } from '~/lib/agent-runner'
+import { finalizeAgentRunTrace, startAgentRunTrace } from '~/lib/telemetry/agent-spans'
 
 /**
  * Stops the agent loop stream as soon as collect_form_data completes.
@@ -35,6 +35,24 @@ async function* withFormStop(
     if (chunk.type === 'TOOL_CALL_END' && formToolCallIds.has(chunk.toolCallId)) {
       return
     }
+  }
+}
+
+async function* withTraceFinalization(
+  stream: AsyncIterable<StreamChunk>,
+  traceState: ReturnType<typeof startAgentRunTrace>,
+  getFinalAttributes: () => Record<string, unknown>,
+  getFinalError: () => string | undefined,
+): AsyncIterable<StreamChunk> {
+  try {
+    for await (const chunk of stream) {
+      yield chunk
+    }
+  } finally {
+    finalizeAgentRunTrace(traceState, {
+      error: getFinalError(),
+      attributes: getFinalAttributes(),
+    })
   }
 }
 
@@ -76,6 +94,18 @@ export const Route = createFileRoute('/api/chat')({
 
         const conversationId: string | undefined =
           data?.conversationId || threadId
+        const traceState = startAgentRunTrace({
+          profile: 'interactiveChat',
+          source: 'interactive-chat',
+          conversationId,
+          log,
+          attributes: {
+            'http.route': '/api/chat',
+            'agent.thread_id': threadId,
+            'agent.thread_created': threadCreated,
+            'agent.message_count': messages?.length,
+          },
+        })
 
         log.set({
           conversationId,
@@ -83,43 +113,22 @@ export const Route = createFileRoute('/api/chat')({
           threadCreated,
           messageCount: messages?.length,
           model: data?.model,
+          traceId: traceState.traceId,
+          spanId: traceState.spanId,
         })
 
-        const adapter = getAzureAdapter(data?.model)
-        const mcpTools = await getMcpTools(
-          data?.selectedServers,
-          data?.enabledTools,
-        )
-
-        const modelName = data?.model || process.env.AZURE_OPENAI_DEPLOYMENT!
-        const supportsReasoning = /gpt-5|o[1-9]/.test(modelName)
-
-        const catalogSystemPrompt = uiCatalog.prompt({
-          mode: 'inline',
-          customRules: [
-            'You may generate multiple visualizations in a single response when the user requests it or when the data naturally calls for it (e.g. "show sales and headcount" → two charts). Each visualization must be a separate spec block.',
-            'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
-            'When using DataGrid, include ALL rows in a single DataGrid with pagination enabled. Never split data across multiple responses or render tabular data as text.',
-            'Use the collect_form_data tool when you need structured input from the user (e.g. registration, configuration, multi-field queries). Do not ask for multiple pieces of information via plain text when a form would be clearer. After calling collect_form_data, end your turn immediately with no text — the user must fill and submit the form before you respond again.',
-          ],
-        })
-
-        const rawStream = chat({
-          adapter,
+        const { stream: rawStream, telemetry } = await createAgentRun({
+          profile: 'interactiveChat',
+          source: 'interactive-chat',
           messages,
           conversationId,
-          ...(!supportsReasoning && { temperature: data?.temperature }),
-          systemPrompts: [
-            ...(data?.systemPrompt ? [data.systemPrompt] : []),
-            catalogSystemPrompt,
-          ],
-          tools: [createPlanTool, collectFormDataTool, ...mcpTools],
-          agentLoopStrategy: maxIterations(5),
-          ...(supportsReasoning && {
-            modelOptions: {
-              reasoning: { effort: 'low', summary: 'auto' },
-            },
-          }),
+          model: data?.model,
+          temperature: data?.temperature,
+          customSystemPrompt: data?.systemPrompt,
+          selectedServers: data?.selectedServers,
+          enabledTools: data?.enabledTools,
+          log,
+          traceState,
         })
 
         const stream = withJsonRender(withFormStop(rawStream))
@@ -128,11 +137,34 @@ export const Route = createFileRoute('/api/chat')({
 
         if (threadId && userContent) {
           return toServerSentEventsResponse(
-            withPersistence(stream, threadId, threadCreated, userContent, userParts, log),
+            withPersistence(
+              stream,
+              threadId,
+              threadCreated,
+              userContent,
+              userParts,
+              log,
+              telemetry,
+            ),
           )
         }
 
-        return toServerSentEventsResponse(stream)
+        return toServerSentEventsResponse(
+          withTraceFinalization(
+            stream,
+            traceState,
+            () => ({
+              'agent.status': telemetry.status,
+              'agent.thread_id': threadId,
+              'agent.tool_call_count': telemetry.toolCallCount,
+              'agent.iteration_count': telemetry.iterationCount,
+            }),
+            () =>
+              telemetry.status === 'failed' || telemetry.status === 'aborted'
+                ? telemetry.error
+                : undefined,
+          ),
+        )
       },
     },
   },

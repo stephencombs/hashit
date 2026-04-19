@@ -12,6 +12,7 @@ import { eq, asc } from 'drizzle-orm'
 import { threadDetailQuery, artifactsByThreadQuery } from '~/lib/queries'
 import { Separator } from '~/components/ui/separator'
 import { SidebarTrigger } from '~/components/ui/sidebar'
+import { Skeleton } from '~/components/ui/skeleton'
 
 export const getThread = createServerFn({ method: 'GET' })
   .inputValidator(zodValidator(z.string()))
@@ -38,11 +39,8 @@ export const getThread = createServerFn({ method: 'GET' })
 function UserBubbleSkeleton({ width }: { width: string }) {
   return (
     <div className="flex w-full max-w-[95%] flex-col gap-2 ml-auto justify-end">
-      <div
-        className="ml-auto rounded-lg bg-secondary/60 px-4 py-3"
-        style={{ width }}
-      >
-        <div className="h-3.5 w-full rounded bg-muted-foreground/15" />
+      <div className="ml-auto rounded-lg bg-secondary px-4 py-3" style={{ width }}>
+        <Skeleton className="h-[1.375rem] w-full" />
       </div>
     </div>
   )
@@ -56,18 +54,14 @@ function AssistantBlockSkeleton({
   withChart?: boolean
 }) {
   return (
-    <div className="flex w-full max-w-[95%] flex-col gap-3">
-      <div className="flex flex-col gap-2">
+    <div className="flex w-full max-w-[95%] flex-col gap-2">
+      <div className="flex w-full flex-col gap-2">
         {lines.map((w, i) => (
-          <div
-            key={i}
-            className="h-3.5 rounded bg-muted/40"
-            style={{ width: `${w}%` }}
-          />
+          <Skeleton key={i} className="h-[1.375rem]" style={{ width: `${w}%` }} />
         ))}
       </div>
       {withChart && (
-        <div className="h-72 w-full rounded-lg border border-border/40 bg-muted/20" />
+        <Skeleton className="mt-1 h-72 w-full rounded-lg" />
       )}
     </div>
   )
@@ -86,12 +80,12 @@ function ChatThreadPending() {
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col p-6">
-        <div className="flex flex-1 min-h-0 flex-col justify-end gap-8 overflow-hidden px-4">
-          <AssistantBlockSkeleton lines={[92, 76, 88, 60]} withChart />
-          <UserBubbleSkeleton width="220px" />
-          <AssistantBlockSkeleton lines={[84, 95, 72]} />
-          <UserBubbleSkeleton width="320px" />
-          <AssistantBlockSkeleton lines={[88, 70]} />
+        <div className="flex flex-1 min-h-0 flex-col justify-end overflow-hidden">
+          <div className="px-4 pt-4 pb-8"><AssistantBlockSkeleton lines={[92, 76, 88, 60]} withChart /></div>
+          <div className="px-4 pb-8"><UserBubbleSkeleton width="220px" /></div>
+          <div className="px-4 pb-8"><AssistantBlockSkeleton lines={[84, 95, 72]} /></div>
+          <div className="px-4 pb-8"><UserBubbleSkeleton width="320px" /></div>
+          <div className="px-4 pb-8"><AssistantBlockSkeleton lines={[88, 70]} /></div>
         </div>
         <div className="mt-4 flex h-[104px] w-full flex-col rounded-lg border border-input bg-input/30 px-3 py-2">
           <div className="flex-1" />
@@ -123,6 +117,7 @@ export const Route = createFileRoute('/_app/chat/$threadId')({
   },
   component: ChatThread,
   pendingComponent: ChatThreadPending,
+  pendingMs: 0,
 })
 
 function EditableTitle({ threadId, title }: { threadId: string; title: string }) {
@@ -140,7 +135,9 @@ function EditableTitle({ threadId, title }: { threadId: string; title: string })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['threads'] })
-      queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
+      queryClient.invalidateQueries({
+        queryKey: threadDetailQuery(threadId).queryKey,
+      })
     },
   })
 

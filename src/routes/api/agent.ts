@@ -1,18 +1,12 @@
-import { chat, maxIterations, toServerSentEventsResponse } from '@tanstack/ai'
+import { toServerSentEventsResponse } from '@tanstack/ai'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRequest } from 'nitro/context'
 import { createError } from 'evlog'
 import { z } from 'zod'
-import { uiCatalog } from '~/lib/ui-catalog'
-import { withJsonRender } from '~/lib/json-render-stream'
-import { getMcpTools } from '~/lib/mcp/client'
-import {
-  getAzureAdapter,
-  createThread,
-  extractUserMessage,
-  withPersistence,
-} from '~/lib/chat-helpers'
 import type { RequestLogger } from 'evlog'
+import { withPersistence } from '~/lib/chat-helpers'
+import { prepareAutomationRun } from '~/lib/automation-agent'
+import { startAgentRunTrace } from '~/lib/telemetry/agent-spans'
 
 const agentRequestSchema = z.object({
   prompt: z.string().min(1),
@@ -43,52 +37,44 @@ export const Route = createFileRoute('/api/agent')({
           await request.json(),
         )
 
-        let threadId = existingThreadId
-        let threadCreated = false
+        const traceState = startAgentRunTrace({
+          profile: 'automation',
+          source: 'automation-api',
+          conversationId: existingThreadId,
+          log,
+          attributes: {
+            'http.route': '/api/agent',
+            'agent.thread_id': existingThreadId,
+          },
+        })
 
-        if (!threadId) {
-          const title =
-            prompt.length > 60 ? prompt.slice(0, 60) + '...' : prompt
-          threadId = await createThread(title, 'automation')
-          threadCreated = true
-        }
-
-        const messages = [{ role: 'user' as const, content: prompt }]
-        const userParts = [{ type: 'text' as const, content: prompt }]
+        const prepared = await prepareAutomationRun(
+          prompt,
+          existingThreadId,
+          log,
+          traceState,
+        )
 
         log.set({
-          threadId,
-          threadCreated,
+          threadId: prepared.threadId,
+          threadCreated: prepared.threadCreated,
           source: 'automation',
+          traceId: traceState.traceId,
+          spanId: traceState.spanId,
         })
-
-        const adapter = getAzureAdapter()
-        const mcpTools = await getMcpTools()
-
-        const catalogSystemPrompt = uiCatalog.prompt({
-          mode: 'inline',
-          customRules: [
-            'You may generate multiple visualizations in a single response when the data naturally calls for it. Each visualization must be a separate spec block.',
-            'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
-            'When using DataGrid, include ALL rows in a single DataGrid with pagination enabled. Never split data across multiple responses or render tabular data as text.',
-          ],
-        })
-
-        const rawStream = chat({
-          adapter,
-          messages,
-          conversationId: threadId,
-          systemPrompts: [catalogSystemPrompt],
-          tools: mcpTools,
-          agentLoopStrategy: maxIterations(5),
-        })
-
-        const stream = withJsonRender(rawStream)
 
         log.set({ phase: 'stream_started' })
 
         return toServerSentEventsResponse(
-          withPersistence(stream, threadId, threadCreated, prompt, userParts, log),
+          withPersistence(
+            prepared.stream,
+            prepared.threadId,
+            prepared.threadCreated,
+            prepared.prompt,
+            prepared.userParts,
+            log,
+            prepared.telemetry,
+          ),
         )
       },
     },

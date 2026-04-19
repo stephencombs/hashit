@@ -1,0 +1,292 @@
+{
+  "version": 5,
+  "dashboardId": "hashit-tool-mcp-performance",
+  "title": "Hashit - Tool And MCP Performance",
+  "description": "Analysis of tool invocations, MCP server usage, and tool outcomes.",
+  "role": "",
+  "owner": "",
+  "created": "2026-04-18T00:00:00.000Z",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_ID2001",
+          "type": "metric",
+          "title": "Runs With Tool Calls",
+          "description": "",
+          "config": {
+            "show_legends": false,
+            "legends_position": null,
+            "decimals": 0,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE toolcallcount IS NOT NULL AND toolcallcount > 0",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [],
+                "y": [
+                  { "label": "Runs With Tools", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 8, "h": 8, "i": 1 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID2002",
+          "type": "metric",
+          "title": "Avg Tool Calls Per Run",
+          "description": "",
+          "config": {
+            "show_legends": false,
+            "legends_position": null,
+            "decimals": 1,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT avg(toolcallcount) as \"y_axis_1\" FROM \"hashit\" WHERE toolcallcount IS NOT NULL AND toolcallcount > 0",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [],
+                "y": [
+                  { "label": "Avg Tools/Run", "alias": "y_axis_1", "column": "y_axis_1", "color": "#61a0a8", "aggregationFunction": "avg" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 8, "y": 0, "w": 8, "h": 8, "i": 2 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID2003",
+          "type": "line",
+          "title": "Tool-Bearing Runs Over Time",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp, '5 minutes') as \"x_axis_1\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE toolcallcount IS NOT NULL AND toolcallcount > 0 GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null, "aggregationFunction": "histogram", "args": [{ "value": "5 minutes" }] }
+                ],
+                "y": [
+                  { "label": "Runs", "alias": "y_axis_1", "column": "_timestamp", "color": "#5960b2", "aggregationFunction": "count" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 16, "y": 0, "w": 32, "h": 8, "i": 3 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID2004",
+          "type": "table",
+          "title": "MCP Server Usage",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": false,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT mcpserversused as \"x_axis_1\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE mcpserversused IS NOT NULL GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "MCP Server(s)", "alias": "x_axis_1", "column": "mcpserversused", "color": null }
+                ],
+                "y": [
+                  { "label": "Runs", "alias": "y_axis_1", "column": "_timestamp", "color": "#5960b2", "aggregationFunction": "count" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 8, "w": 24, "h": 12, "i": 4 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID2005",
+          "type": "bar",
+          "title": "Tool Calls By Profile",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT runprofile as \"x_axis_1\", sum(toolcallcount) as \"y_axis_1\" FROM \"hashit\" WHERE toolcallcount IS NOT NULL GROUP BY x_axis_1 ORDER BY y_axis_1 DESC",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Profile", "alias": "x_axis_1", "column": "runprofile", "color": null }
+                ],
+                "y": [
+                  { "label": "Total Tool Calls", "alias": "y_axis_1", "column": "toolcallcount", "color": "#5960b2", "aggregationFunction": "sum" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 24, "y": 8, "w": 24, "h": 12, "i": 5 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID2006",
+          "type": "table",
+          "title": "Recent Runs With Tools",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": false,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp as \"x_axis_1\", runprofile as \"x_axis_2\", toolcallcount as \"x_axis_3\", toolnames as \"x_axis_4\", runstatus as \"x_axis_5\", trace_id as \"x_axis_6\" FROM \"hashit\" WHERE toolcallcount IS NOT NULL AND toolcallcount > 0 ORDER BY _timestamp DESC LIMIT 25",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null },
+                  { "label": "Profile", "alias": "x_axis_2", "column": "runprofile", "color": null },
+                  { "label": "Tool Calls", "alias": "x_axis_3", "column": "toolcallcount", "color": null },
+                  { "label": "Tools Used", "alias": "x_axis_4", "column": "toolnames", "color": null },
+                  { "label": "Status", "alias": "x_axis_5", "column": "runstatus", "color": null },
+                  { "label": "Trace ID", "alias": "x_axis_6", "column": "trace_id", "color": null }
+                ],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 20, "w": 48, "h": 14, "i": 6 },
+          "htmlContent": "",
+          "markdownContent": ""
+        }
+      ]
+    }
+  ],
+  "variables": { "list": [], "showDynamicFilters": true },
+  "defaultDatetimeDuration": { "type": "relative", "relativeTimePeriod": "15m" }
+}

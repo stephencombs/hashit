@@ -42,10 +42,43 @@ export const getCanvas = createServerFn({ method: 'GET' })
     return { ...canvas, nodes, edges }
   })
 
+function CanvasPagePending() {
+  return (
+    <>
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator
+          orientation="vertical"
+          className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+        />
+        <div className="h-4 w-40 rounded bg-muted/50" />
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+        <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/40 bg-muted/10">
+          <div className="flex min-h-[min(480px,60vh)] flex-1 flex-col gap-4 p-6">
+            <div className="flex flex-wrap gap-3">
+              <div className="h-10 w-28 rounded-md bg-muted/40" />
+              <div className="h-10 w-28 rounded-md bg-muted/30" />
+              <div className="h-10 w-28 rounded-md bg-muted/25" />
+            </div>
+            <div className="relative min-h-0 flex-1 rounded-md border border-dashed border-border/50 bg-muted/5">
+              <div className="absolute inset-6 rounded-lg bg-muted/15" />
+              <div className="absolute left-[18%] top-[22%] h-24 w-36 rounded-lg border border-border/40 bg-muted/25" />
+              <div className="absolute right-[20%] top-[30%] h-24 w-36 rounded-lg border border-border/40 bg-muted/20" />
+              <div className="absolute bottom-[18%] left-1/2 h-24 w-36 -translate-x-1/2 rounded-lg border border-border/40 bg-muted/22" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export const Route = createFileRoute('/_app/canvas/$canvasId')({
   loader: ({ params, context }) =>
     context.queryClient.ensureQueryData(canvasDetailQuery(params.canvasId)),
   component: CanvasPage,
+  pendingComponent: CanvasPagePending,
 })
 
 function EditableCanvasTitle({

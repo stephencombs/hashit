@@ -27,17 +27,13 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
+import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import type { Spec } from '@json-render/core'
-
-interface Artifact {
-  id: string
-  title: string
-  spec: Record<string, unknown>
-  threadId: string | null
-  messageId: string | null
-  createdAt: string
-}
+import {
+  artifactsListQuery,
+  type ArtifactListItem,
+} from '~/lib/artifact-queries'
 
 type ArtifactType = 'chart' | 'grid' | 'other'
 
@@ -65,6 +61,10 @@ function TypeIcon({ type, className }: { type: ArtifactType; className?: string 
 }
 
 export const Route = createFileRoute('/_app/artifacts')({
+  loader: ({ context }) => {
+    if (import.meta.env.SSR) return
+    return context.queryClient.ensureQueryData(artifactsListQuery)
+  },
   component: ArtifactsPage,
 })
 
@@ -73,7 +73,7 @@ function ArtifactListRow({
   onSelect,
   onDelete,
 }: {
-  artifact: Artifact
+  artifact: ArtifactListItem
   onSelect: () => void
   onDelete: () => void
 }) {
@@ -135,7 +135,7 @@ function ArtifactGalleryCard({
   artifact,
   onSelect,
 }: {
-  artifact: Artifact
+  artifact: ArtifactListItem
   onSelect: () => void
 }) {
   const artType = getArtifactType(artifact.spec)
@@ -179,29 +179,51 @@ function ArtifactGalleryCard({
 
 type ViewMode = 'gallery' | 'list'
 
+function ArtifactsSkeleton() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        {/* Controls */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="mt-1.5 h-4 w-48" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-44 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+            <Skeleton className="h-9 w-16 rounded-md" />
+          </div>
+        </div>
+
+        {/* Featured card */}
+        <Skeleton className="h-[340px] w-full rounded-xl" />
+
+        {/* Grid cards */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Skeleton className="h-[360px] rounded-xl" />
+          <Skeleton className="h-[360px] rounded-xl" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ArtifactsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'chart' | 'grid'>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
-  const [selected, setSelected] = useState<Artifact | null>(null)
+  const [selected, setSelected] = useState<ArtifactListItem | null>(null)
 
-  const { data: artifacts = [] } = useQuery<Artifact[]>({
-    queryKey: ['artifacts'],
-    queryFn: async () => {
-      const res = await fetch('/api/artifacts')
-      if (!res.ok) throw new Error('Failed to fetch artifacts')
-      const data = await res.json()
-      return Array.isArray(data) ? data : []
-    },
-  })
+  const { data: artifacts = [], isPending } = useQuery(artifactsListQuery)
 
   const deleteArtifact = useMutation({
     mutationFn: async (artifactId: string) => {
       await fetch(`/api/artifacts/${artifactId}`, { method: 'DELETE' })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artifacts'] })
+      queryClient.invalidateQueries({ queryKey: artifactsListQuery.queryKey })
       setSelected(null)
     },
   })
@@ -229,7 +251,7 @@ function ArtifactsPage() {
         <h1 className="text-sm font-medium">Artifacts</h1>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+        {isPending ? <ArtifactsSkeleton /> : <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             {/* Controls */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -412,7 +434,7 @@ function ArtifactsPage() {
               </>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Detail dialog */}
         <Dialog

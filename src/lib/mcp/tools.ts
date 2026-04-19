@@ -139,6 +139,9 @@ export function mcpToolToServerTool(
   mcpTool: MCPTool,
   client: Client,
   config: MCPServerConfig,
+  options?: {
+    lazy?: boolean
+  },
 ) {
   const name = sanitizeToolName(`${config.name}__${mcpTool.name}`)
   const schema = patchSchemaForOpenAI(mcpTool.inputSchema as Record<string, unknown>)
@@ -147,6 +150,7 @@ export function mcpToolToServerTool(
     name,
     description: `[${config.domain}] ${mcpTool.description ?? mcpTool.name}`,
     inputSchema: schema as Tool['inputSchema'],
+    lazy: options?.lazy,
   }).server(async (args: unknown) => {
     const result = await callToolWithTimeout(client, mcpTool.name, args as Record<string, unknown>)
     if (result.isError) {

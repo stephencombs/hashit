@@ -41,11 +41,15 @@ import {
 
 const CATALOG_TYPES = new Set(uiCatalog.componentNames)
 
+const PERSONA = 'HR Admin'
+
 export const Route = createFileRoute('/_app/dashboard')({
+  loader: ({ context }) => {
+    if (import.meta.env.SSR) return
+    return context.queryClient.ensureQueryData(dashboardSnapshotQuery(PERSONA))
+  },
   component: Dashboard,
 })
-
-const PERSONA = 'HR Admin'
 type RenderableWidget = PersistedWidget & { spec: Spec }
 
 function Dashboard() {
@@ -53,7 +57,7 @@ function Dashboard() {
   const initDoneRef = useRef(false)
   const [historyOpen, setHistoryOpen] = useState(false)
 
-  const { data, isFetched, isError, error: queryError } = useQuery(
+  const { data, isFetched, isPending, isError, error: queryError } = useQuery(
     dashboardSnapshotQuery(PERSONA),
   )
 
@@ -120,6 +124,7 @@ function Dashboard() {
       />
       <DashboardContent
         isFetched={isFetched}
+        isPending={isPending}
         isGenerating={isGenerating}
         recipes={recipes}
         widgets={widgets}
@@ -194,6 +199,7 @@ function RegenerateStatusIcon({ isGenerating }: { isGenerating: boolean }) {
 
 function DashboardContent({
   isFetched,
+  isPending,
   isGenerating,
   recipes,
   widgets,
@@ -206,6 +212,7 @@ function DashboardContent({
   queryError,
 }: {
   isFetched: boolean
+  isPending: boolean
   isGenerating: boolean
   recipes: PersistedRecipe[]
   widgets: PersistedWidget[]
@@ -228,6 +235,15 @@ function DashboardContent({
   const dashboardScrollRef = useRef<HTMLDivElement>(null)
   const mainScroll = (
     <>
+      {isPending && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+
       {isFetched && (
         <GenerationProgressInline
           recipes={recipes}
@@ -363,13 +379,13 @@ function DashboardEmptyState({
 
 function SkeletonCard() {
   return (
-    <Card>
-      <CardHeader>
+    <Card className="flex h-[500px] min-h-[500px] max-h-[500px] flex-col overflow-hidden">
+      <CardHeader className="shrink-0">
         <Skeleton className="h-4 w-2/5" />
         <Skeleton className="h-3 w-3/4" />
       </CardHeader>
-      <CardContent>
-        <Skeleton className="h-[200px] w-full rounded-md" />
+      <CardContent className="min-h-0 flex-1">
+        <Skeleton className="h-full w-full rounded-md" />
       </CardContent>
     </Card>
   )

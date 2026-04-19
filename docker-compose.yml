@@ -15,5 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  openobserve:
+    image: openobserve/openobserve:latest
+    restart: unless-stopped
+    environment:
+      ZO_DATA_DIR: /data
+      ZO_ROOT_USER_EMAIL: ${OPENOBSERVE_ROOT_USER_EMAIL:-root@example.com}
+      ZO_ROOT_USER_PASSWORD: ${OPENOBSERVE_ROOT_USER_PASSWORD:-openobserve-dev-password}
+    ports:
+      - "5080:5080"
+    volumes:
+      - openobserve_data:/data
+
 volumes:
   postgres_data:
+  openobserve_data:

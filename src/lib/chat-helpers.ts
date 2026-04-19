@@ -1,11 +1,27 @@
 import { chat, generateMessageId } from '@tanstack/ai'
-import { createOpenaiChat } from '@tanstack/ai-openai'
 import { nanoid } from 'nanoid'
 import { db } from '~/db'
 import { threads, messages as messagesTable } from '~/db/schema'
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, asc } from 'drizzle-orm'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk, MessagePart } from '@tanstack/ai'
+import type { AgentRunTelemetry } from '~/lib/agent-runner'
+import {
+  createRunMetadata,
+  summarizeToolActivity,
+} from '~/lib/agent-runtime-utils'
+import { getAzureAdapter } from '~/lib/openai-adapter'
+import {
+  createChildSpan,
+  finalizeAgentRunTrace,
+  finishPersistenceSpan,
+  startPersistenceSpan,
+} from '~/lib/telemetry/agent-spans'
+import {
+  endTraceSpan,
+  markTraceError,
+  markTraceSuccess,
+} from '~/lib/telemetry/otel'
 
 export function tryParseJSON(value: string): unknown {
   try {
@@ -13,16 +29,6 @@ export function tryParseJSON(value: string): unknown {
   } catch {
     return value
   }
-}
-
-export function getAzureAdapter(deployment?: string) {
-  const model = deployment || process.env.AZURE_OPENAI_DEPLOYMENT!
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT!.replace(/\/+$/, '')
-  const baseURL = `${endpoint}/openai/v1`
-
-  return createOpenaiChat(model as any, process.env.AZURE_OPENAI_API_KEY!, {
-    baseURL,
-  })
 }
 
 export async function createThread(title: string, source?: string): Promise<string> {
@@ -36,6 +42,7 @@ export async function persistUserMessage(
   threadId: string,
   userContent: string,
   userParts: Array<MessagePart>,
+  metadata?: Record<string, unknown>,
 ) {
   const latestMsg = await db
     .select({ id: messagesTable.id, role: messagesTable.role })
@@ -56,6 +63,7 @@ export async function persistUserMessage(
     role: 'user',
     content: userContent,
     parts: userParts,
+    metadata,
     createdAt: now,
   })
   await db
@@ -69,6 +77,7 @@ export async function persistAssistantMessage(
   threadId: string,
   content: string,
   parts: Array<MessagePart>,
+  metadata?: Record<string, unknown>,
 ) {
   const latestMsg = await db
     .select({ role: messagesTable.role })
@@ -88,6 +97,7 @@ export async function persistAssistantMessage(
     role: 'assistant',
     content,
     parts,
+    metadata,
     createdAt: new Date(),
   })
 
@@ -149,28 +159,23 @@ export async function maybeGenerateTitle(threadId: string, userContent: string) 
 }
 
 export async function generateToolSummary(
-  userPrompt: string,
   toolName: string,
 ): Promise<string> {
-  try {
-    const adapter = getAzureAdapter()
-    const stream = chat({
-      adapter,
-      messages: [
-        {
-          role: 'user',
-          content: `Generate a very short action phrase (3-6 words, present participle, no quotes) describing what's happening. The user asked: "${userPrompt}" and the tool "${toolName}" is being called. Example outputs: "Searching for employees", "Looking up pay history", "Checking certifications"`,
-        },
-      ],
-    })
-    let text = ''
-    for await (const c of stream) {
-      if (c.type === 'TEXT_MESSAGE_CONTENT' && c.delta) text += c.delta
-    }
-    return text.trim() || 'Using tools'
-  } catch {
-    return 'Using tools'
-  }
+  return summarizeToolActivity(toolName)
+}
+
+export async function loadThreadMessagesForRuntime(threadId: string) {
+  const persisted = await db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.threadId, threadId))
+    .orderBy(asc(messagesTable.createdAt))
+
+  return persisted.map((message) => ({
+    role: message.role as 'user' | 'assistant',
+    content: message.content,
+    parts: message.parts ?? [{ type: 'text' as const, content: message.content }],
+  }))
 }
 
 export async function* withPersistence(
@@ -180,119 +185,257 @@ export async function* withPersistence(
   userContent: string,
   userParts: Array<MessagePart>,
   log: RequestLogger,
+  telemetry: AgentRunTelemetry,
 ): AsyncIterable<StreamChunk> {
-  if (threadCreated) {
-    yield {
-      type: 'CUSTOM' as const,
-      name: 'thread_created',
-      value: { threadId },
-      timestamp: Date.now(),
+  startPersistenceSpan(telemetry.traceState, {
+    'agent.thread_id': threadId,
+    'agent.thread_created': threadCreated,
+  })
+
+  const runPersistenceStep = async <T>(
+    name: string,
+    fn: () => Promise<T>,
+    attributes?: Record<string, unknown>,
+  ): Promise<T> => {
+    const span = createChildSpan(telemetry.traceState, name, { attributes })
+    try {
+      const result = await fn()
+      markTraceSuccess(span, attributes)
+      return result
+    } catch (error) {
+      markTraceError(span, error, attributes)
+      throw error
+    } finally {
+      endTraceSpan(span)
     }
   }
 
   try {
-    await persistUserMessage(threadId, userContent, userParts)
-  } catch (err) {
-    log.set({ persistUserError: String(err) })
-  }
-
-  let accumulated = ''
-  let accumulatedThinking = ''
-  const assistantParts: Array<MessagePart> = []
-  const toolCalls = new Map<string, { name: string; args: string }>()
-  let summaryEmitted = false
-
-  try {
-    for await (const chunk of stream) {
-      if (chunk.type === 'STEP_FINISHED') {
-        const delta = (chunk as { delta?: string }).delta || ''
-        if (delta) accumulatedThinking += delta
-        yield {
-          ...chunk,
-          delta,
-          content: accumulatedThinking,
-        } as StreamChunk
-        continue
+    if (threadCreated) {
+      yield {
+        type: 'CUSTOM' as const,
+        name: 'thread_created',
+        value: { threadId },
+        timestamp: Date.now(),
       }
+    }
 
-      if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
-        if (chunk.content) {
-          accumulated = chunk.content
-        } else if (chunk.delta) {
-          accumulated += chunk.delta
-        }
-      } else if (chunk.type === 'TOOL_CALL_START') {
-        toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: '' })
-        if (!summaryEmitted) {
-          summaryEmitted = true
-          const summary = await generateToolSummary(userContent, chunk.toolName)
-          assistantParts.push({
-            type: 'tool-summary' as 'text',
-            content: summary,
-          })
+    try {
+      await runPersistenceStep(
+        'agent.persistence.user_message',
+        () =>
+          persistUserMessage(
+            threadId,
+            userContent,
+            userParts,
+            createRunMetadata(telemetry),
+          ),
+        {
+          'agent.thread_id': threadId,
+          'agent.message_role': 'user',
+        },
+      )
+    } catch (err) {
+      log.set({ persistUserError: String(err) })
+    }
+
+    let accumulated = ''
+    let accumulatedThinking = ''
+    const assistantParts: Array<MessagePart> = []
+    const toolCalls = new Map<string, { name: string; args: string }>()
+    let summaryEmitted = false
+    let streamError: string | null = null
+    let persistenceError: string | null = null
+
+    try {
+      for await (const chunk of stream) {
+        if (chunk.type === 'STEP_FINISHED') {
+          const delta = (chunk as { delta?: string }).delta || ''
+          if (delta) accumulatedThinking += delta
           yield {
-            type: 'CUSTOM' as const,
-            name: 'tool_summary',
-            value: { summary },
-            timestamp: Date.now(),
-          }
+            ...chunk,
+            delta,
+            content: accumulatedThinking,
+          } as StreamChunk
+          continue
         }
-      } else if (chunk.type === 'TOOL_CALL_ARGS') {
-        const tc = toolCalls.get(chunk.toolCallId)
-        if (tc) tc.args += chunk.delta
-      } else if (chunk.type === 'TOOL_CALL_END') {
-        const tc = toolCalls.get(chunk.toolCallId)
-        if (tc) {
+
+        if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
+          if (chunk.content) {
+            accumulated = chunk.content
+          } else if (chunk.delta) {
+            accumulated += chunk.delta
+          }
+        } else if (chunk.type === 'TOOL_CALL_START') {
+          toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: '' })
+          if (!summaryEmitted) {
+            summaryEmitted = true
+            const summary = await generateToolSummary(chunk.toolName)
+            assistantParts.push({
+              type: 'tool-summary' as 'text',
+              content: summary,
+            })
+            yield {
+              type: 'CUSTOM' as const,
+              name: 'tool_summary',
+              value: { summary },
+              timestamp: Date.now(),
+            }
+          }
+        } else if (chunk.type === 'TOOL_CALL_ARGS') {
+          const tc = toolCalls.get(chunk.toolCallId)
+          if (tc) tc.args += chunk.delta
+        } else if (chunk.type === 'TOOL_CALL_END') {
+          const tc = toolCalls.get(chunk.toolCallId)
+          if (tc) {
+            assistantParts.push({
+              type: 'tool-call',
+              id: chunk.toolCallId,
+              name: tc.name,
+              arguments: tc.args,
+              state: chunk.result ? 'result' : 'input-complete',
+              output: chunk.result ? tryParseJSON(chunk.result) : undefined,
+            } as MessagePart)
+          }
+        } else if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
+          const { spec, specIndex } = chunk.value as {
+            spec: unknown
+            specIndex: number
+          }
           assistantParts.push({
-            type: 'tool-call',
-            id: chunk.toolCallId,
-            name: tc.name,
-            arguments: tc.args,
-            state: chunk.result ? 'result' : 'input-complete',
-            output: chunk.result ? tryParseJSON(chunk.result) : undefined,
+            type: 'ui-spec' as 'text',
+            content: JSON.stringify(spec),
+            specIndex,
           } as MessagePart)
         }
-      } else if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
-        const { spec, specIndex } = chunk.value as { spec: unknown; specIndex: number }
-        assistantParts.push({
-          type: 'ui-spec' as 'text',
-          content: JSON.stringify(spec),
-          specIndex,
-        } as MessagePart)
+        yield {
+          ...chunk,
+        }
       }
-      yield chunk
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    log.set({ streamError: msg })
-    console.error('>>> chatStream: Fatal error during response creation <<<')
-    console.error('>>> Error message:', msg)
-    if (err instanceof Error) console.error('>>> Error stack:', err.stack)
-    console.error('>>> Full error:', err)
-  }
-
-  if (accumulatedThinking) {
-    assistantParts.unshift({ type: 'thinking', content: accumulatedThinking } as MessagePart)
-  }
-
-  if (accumulated) {
-    assistantParts.push({ type: 'text', content: accumulated })
-  }
-
-  if (assistantParts.length > 0) {
-    try {
-      await persistAssistantMessage(threadId, accumulated, assistantParts)
-      maybeGenerateTitle(threadId, userContent).catch(() => {})
     } catch (err) {
-      log.set({ persistAssistantError: String(err) })
+      streamError = err instanceof Error ? err.message : String(err)
+      if (telemetry.status === 'running') {
+        telemetry.status = 'failed'
+        telemetry.error = streamError
+        telemetry.completedAt = Date.now()
+        telemetry.durationMs = telemetry.completedAt - telemetry.startedAt
+      }
+      log.set({
+        streamError,
+        runStatus: telemetry.status,
+      })
     }
-  }
 
-  yield {
-    type: 'CUSTOM' as const,
-    name: 'persistence_complete',
-    value: { threadId },
-    timestamp: Date.now(),
+    if (accumulatedThinking) {
+      assistantParts.unshift({ type: 'thinking', content: accumulatedThinking } as MessagePart)
+    }
+
+    if (accumulated) {
+      assistantParts.push({ type: 'text', content: accumulated })
+    }
+
+    if (assistantParts.length > 0) {
+      try {
+        await runPersistenceStep(
+          'agent.persistence.assistant_message',
+          () =>
+            persistAssistantMessage(
+              threadId,
+              accumulated,
+              assistantParts,
+              createRunMetadata(telemetry, {
+                error: streamError ?? undefined,
+                partial: !!streamError,
+              }),
+            ),
+          {
+            'agent.thread_id': threadId,
+            'agent.message_role': 'assistant',
+            'agent.partial': !!streamError,
+          },
+        )
+        if (!streamError && telemetry.status === 'completed') {
+          maybeGenerateTitle(threadId, userContent).catch(() => {})
+        }
+      } catch (err) {
+        persistenceError = err instanceof Error ? err.message : String(err)
+        log.set({ persistAssistantError: persistenceError })
+      }
+    }
+
+    yield {
+      type: 'CUSTOM' as const,
+      name:
+        telemetry.status === 'completed'
+          ? 'run_complete'
+          : telemetry.status === 'aborted'
+            ? 'run_aborted'
+            : 'run_error',
+      value: {
+        threadId,
+        status: telemetry.status,
+        finishReason: telemetry.finishReason ?? null,
+        durationMs: telemetry.durationMs ?? null,
+        toolCallCount: telemetry.toolCallCount,
+        iterationCount: telemetry.iterationCount,
+        error: streamError ?? telemetry.error ?? null,
+        traceId: telemetry.traceId ?? null,
+      },
+      timestamp: Date.now(),
+    }
+
+    yield {
+      type: 'CUSTOM' as const,
+      name: 'persistence_complete',
+      value: {
+        threadId,
+        status: telemetry.status,
+        error: streamError ?? persistenceError ?? telemetry.error ?? null,
+        traceId: telemetry.traceId ?? null,
+      },
+      timestamp: Date.now(),
+    }
+
+    const finalError =
+      persistenceError ??
+      streamError ??
+      (telemetry.status === 'failed' || telemetry.status === 'aborted'
+        ? telemetry.error
+        : undefined)
+
+    finishPersistenceSpan(telemetry.traceState, {
+      error: finalError,
+      attributes: {
+        'agent.status': telemetry.status,
+        'agent.thread_id': threadId,
+      },
+    })
+    finalizeAgentRunTrace(telemetry.traceState, {
+      error: finalError,
+      attributes: {
+        'agent.status': telemetry.status,
+        'agent.thread_id': threadId,
+        'agent.tool_call_count': telemetry.toolCallCount,
+        'agent.iteration_count': telemetry.iterationCount,
+      },
+    })
+  } finally {
+    if (!telemetry.traceState?.completed) {
+      finishPersistenceSpan(telemetry.traceState, {
+        error: telemetry.error,
+        attributes: {
+          'agent.status': telemetry.status,
+          'agent.thread_id': threadId,
+        },
+      })
+      finalizeAgentRunTrace(telemetry.traceState, {
+        error: telemetry.error,
+        attributes: {
+          'agent.status': telemetry.status,
+          'agent.thread_id': threadId,
+        },
+      })
+    }
   }
 }
 

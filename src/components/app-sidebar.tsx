@@ -55,6 +55,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { useIsOverflowing } from "~/hooks/use-is-overflowing"
+import { Skeleton } from "~/components/ui/skeleton"
 import { threadListQuery } from "~/lib/queries"
 import { canvasListQuery } from "~/lib/canvas-queries"
 import type { Thread } from "~/lib/schemas"
@@ -622,8 +623,40 @@ function ThreadSection({
   )
 }
 
+function SidebarSkeletonGroup({ widths }: { widths: string[] }) {
+  return (
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      {/* Matches SidebarGroupLabel: h-8 px-2 flex items-center rounded-md */}
+      <div className="flex h-8 shrink-0 items-center rounded-md px-2">
+        <Skeleton className="h-3 w-14" />
+      </div>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {widths.map((w, i) => (
+            <SidebarMenuItem key={i}>
+              {/* Matches SidebarMenuButton default: h-8 p-2 flex w-full items-center rounded-md */}
+              <div className="flex h-8 w-full items-center rounded-md p-2">
+                <Skeleton className={`h-3.5 ${w}`} />
+              </div>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
+function SidebarListSkeleton() {
+  return (
+    <>
+      <SidebarSkeletonGroup widths={["w-3/5", "w-1/2"]} />
+      <SidebarSkeletonGroup widths={["w-3/4", "w-2/3", "w-4/5", "w-1/2", "w-3/5"]} />
+    </>
+  )
+}
+
 function ChatSidebarContent() {
-  const { data: conversations = [] } = useQuery(threadListQuery)
+  const { data: conversations = [], isPending } = useQuery(threadListQuery)
   const pinThread = usePinThread()
   const deleteThread = useDeleteThread()
 
@@ -636,6 +669,8 @@ function ChatSidebarContent() {
     }
     return { pinned, recents }
   }, [conversations])
+
+  if (isPending) return <SidebarListSkeleton />
 
   if (conversations.length === 0) {
     return (
@@ -666,7 +701,7 @@ function ChatSidebarContent() {
 }
 
 function CanvasSidebarContent() {
-  const { data: canvases = [] } = useQuery(canvasListQuery)
+  const { data: canvases = [], isPending } = useQuery(canvasListQuery)
   const pinCanvas = usePinCanvas()
   const deleteCanvas = useDeleteCanvas()
 
@@ -679,6 +714,8 @@ function CanvasSidebarContent() {
     }
     return { pinned, recents }
   }, [canvases])
+
+  if (isPending) return <SidebarListSkeleton />
 
   if (canvases.length === 0) {
     return (

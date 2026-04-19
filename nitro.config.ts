@@ -8,6 +8,8 @@ export default defineConfig({
   },
   plugins: [
     './server/plugins/00.migrate.ts',
+    './server/plugins/evlog-drain.ts',
+    './server/plugins/otlp-tracing.ts',
   ],
   tasks: {
     'automations:tick': {

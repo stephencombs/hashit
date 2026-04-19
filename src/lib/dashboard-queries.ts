@@ -40,6 +40,7 @@ export function dashboardSnapshotQuery(persona: string) {
       query.state.data?.snapshot?.status === 'generating'
         ? DASHBOARD_POLL_INTERVAL_MS
         : false,
+    staleTime: 30_000,
     retry: 2,
   })
 }

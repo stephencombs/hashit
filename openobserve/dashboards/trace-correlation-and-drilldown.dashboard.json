@@ -1,0 +1,214 @@
+{
+  "version": 5,
+  "dashboardId": "hashit-trace-correlation-and-drilldown",
+  "title": "Hashit - Trace Correlation And Drilldown",
+  "description": "Correlate run logs and trace spans through trace_id and span_id.",
+  "role": "",
+  "owner": "",
+  "created": "2026-04-18T00:00:00.000Z",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_ID4001",
+          "type": "bar",
+          "title": "Recent Spans By Operation",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT operation_name as \"x_axis_1\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE operation_name IS NOT NULL GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "traces",
+                "x": [{ "label": "Operation", "alias": "x_axis_1", "column": "x_axis_1", "color": null }],
+                "y": [{ "label": "Spans", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 12, "i": 1 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID4002",
+          "type": "table",
+          "title": "Run Traces By Source And Profile",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": true,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT agent_source as \"x_axis_1\", agent_profile as \"x_axis_2\", count(trace_id) as \"y_axis_1\", avg(duration) as \"y_axis_2\" FROM \"hashit\" WHERE operation_name = 'agent.run' GROUP BY x_axis_1, x_axis_2 ORDER BY y_axis_1 DESC",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "traces",
+                "x": [
+                  { "label": "Source", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
+                  { "label": "Profile", "alias": "x_axis_2", "column": "x_axis_2", "color": null }
+                ],
+                "y": [
+                  { "label": "Trace Count", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" },
+                  { "label": "Avg Duration", "alias": "y_axis_2", "column": "y_axis_2", "color": "#61a0a8", "aggregationFunction": "avg" }
+                ],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 12, "i": 2 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID4003",
+          "type": "table",
+          "title": "Recent Correlated Logs",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": true,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp as \"x_axis_1\", trace_id as \"x_axis_2\", span_id as \"x_axis_3\", runprofile as \"x_axis_4\", tracesource as \"x_axis_5\", runstatus as \"x_axis_6\", requestid as \"x_axis_7\" FROM \"hashit\" WHERE trace_id IS NOT NULL ORDER BY x_axis_1 DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
+                  { "label": "Trace Id", "alias": "x_axis_2", "column": "x_axis_2", "color": null },
+                  { "label": "Span Id", "alias": "x_axis_3", "column": "x_axis_3", "color": null },
+                  { "label": "Profile", "alias": "x_axis_4", "column": "x_axis_4", "color": null },
+                  { "label": "Source", "alias": "x_axis_5", "column": "x_axis_5", "color": null },
+                  { "label": "Status", "alias": "x_axis_6", "column": "x_axis_6", "color": null },
+                  { "label": "Request Id", "alias": "x_axis_7", "column": "x_axis_7", "color": null }
+                ],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 12, "w": 48, "h": 12, "i": 3 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID4004",
+          "type": "table",
+          "title": "Recent Correlated Spans",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": true,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp as \"x_axis_1\", trace_id as \"x_axis_2\", span_id as \"x_axis_3\", operation_name as \"x_axis_4\", agent_profile as \"x_axis_5\", agent_source as \"x_axis_6\", span_status as \"x_axis_7\", duration as \"y_axis_1\" FROM \"hashit\" WHERE trace_id IS NOT NULL ORDER BY x_axis_1 DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "traces",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
+                  { "label": "Trace Id", "alias": "x_axis_2", "column": "x_axis_2", "color": null },
+                  { "label": "Span Id", "alias": "x_axis_3", "column": "x_axis_3", "color": null },
+                  { "label": "Operation", "alias": "x_axis_4", "column": "x_axis_4", "color": null },
+                  { "label": "Profile", "alias": "x_axis_5", "column": "x_axis_5", "color": null },
+                  { "label": "Source", "alias": "x_axis_6", "column": "x_axis_6", "color": null },
+                  { "label": "Span Status", "alias": "x_axis_7", "column": "x_axis_7", "color": null }
+                ],
+                "y": [{ "label": "Duration", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "max" }],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 24, "w": 48, "h": 12, "i": 4 },
+          "htmlContent": "",
+          "markdownContent": ""
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
+  },
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "15m"
+  }
+}

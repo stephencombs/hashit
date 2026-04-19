@@ -12,6 +12,10 @@ interface CachedConnection {
   tools: MCPTool[] | null
 }
 
+export interface GetMcpToolsOptions {
+  lazy?: boolean
+}
+
 const connections = new Map<string, CachedConnection>()
 
 async function getOrConnect(
@@ -83,6 +87,7 @@ export async function listToolsForServer(
 export async function getMcpTools(
   selectedServers?: string[],
   enabledTools?: Record<string, string[]>,
+  options?: GetMcpToolsOptions,
 ): Promise<ServerTool[]> {
   let servers = MCP_SERVERS.filter((s) => s.enabled)
 
@@ -110,7 +115,9 @@ export async function getMcpTools(
         ? tools.filter((t) => allowedNames.includes(t.name))
         : tools
 
-      return filtered.map((mcpTool) => mcpToolToServerTool(mcpTool, client, config))
+      return filtered.map((mcpTool) =>
+        mcpToolToServerTool(mcpTool, client, config, options),
+      )
     }),
   )
 
@@ -130,7 +137,9 @@ export async function getMcpTools(
   return allTools
 }
 
-export async function getAllMcpTools(): Promise<ServerTool[]> {
+export async function getAllMcpTools(
+  options?: GetMcpToolsOptions,
+): Promise<ServerTool[]> {
   let token: string
   try {
     token = await getMCPAccessToken()
@@ -144,7 +153,9 @@ export async function getAllMcpTools(): Promise<ServerTool[]> {
     MCP_SERVERS.map(async (config) => {
       const client = await getOrConnect(config, token)
       const tools = await getCachedTools(config, client)
-      return tools.map((mcpTool) => mcpToolToServerTool(mcpTool, client, config))
+      return tools.map((mcpTool) =>
+        mcpToolToServerTool(mcpTool, client, config, options),
+      )
     }),
   )
 

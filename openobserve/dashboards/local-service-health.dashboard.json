@@ -1,0 +1,210 @@
+{
+  "version": 5,
+  "dashboardId": "hashit-local-service-health",
+  "title": "Hashit - Local Service Health",
+  "description": "Lightweight local development health dashboard using request logs already emitted by evlog.",
+  "role": "",
+  "owner": "",
+  "created": "2026-04-18T00:00:00.000Z",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_ID6001",
+          "type": "line",
+          "title": "Request Volume Over Time",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp, '5 minutes') as \"x_axis_1\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE method IS NOT NULL GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null,
+                    "aggregationFunction": "histogram",
+                    "args": [{ "value": "5 minutes" }]
+                  }
+                ],
+                "y": [{ "label": "Requests", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 10, "i": 1 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID6002",
+          "type": "bar",
+          "title": "Responses By Status",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT cast(status as STRING) as \"x_axis_1\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE status IS NOT NULL GROUP BY x_axis_1 ORDER BY y_axis_1 DESC",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [{ "label": "Status", "alias": "x_axis_1", "column": "x_axis_1", "color": null }],
+                "y": [{ "label": "Requests", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 10, "w": 16, "h": 12, "i": 2 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID6003",
+          "type": "table",
+          "title": "Route Distribution",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": true,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT method as \"x_axis_1\", path as \"x_axis_2\", count(_timestamp) as \"y_axis_1\" FROM \"hashit\" WHERE path IS NOT NULL GROUP BY x_axis_1, x_axis_2 ORDER BY y_axis_1 DESC LIMIT 50",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Method", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
+                  { "label": "Path", "alias": "x_axis_2", "column": "x_axis_2", "color": null }
+                ],
+                "y": [{ "label": "Requests", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 16, "y": 10, "w": 32, "h": 12, "i": 3 },
+          "htmlContent": "",
+          "markdownContent": ""
+        },
+        {
+          "id": "Panel_ID6004",
+          "type": "table",
+          "title": "Recent Request Latency",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "wrap_table_cells": true,
+            "base_map": { "type": "osm" },
+            "map_view": { "zoom": 1, "lat": 0, "lng": 0 }
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp as \"x_axis_1\", method as \"x_axis_2\", path as \"x_axis_3\", status as \"x_axis_4\", duration as \"x_axis_5\", requestid as \"x_axis_6\" FROM \"hashit\" WHERE method IS NOT NULL ORDER BY x_axis_1 DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "hashit",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
+                  { "label": "Method", "alias": "x_axis_2", "column": "x_axis_2", "color": null },
+                  { "label": "Path", "alias": "x_axis_3", "column": "x_axis_3", "color": null },
+                  { "label": "Status", "alias": "x_axis_4", "column": "x_axis_4", "color": null },
+                  { "label": "Duration", "alias": "x_axis_5", "column": "x_axis_5", "color": null },
+                  { "label": "Request Id", "alias": "x_axis_6", "column": "x_axis_6", "color": null }
+                ],
+                "y": [],
+                "z": [],
+                "breakdown": [],
+                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
+            }
+          ],
+          "layout": { "x": 0, "y": 22, "w": 48, "h": 14, "i": 4 },
+          "htmlContent": "",
+          "markdownContent": ""
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
+  },
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "15m"
+  }
+}

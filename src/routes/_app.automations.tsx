@@ -39,6 +39,7 @@ import {
 } from '~/components/ui/select'
 import { Separator } from '~/components/ui/separator'
 import { SidebarTrigger } from '~/components/ui/sidebar'
+import { Skeleton } from '~/components/ui/skeleton'
 import { Switch } from '~/components/ui/switch'
 import {
   Table,
@@ -81,6 +82,10 @@ function formatDate(date: Date | string | null | undefined): string {
 }
 
 export const Route = createFileRoute('/_app/automations')({
+  loader: ({ context }) => {
+    if (import.meta.env.SSR) return
+    return context.queryClient.ensureQueryData(automationListQuery)
+  },
   component: AutomationsPage,
 })
 
@@ -750,8 +755,53 @@ function AutomationDialog({
   )
 }
 
+function AutomationsSkeleton() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="mt-1.5 h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-36 rounded-md" />
+        </div>
+
+        <div className="rounded-lg border tabular-nums">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10" />
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Enabled</TableHead>
+                <TableHead>Next Run</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AutomationsPage() {
-  const { data: automationsList = [] } = useQuery(automationListQuery)
+  const { data: automationsList = [], isPending } = useQuery(automationListQuery)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Automation | null>(null)
 
@@ -776,7 +826,7 @@ function AutomationsPage() {
         <h1 className="text-sm font-medium">Automations</h1>
       </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+        {isPending ? <AutomationsSkeleton /> : <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
           <div className="mx-auto max-w-5xl space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -833,7 +883,7 @@ function AutomationsPage() {
               </div>
             )}
           </div>
-        </div>
+        </div>}
 
       <AutomationDialog
         open={dialogOpen}

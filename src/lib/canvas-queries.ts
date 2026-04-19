@@ -11,6 +11,7 @@ export const canvasListQuery = queryOptions({
     const res = await fetch('/api/canvas')
     return z.array(selectCanvasSchema).parse(await res.json())
   },
+  staleTime: 60_000,
 })
 
 export const canvasDetailQuery = (canvasId: string) =>
@@ -20,6 +21,7 @@ export const canvasDetailQuery = (canvasId: string) =>
       const { getCanvas } = await import('~/routes/_app.canvas.$canvasId')
       return getCanvas({ data: canvasId })
     },
+    staleTime: 60_000,
   })
 
 export const nodeVersionsQuery = (canvasId: string, nodeId: string) =>

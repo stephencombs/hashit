@@ -7,6 +7,7 @@
     "dev": "dotenv -e .env.local -e .env -- portless run vite dev",
     "build": "vite build",
     "start": "node .output/server/index.mjs",
+    "eval:agent-runtime": "tsx scripts/evals/agent-runtime.ts",
     "db:generate": "dotenv -e .env.local -e .env -- drizzle-kit generate",
     "db:studio": "dotenv -e .env.local -e .env -- drizzle-kit studio"
   },
@@ -27,6 +28,11 @@
     "@json-render/react": "^0.17.0",
     "@json-render/shadcn": "^0.17.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.215.0",
+    "@opentelemetry/resources": "^2.7.0",
+    "@opentelemetry/sdk-trace-node": "^2.7.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@rive-app/react-webgl2": "^4.28.0",
     "@streamdown/cjk": "^1.0.3",
@@ -106,6 +112,7 @@
     "drizzle-kit": "1.0.0-beta.21",
     "portless": "^0.10.1",
     "react-scan": "^0.5.3",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8"
   }

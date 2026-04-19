@@ -1,4 +1,5 @@
 import type { ExecutorResult } from './index'
+import { executeAutomationRun } from '../../../src/lib/automation-agent'
 
 export async function executeChatPrompt(
   config: Record<string, unknown>,
@@ -10,34 +11,27 @@ export async function executeChatPrompt(
     return { success: false, error: 'Missing prompt in automation config' }
   }
 
-  const body = {
-    prompt,
-    ...(threadId && { threadId }),
+  const result = await executeAutomationRun(prompt, threadId)
+
+  return {
+    success: result.telemetry.status === 'completed',
+    error:
+      result.telemetry.status === 'completed'
+        ? undefined
+        : result.telemetry.error ||
+          `Automation run ended with status: ${result.telemetry.status}`,
+    data: {
+      threadId: result.threadId,
+      runStatus: result.telemetry.status,
+      finishReason: result.telemetry.finishReason,
+      durationMs: result.telemetry.durationMs,
+      toolCallCount: result.telemetry.toolCallCount,
+      iterationCount: result.telemetry.iterationCount,
+      totalTokens: result.telemetry.usage?.totalTokens,
+      requestId: result.telemetry.requestId,
+      traceId: result.telemetry.traceId,
+      spanId: result.telemetry.spanId,
+      mcpServersUsed: result.telemetry.mcpServersUsed,
+    },
   }
-
-  const port = process.env.PORT || '3000'
-  const baseUrl =
-    process.env.APP_URL ||
-    process.env.PORTLESS_URL ||
-    `http://localhost:${port}`
-  const res = await fetch(`${baseUrl}/api/agent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => 'Unknown error')
-    return { success: false, error: `Agent API returned ${res.status}: ${text}` }
-  }
-
-  const reader = res.body?.getReader()
-  if (reader) {
-    while (true) {
-      const { done } = await reader.read()
-      if (done) break
-    }
-  }
-
-  return { success: true, data: { threadId } }
 }
