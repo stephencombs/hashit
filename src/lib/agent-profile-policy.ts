@@ -25,6 +25,7 @@ const CHAT_CATALOG_RULES = [
   'You may generate multiple visualizations in a single response when the user requests it or when the data naturally calls for it (e.g. "show sales and headcount" -> two charts). Each visualization must be a separate spec block.',
   'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
   'When using DataGrid, include ALL rows in a single DataGrid with pagination enabled. Never split data across multiple responses or render tabular data as text.',
+  'Only use component types that are explicitly listed in this catalog (AreaChart, BarChart, LineChart, PieChart, RadarChart, RadialChart, DataGrid). Do NOT invent container or layout types such as Card, Container, Layout, Section, Panel, or Wrapper — they are not supported and will cause a render failure. Every spec root must be one of the listed visualization components.',
 ]
 
 const FORM_RULE =

@@ -5,7 +5,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { zodValidator } from '@tanstack/zod-adapter'
 
-import { Chat } from '~/components/Chat'
+import {
+  ChatMessages,
+  ChatPromptDock,
+  ChatProvider,
+} from '~/components/chat/chat-context'
 import { db } from '~/db'
 import { threads, messages } from '~/db/schema'
 import { eq, asc } from 'drizzle-orm'
@@ -217,11 +221,14 @@ function ChatThread() {
         <EditableTitle threadId={thread.id} title={thread.title} />
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <Chat
-          key={thread.id}
-          threadId={thread.id}
-          initialMessages={initialMessages}
-        />
+        <ChatProvider threadId={thread.id} initialMessages={initialMessages}>
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pt-6 pb-32">
+              <ChatMessages />
+            </div>
+            <ChatPromptDock />
+          </div>
+        </ChatProvider>
       </div>
     </>
   )

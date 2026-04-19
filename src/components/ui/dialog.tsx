@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
@@ -69,7 +71,7 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button
               variant="ghost"
-              className="absolute top-4 right-4 hit-area-2"
+              className="absolute top-4 right-4"
               size="icon-sm"
             >
               <XIcon

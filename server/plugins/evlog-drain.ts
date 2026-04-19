@@ -1,4 +1,5 @@
 import type { DrainContext } from 'evlog'
+import { initLogger } from 'evlog'
 import { createOTLPDrain } from 'evlog/otlp'
 import { createDrainPipeline } from 'evlog/pipeline'
 import { definePlugin } from 'nitro'
@@ -41,6 +42,11 @@ export default definePlugin((nitroApp) => {
     }),
   )
 
+  // Register for Nitro request middleware (request-scoped loggers)
   nitroApp.hooks.hook('evlog:drain', drain)
   nitroApp.hooks.hook('close', () => drain.flush())
+
+  // Register globally so standalone createLogger() calls from background tasks
+  // (e.g. dashboard-generator) route through the same drain pipeline.
+  initLogger({ drain })
 })

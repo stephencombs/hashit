@@ -127,7 +127,6 @@ export const ChainOfThoughtStep = memo(
       className={cn(
         "flex gap-2 text-sm",
         stepStatusStyles[status],
-        "fade-in-0 slide-in-from-top-2 animate-in",
         className
       )}
       {...props}
@@ -185,7 +184,7 @@ export const ChainOfThoughtContent = memo(
         <CollapsibleContent
           className={cn(
             "mt-2 space-y-3",
-            "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+            "text-popover-foreground outline-none",
             className
           )}
           {...props}

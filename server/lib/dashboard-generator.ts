@@ -1,9 +1,9 @@
+import { createLogger } from 'evlog'
 import { toolDefinition } from '@tanstack/ai'
-import { validateSpec as validateSpecStructure } from '@json-render/core'
 import { eq } from 'drizzle-orm'
 import { db } from '../../src/db'
 import { dashboardSnapshots } from '../../src/db/schema'
-import { uiCatalog } from '../../src/lib/ui-catalog'
+import { uiCatalog, validateWidgetSpec } from '../../src/lib/ui-catalog'
 import { withJsonRender } from '../../src/lib/json-render-stream'
 import { getAllMcpTools } from '../../src/lib/mcp/client'
 import type { ServerTool, Tool } from '@tanstack/ai'
@@ -50,50 +50,12 @@ function extractRows(result: unknown, depth = 0): unknown[] | null {
   return null
 }
 
-const SERIES_KEY_PROPS = ['yKeys', 'dataKeys'] as const
-
-type ValidationOutcome = { valid: true } | { valid: false; reason: string }
-
-function validateWidgetSpec(spec: Spec | null): ValidationOutcome {
-  if (!spec || !spec.root || !spec.elements) {
-    return { valid: false, reason: 'Spec missing root or elements' }
-  }
-  const errors = validateSpecStructure(spec).issues.filter(
-    (i) => i.severity === 'error',
-  )
-  if (errors.length > 0) {
-    return {
-      valid: false,
-      reason: `Structural: ${errors.map((e) => e.message).join('; ')}`,
-    }
-  }
-  const parsed = uiCatalog.validate(spec)
-  if (!parsed.success) {
-    const first = parsed.error?.issues?.[0]
-    const detail = first
-      ? `${first.path.join('.')}: ${first.message}`
-      : parsed.error?.message ?? 'unknown zod error'
-    return { valid: false, reason: `Props/catalog: ${detail.slice(0, 240)}` }
-  }
-  for (const [key, element] of Object.entries(spec.elements)) {
-    const props = (element.props ?? {}) as Record<string, unknown>
-    if (Array.isArray(props.data) && props.data.length === 0) {
-      return { valid: false, reason: `${element.type} "${key}" has empty data array` }
-    }
-    for (const seriesKey of SERIES_KEY_PROPS) {
-      const val = props[seriesKey]
-      if (Array.isArray(val) && val.length === 0) {
-        return { valid: false, reason: `${element.type} "${key}" has empty ${seriesKey}` }
-      }
-    }
-  }
-  return { valid: true }
-}
 
 const CATALOG_PROMPT = uiCatalog.prompt({
   mode: 'standalone',
   customRules: [
     'Generate exactly one visualization from the provided data.',
+    'Only use component types listed in this catalog (AreaChart, BarChart, LineChart, PieChart, RadarChart, RadialChart, DataGrid). Do NOT invent container or layout types such as Card, Container, Layout, Section, Panel, or Wrapper — they are not supported and will cause a render failure. The spec root must be one of the listed visualization components.',
     'Use DataGrid for tabular results with many rows/columns. Use charts for trends, comparisons, and distributions.',
     'When using DataGrid, include ALL rows with pagination enabled.',
     'Choose the most appropriate chart type: bar charts for comparisons, line/area for trends, pie/donut for proportions.',
@@ -634,6 +596,7 @@ score: 90
 Call submit_widget_recipes with your recipes sorted by score (highest first). Produce exactly 6 recipes.
 `
 
+  const planningLog = createLogger()
   const { stream, telemetry } = await createAgentRun({
     profile: 'dashboardPlanning',
     source: 'dashboard-planning',
@@ -641,6 +604,7 @@ Call submit_widget_recipes with your recipes sorted by score (highest first). Pr
     extraTools: [submitRecipesTool],
     maxToolIterations: 2,
     parentSpan: dashboardSpan?.span,
+    log: planningLog,
   })
 
   let recipes: WidgetRecipe[] = []
@@ -724,6 +688,7 @@ Call submit_widget_recipes with your recipes sorted by score (highest first). Pr
         'dashboard.trace_id': dashboardTraceId,
       },
     })
+    planningLog.emit()
   }
 
   if (!toolCalled) {
@@ -974,17 +939,25 @@ ${recipe.render}
 - If the available data is insufficient to produce a meaningful visualization, output NOTHING - no spec block at all.
 - Do not output any text outside the spec block.`
 
+  const renderLog = createLogger()
   const { stream: uiStream, telemetry } = await createAgentRun({
     profile: 'dashboardRender',
     source: 'dashboard-render',
     messages: [{ role: 'user' as const, content: uiPrompt }],
     extraSystemPrompts: [CATALOG_PROMPT],
     parentSpan: dashboardSpan?.span,
+    log: renderLog,
   })
 
   let spec: Spec | null = null
   try {
-    for await (const chunk of withJsonRender(uiStream)) {
+    for await (const chunk of withJsonRender(uiStream, (metrics) => {
+      console.log(
+        `[dashboard][ui-gen] widget="${recipe.widgetId}" ` +
+          `patchLines=${metrics.patchLinesReceived} patchesEmitted=${metrics.patchesEmitted} ` +
+          `specsCompleted=${metrics.specsCompleted} ms=${metrics.totalMs}`,
+      )
+    })) {
       if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
         spec = (chunk.value as { spec: Spec }).spec
       }
@@ -1000,6 +973,7 @@ ${recipe.render}
         'dashboard.widget_id': recipe.widgetId,
       },
     })
+    renderLog.emit()
   }
 
   const validation = validateWidgetSpec(spec)
@@ -1139,32 +1113,48 @@ export async function generateDashboard(params: GenerateDashboardParams): Promis
         })
     }
 
-    await Promise.all(
-      recipes.map(async (recipe, i) => {
-        console.log(`[dashboard] Rendering widget "${recipe.widgetId}" for snapshot ${snapshotId}`)
-        try {
-          widgetsInOrder[i] = await renderWidget(
-            recipe,
-            mcpTools,
-            dataSourceCache,
-            dashboardSpan,
-            dashboardTraceId,
-          )
-        } catch (err) {
-          console.error(`[dashboard] renderWidget failed for "${recipe.widgetId}":`, err)
-          widgetsInOrder[i] = {
-            widgetId: recipe.widgetId,
-            title: recipe.title,
-            insight: recipe.insight,
-            spec: null,
-            skipReason: `Render error — ${err instanceof Error ? err.message : String(err)}`,
-            traceId: dashboardTraceId,
-          }
-        }
-        flushSnapshot()
-      }),
-    )
+    // Bounded concurrency: at most MAX_CONCURRENT_RENDERS widget renders run in
+    // parallel. Full Promise.all over 6+ widgets means 6+ simultaneous LLM API
+    // calls which can saturate rate limits and inflate token cost spikes.
+    const MAX_CONCURRENT_RENDERS = 3
 
+    async function renderWithBoundedPool(): Promise<void> {
+      const queue = recipes.map((recipe, i) => ({ recipe, i }))
+
+      async function worker(): Promise<void> {
+        let task = queue.shift()
+        while (task) {
+          const { recipe, i } = task
+          console.log(`[dashboard] Rendering widget "${recipe.widgetId}" for snapshot ${snapshotId}`)
+          try {
+            widgetsInOrder[i] = await renderWidget(
+              recipe,
+              mcpTools,
+              dataSourceCache,
+              dashboardSpan,
+              dashboardTraceId,
+            )
+          } catch (err) {
+            console.error(`[dashboard] renderWidget failed for "${recipe.widgetId}":`, err)
+            widgetsInOrder[i] = {
+              widgetId: recipe.widgetId,
+              title: recipe.title,
+              insight: recipe.insight,
+              spec: null,
+              skipReason: `Render error — ${err instanceof Error ? err.message : String(err)}`,
+              traceId: dashboardTraceId,
+            }
+          }
+          flushSnapshot()
+          task = queue.shift()
+        }
+      }
+
+      const workerCount = Math.min(MAX_CONCURRENT_RENDERS, recipes.length)
+      await Promise.all(Array.from({ length: workerCount }, () => worker()))
+    }
+
+    await renderWithBoundedPool()
     await writeQueue
 
     const widgets: PersistedWidget[] = [

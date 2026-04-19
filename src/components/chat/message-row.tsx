@@ -257,7 +257,11 @@ function MessageRowImpl({
                           status={step.isStreaming ? "active" : "complete"}
                         >
                           <div className="text-xs text-muted-foreground">
-                            <MessageResponse mode="static" className="prose-xs">
+                            <MessageResponse
+                              deferMarkdown={!isStreaming}
+                              mode="static"
+                              className="prose-xs"
+                            >
                               {step.text}
                             </MessageResponse>
                           </div>
@@ -297,7 +301,10 @@ function MessageRowImpl({
         {message.parts.map((part, i) => {
           if (part.type === "text") {
             return (
-              <MessageResponse key={`${message.id}-${i}`}>
+              <MessageResponse
+                key={`${message.id}-${i}`}
+                deferMarkdown={!isStreaming}
+              >
                 {part.content}
               </MessageResponse>
             );

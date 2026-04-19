@@ -10,11 +10,11 @@ import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { ArrowDownIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
-import type { Spec } from "@json-render/core";
 import { MessageRow, type ChatMessage } from "~/components/chat/message-row";
 import { PendingAssistantMessage } from "~/components/chat/pending-assistant-message";
 import { usePinToBottom } from "~/components/chat/use-pin-to-bottom";
 import { threadScrollMemory } from "~/components/chat/thread-scroll-memory";
+import { useLiveSpecsSnapshot, type LiveSpecStore } from "~/lib/live-spec-store";
 
 const ESTIMATED_ROW_HEIGHT = 200;
 const OVERSCAN = 4;
@@ -26,12 +26,17 @@ export interface VirtualConversationProps {
   messages: ChatMessage[];
   isStreaming: boolean;
   isAwaitingResponse?: boolean;
-  specsMap: Map<string, Spec[]>;
+  /**
+   * External live-spec store. VirtualConversation subscribes via
+   * useSyncExternalStore so only it (and the streaming MessageRow) re-renders
+   * on each patch — the rest of the context tree stays stable.
+   */
+  liveSpecStore: LiveSpecStore;
   savedArtifactKeys: Set<string>;
   submittedFormData: Map<string, Record<string, unknown>>;
   onFormSubmit: (toolCallId: string, data: Record<string, unknown>) => void;
   onSaveArtifact: (
-    spec: Spec,
+    spec: import("@json-render/core").Spec,
     messageId?: string,
     specIndex?: number,
   ) => void;
@@ -43,18 +48,24 @@ export function VirtualConversation({
   messages,
   isStreaming,
   isAwaitingResponse = false,
-  specsMap,
+  liveSpecStore,
   savedArtifactKeys,
   submittedFormData,
   onFormSubmit,
   onSaveArtifact,
   className,
 }: VirtualConversationProps) {
+  // Subscribe to the live-spec store. Produces a new Map reference on every
+  // spec_patch / spec_complete, but unchanged entries keep the same array
+  // reference so memo'd MessageRows for non-streaming messages bail out.
+  const liveSpecsSnapshot = useLiveSpecsSnapshot(liveSpecStore);
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialOffsetRef = useRef<number | undefined>(
     threadScrollMemory.get(threadId),
   );
   const lastTotalSizeRef = useRef(0);
+  const previousThreadIdRef = useRef<string | undefined>(threadId);
+  const hasAppliedInitialScrollRef = useRef(false);
 
   const totalRowCount = messages.length + (isAwaitingResponse ? 1 : 0);
 
@@ -103,32 +114,55 @@ export function VirtualConversation({
     },
   });
 
-  const pin = usePinToBottom(virtualizer);
+  const { isAtBottom, scrollToBottom, isPinnedRef } = usePinToBottom(virtualizer);
 
-  // On first mount: if no remembered offset, snap to bottom and re-pin
-  // a couple frames later (after row measurement settles).
+  // Apply thread-specific scroll restoration without remounting the whole
+  // conversation tree. On first mount and thread changes:
+  // - restore remembered offset if present
+  // - otherwise snap to bottom to match prior remount behavior
   useLayoutEffect(() => {
-    if (initialOffsetRef.current !== undefined) return;
-    if (messages.length === 0) return;
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+
+    const previousThreadId = previousThreadIdRef.current;
+    const threadChanged = previousThreadId !== threadId;
+    const shouldRestoreForMount = !hasAppliedInitialScrollRef.current;
+
+    if (!threadChanged && !shouldRestoreForMount) return;
+
+    if (threadChanged && previousThreadId !== undefined) {
+      threadScrollMemory.set(previousThreadId, el.scrollTop);
+    }
+    previousThreadIdRef.current = threadId;
+    hasAppliedInitialScrollRef.current = true;
+    initialOffsetRef.current = threadScrollMemory.get(threadId);
+    lastTotalSizeRef.current = 0;
+
+    if (initialOffsetRef.current !== undefined) {
+      el.scrollTop = initialOffsetRef.current;
+      isPinnedRef.current = false;
+      return;
+    }
+
+    if (messages.length === 0) {
+      el.scrollTop = 0;
+      isPinnedRef.current = true;
+      return;
+    }
+
+    scrollToBottom();
     let raf1 = 0;
     let raf2 = 0;
     raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
+        scrollToBottom();
       });
     });
     return () => {
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
     };
-    // Intentionally only run on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [threadId, messages.length, scrollToBottom, isPinnedRef]);
 
   // Persist the final offset on unmount (covers programmatic unmount cases
   // where the last `onChange` may have already fired with a stale value).
@@ -193,7 +227,7 @@ export function VirtualConversation({
                     message={message}
                     isLastMessage={isLast}
                     isStreaming={isStreaming}
-                    liveSpecs={specsMap.get(message.id)}
+                    liveSpecs={liveSpecsSnapshot.get(message.id)}
                     savedArtifactKeys={savedArtifactKeys}
                     submittedFormData={submittedFormData}
                     onFormSubmit={onFormSubmit}
@@ -207,8 +241,8 @@ export function VirtualConversation({
       </div>
 
       <ScrollToBottomButton
-        isAtBottom={pin.isAtBottom}
-        onClick={pin.scrollToBottom}
+        isAtBottom={isAtBottom}
+        onClick={scrollToBottom}
       />
     </div>
   );

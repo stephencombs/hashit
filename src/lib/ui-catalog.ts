@@ -1,6 +1,7 @@
-import { defineCatalog } from '@json-render/core'
+import { defineCatalog, validateSpec as validateSpecStructure } from '@json-render/core'
 import { schema } from '@json-render/react/schema'
 import { z } from 'zod'
+import type { Spec } from '@json-render/core'
 
 export const uiCatalog = defineCatalog(schema, {
   components: {
@@ -111,3 +112,76 @@ export const uiCatalog = defineCatalog(schema, {
   },
   actions: {},
 })
+
+// ---------------------------------------------------------------------------
+// Shared spec validation — used by both the chat stream path and the dashboard
+// generator so catalog rules are enforced consistently in one place.
+// ---------------------------------------------------------------------------
+
+const SERIES_KEY_PROPS = ['yKeys', 'dataKeys'] as const
+
+export type SpecValidationResult =
+  | { valid: true }
+  | { valid: false; reason: string }
+
+/**
+ * Validates a compiled Spec against the structural schema and the catalog's
+ * component/prop constraints. Returns `{ valid: true }` or an object with a
+ * human-readable `reason` string.
+ *
+ * Checks performed (in order):
+ *  1. Root + elements presence
+ *  2. Structural issues from @json-render/core (errors only, warnings ignored)
+ *  3. Catalog Zod validation (component props)
+ *  4. Empty `data` array on any element
+ *  5. Empty series key arrays (yKeys / dataKeys)
+ */
+export function validateWidgetSpec(spec: Spec | null): SpecValidationResult {
+  if (!spec || !spec.root || !spec.elements) {
+    return { valid: false, reason: 'Spec missing root or elements' }
+  }
+
+  const structuralErrors = validateSpecStructure(spec).issues.filter(
+    (i) => i.severity === 'error',
+  )
+  if (structuralErrors.length > 0) {
+    return {
+      valid: false,
+      reason: `Structural: ${structuralErrors.map((e) => e.message).join('; ')}`,
+    }
+  }
+
+  // Normalize: add `children: []` to elements that omit it. The JSON Render
+  // base element schema requires the field, but LLM-generated leaf components
+  // (charts, DataGrid) omit it because they have no children. Normalizing here
+  // lets us run the full catalog/prop check without false negatives.
+  const normalizedSpec: Spec = {
+    ...spec,
+    elements: Object.fromEntries(
+      Object.entries(spec.elements).map(([k, el]) => [k, { children: [], ...el }]),
+    ),
+  }
+  const catalogResult = uiCatalog.validate(normalizedSpec)
+  if (!catalogResult.success) {
+    const first = catalogResult.error?.issues?.[0]
+    const detail = first
+      ? `${first.path.join('.')}: ${first.message}`
+      : catalogResult.error?.message ?? 'unknown zod error'
+    return { valid: false, reason: `Props/catalog: ${detail.slice(0, 240)}` }
+  }
+
+  for (const [key, element] of Object.entries(spec.elements)) {
+    const props = (element.props ?? {}) as Record<string, unknown>
+    if (Array.isArray(props.data) && props.data.length === 0) {
+      return { valid: false, reason: `${element.type} "${key}" has empty data array` }
+    }
+    for (const seriesKey of SERIES_KEY_PROPS) {
+      const val = props[seriesKey]
+      if (Array.isArray(val) && val.length === 0) {
+        return { valid: false, reason: `${element.type} "${key}" has empty ${seriesKey}` }
+      }
+    }
+  }
+
+  return { valid: true }
+}

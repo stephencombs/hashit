@@ -26,6 +26,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Streamdown } from "streamdown";
@@ -319,24 +320,64 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
+  deferMarkdown?: boolean;
+};
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
-      )}
-      plugins={streamdownPlugins}
-      {...props}
-    />
-  ),
+  ({ className, deferMarkdown = false, children, ...props }: MessageResponseProps) => {
+    const [richReady, setRichReady] = useState(!deferMarkdown);
+    const previousChildrenRef = useRef(children);
+
+    useEffect(() => {
+      if (!deferMarkdown) {
+        setRichReady(true);
+        previousChildrenRef.current = children;
+        return;
+      }
+      if (previousChildrenRef.current !== children) {
+        previousChildrenRef.current = children;
+        setRichReady(false);
+      }
+      let frame = 0;
+      frame = requestAnimationFrame(() => {
+        setRichReady(true);
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [children, deferMarkdown]);
+
+    if (!richReady && typeof children === "string") {
+      return (
+        <div
+          className={cn(
+            "size-full whitespace-pre-wrap break-words text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+            className
+          )}
+        >
+          {children}
+        </div>
+      );
+    }
+
+    return (
+      <Streamdown
+        className={cn(
+          "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          className
+        )}
+        plugins={streamdownPlugins}
+        {...props}
+      >
+        {children}
+      </Streamdown>
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating
+    nextProps.isAnimating === prevProps.isAnimating &&
+    nextProps.deferMarkdown === prevProps.deferMarkdown
 );
 
 MessageResponse.displayName = "MessageResponse";

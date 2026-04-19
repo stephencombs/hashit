@@ -131,7 +131,14 @@ export const Route = createFileRoute('/api/chat')({
           traceState,
         })
 
-        const stream = withJsonRender(withFormStop(rawStream))
+        const stream = withJsonRender(withFormStop(rawStream), (metrics) => {
+          log.set({
+            uiGenPatchLinesReceived: metrics.patchLinesReceived,
+            uiGenPatchesEmitted: metrics.patchesEmitted,
+            uiGenSpecsCompleted: metrics.specsCompleted,
+            uiGenTotalMs: metrics.totalMs,
+          })
+        })
 
         log.set({ phase: 'stream_started' })
 

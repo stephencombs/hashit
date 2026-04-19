@@ -9,19 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
-import type { MessagePart } from "@tanstack/ai";
-import type { UseChatReturn } from "@tanstack/ai-react";
-
-type ChatStatus = UseChatReturn["status"];
 import type { Spec } from "@json-render/core";
+import type { UseChatReturn } from "@tanstack/ai-react";
+import { MessageSquare } from "lucide-react";
 
-import { useModelSettings } from "~/hooks/use-model-settings";
-import { useMcpSettings } from "~/hooks/use-mcp-settings";
-import { artifactsByThreadQuery, type ThreadArtifact } from "~/lib/queries";
-import type { Thread } from "~/lib/schemas";
 import {
   VirtualConversation,
   VirtualConversationEmptyState,
@@ -35,21 +26,22 @@ import {
   PromptInputFooter,
   PromptInputBody,
 } from "~/components/ai-elements/prompt-input";
+import {
+  useChatSession,
+  type ChatMessageShape,
+} from "~/components/chat/use-chat-session";
+import { Skeleton } from "~/components/ui/skeleton";
 
-type ChatMessageShape = {
-  id: string;
-  role: "user" | "assistant";
-  parts: Array<MessagePart>;
-};
+type ChatStatus = UseChatReturn["status"];
 
 /** Conversation + message actions — excludes composer `input` so typing does not re-render the message list. */
 interface ChatMessagesContextValue {
   threadId: string | undefined;
-  messages: ReturnType<typeof useChat>["messages"];
+  messages: ReturnType<typeof useChatSession>["messages"];
   status: ChatStatus;
   isStreaming: boolean;
   isAwaitingResponse: boolean;
-  specsMap: Map<string, Spec[]>;
+  liveSpecStore: ReturnType<typeof useChatSession>["liveSpecStore"];
   savedArtifactKeys: Set<string>;
   submittedFormData: Map<string, Record<string, unknown>>;
   handleFormSubmit: (toolCallId: string, data: Record<string, unknown>) => void;
@@ -76,8 +68,6 @@ const ChatComposerContext = createContext<ChatComposerContextValue | null>(
   null,
 );
 
-const OPTIMISTIC_ID = "optimistic-new";
-
 export interface ChatProviderProps {
   threadId?: string;
   initialMessages?: Array<ChatMessageShape>;
@@ -92,248 +82,67 @@ export function ChatProvider({
   children,
 }: ChatProviderProps) {
   const [input, setInput] = useState("");
-  const [specsMap, setSpecsMap] = useState<Map<string, Spec[]>>(new Map());
-  // Tracks form submissions by tool call ID → submitted field values.
-  // Driven by user interaction only (not by server tool execution state)
-  // so the form never auto-submits due to TanStack AI's server-side auto-complete.
-  const [submittedFormData, setSubmittedFormData] = useState<
-    Map<string, Record<string, unknown>>
-  >(new Map());
-  const createdThreadIdRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const queryClient = useQueryClient();
-  const { model, temperature, systemPrompt } = useModelSettings();
-  const { selectedServers, enabledTools } = useMcpSettings();
 
-  const { data: threadArtifacts } = useQuery({
-    ...artifactsByThreadQuery(threadId ?? ""),
-    enabled: !!threadId,
+  const session = useChatSession({
+    threadId,
+    initialMessages,
+    onThreadCreated,
+    syncOnRouteThreadChange: true,
   });
-
-  const savedArtifactKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const a of threadArtifacts ?? []) {
-      if (a.messageId) {
-        keys.add(`${a.messageId}:${a.specIndex ?? 0}`);
-      }
-    }
-    return keys;
-  }, [threadArtifacts]);
-
-  const messagesRef = useRef<Array<{ id: string }>>([]);
-
-  const navigateIfReady = () => {
-    if (!threadId && createdThreadIdRef.current && onThreadCreated) {
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-      onThreadCreated(createdThreadIdRef.current);
-      createdThreadIdRef.current = null;
-    }
-  };
 
   const {
+    activeThreadId,
     messages,
-    sendMessage,
     status,
-    addToolResult,
-    setMessages,
-    stop,
-  } = useChat({
-    id: threadId,
-    connection: fetchServerSentEvents("/api/chat"),
-    initialMessages: initialMessages as Array<ChatMessageShape>,
-    body: {
-      threadId,
-      model,
-      temperature,
-      systemPrompt,
-      selectedServers,
-      enabledTools,
-    },
-    onCustomEvent: (
-      eventType: string,
-      data: unknown,
-      _context: { toolCallId?: string },
-    ) => {
-      if (eventType === "thread_created") {
-        const { threadId: realId } = data as { threadId: string };
-        createdThreadIdRef.current = realId;
+    liveSpecStore,
+    savedArtifactKeys,
+    submittedFormData,
+    handleSubmit: submitChatText,
+    handleFormSubmit,
+    handleSaveArtifact,
+    isStreaming,
+    isAwaitingResponse,
+  } = session;
 
-        queryClient.setQueryData<Thread[]>(["threads"], (old = []) =>
-          old.map((t) => (t.id === OPTIMISTIC_ID ? { ...t, id: realId } : t)),
-        );
-      }
-      if (eventType === "persistence_complete") {
-        queryClient.invalidateQueries({ queryKey: ["threads"] });
-        navigateIfReady();
-      }
-      if (eventType === "spec_patch" || eventType === "spec_complete") {
-        const { spec, specIndex: idx } = data as {
-          spec: Spec;
-          specIndex: number;
-        };
-        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
-        if (lastMsg) {
-          setSpecsMap((prev) => {
-            const next = new Map(prev);
-            const arr = [...(next.get(lastMsg.id) ?? [])];
-            arr[idx] = spec;
-            next.set(lastMsg.id, arr);
-            return next;
-          });
-        }
-      }
-    },
-    onFinish: () => {
-      // Navigation is handled by persistence_complete custom event instead,
-      // which fires after the full server-side stream completes (including
-      // tool execution in the agentic loop). onFinish fires on RUN_FINISHED
-      // which can happen mid-stream before tool results return.
-    },
-  });
-
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
-  // Sync chat state on thread switch without remounting ChatProvider.
-  // The route loader prefetches `threadDetailQuery`, so by the time
-  // `threadId` changes here the parent's `initialMessages` already reflects
-  // the new thread and we can swap messages synchronously before paint.
-  const lastThreadIdRef = useRef<string | undefined>(threadId);
+  const prevThreadIdRef = useRef(threadId);
   useLayoutEffect(() => {
-    if (lastThreadIdRef.current === threadId) return;
-    lastThreadIdRef.current = threadId;
-
-    stop();
-    setMessages(
-      (initialMessages as Array<ChatMessageShape> | undefined) ?? [],
-    );
-    setSpecsMap(new Map());
-    setSubmittedFormData(new Map());
+    if (prevThreadIdRef.current === threadId) return;
+    prevThreadIdRef.current = threadId;
     setInput("");
-    createdThreadIdRef.current = null;
-  }, [threadId, initialMessages, stop, setMessages]);
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash) return;
-    requestAnimationFrame(() => {
-      const el = document.querySelector(hash);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }, []);
+  }, [threadId]);
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       if (!message.text.trim()) return;
-
-      const now = new Date();
-      if (!threadId) {
-        queryClient.setQueryData<Thread[]>(["threads"], (old = []) => [
-          {
-            id: OPTIMISTIC_ID,
-            title: "Untitled",
-            source: null,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
-            pinnedAt: null,
-          },
-          ...old,
-        ]);
-      } else {
-        queryClient.setQueryData<Thread[]>(["threads"], (old = []) =>
-          old
-            .map((t) => (t.id === threadId ? { ...t, updatedAt: now } : t))
-            .sort((a, b) => {
-              const aPinned = a.pinnedAt ? 0 : 1;
-              const bPinned = b.pinnedAt ? 0 : 1;
-              if (aPinned !== bPinned) return aPinned - bPinned;
-              return b.updatedAt.getTime() - a.updatedAt.getTime();
-            }),
-        );
-      }
-
-      sendMessage(message.text);
+      submitChatText(message.text);
       setInput("");
     },
-    [threadId, queryClient, sendMessage],
+    [submitChatText],
   );
-
-  const handleSaveArtifact = useCallback(
-    async (spec: Spec, messageId?: string, specIndex = 0) => {
-      const root = spec.elements?.[spec.root] as
-        | { props?: { title?: string } }
-        | undefined;
-      const title =
-        root?.props?.title || `Chart – ${new Date().toLocaleDateString()}`;
-
-      try {
-        const res = await fetch("/api/artifacts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, spec, threadId, messageId, specIndex }),
-        });
-        if (res.ok && threadId) {
-          const created = (await res.json()) as ThreadArtifact;
-          queryClient.setQueryData<ThreadArtifact[]>(
-            artifactsByThreadQuery(threadId).queryKey,
-            (prev = []) => [created, ...prev],
-          );
-        }
-      } catch {
-        // best-effort
-      }
-    },
-    [threadId, queryClient],
-  );
-
-  const handleFormSubmit = useCallback(
-    (toolCallId: string, data: Record<string, unknown>) => {
-      setSubmittedFormData((prev) => {
-        const next = new Map(prev);
-        next.set(toolCallId, data);
-        return next;
-      });
-      addToolResult({
-        toolCallId,
-        tool: "collect_form_data",
-        output: data,
-      });
-    },
-    [addToolResult],
-  );
-
-  const isStreaming = status !== "ready";
-  const lastMessage = messages[messages.length - 1];
-  const hasAssistantContent =
-    lastMessage?.role === "assistant" &&
-    (lastMessage.parts.length > 0 ||
-      (specsMap.get(lastMessage.id)?.length ?? 0) > 0);
-  const isAwaitingResponse = isStreaming && !hasAssistantContent;
 
   const chatStatus: ChatStatus = status;
 
   const messagesContextValue = useMemo(
     (): ChatMessagesContextValue => ({
-      threadId,
+      threadId: activeThreadId,
       messages,
       status: chatStatus,
       isStreaming,
       isAwaitingResponse,
-      specsMap,
+      liveSpecStore,
       savedArtifactKeys,
       submittedFormData,
       handleFormSubmit,
       handleSaveArtifact,
     }),
     [
-      threadId,
+      activeThreadId,
       messages,
       chatStatus,
       isStreaming,
       isAwaitingResponse,
-      specsMap,
+      liveSpecStore,
       savedArtifactKeys,
       submittedFormData,
       handleFormSubmit,
@@ -377,20 +186,71 @@ export function useChatComposerContext(): ChatComposerContextValue {
   return ctx;
 }
 
+function useDeferredThreadSurface(
+  threadId: string | undefined,
+  hasMessages: boolean,
+): boolean {
+  const [readyThreadId, setReadyThreadId] = useState(threadId);
+
+  useEffect(() => {
+    if (!hasMessages) {
+      setReadyThreadId(threadId);
+      return;
+    }
+    if (readyThreadId === threadId) return;
+
+    let frame = 0;
+    frame = requestAnimationFrame(() => {
+      setReadyThreadId(threadId);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [hasMessages, readyThreadId, threadId]);
+
+  if (!hasMessages) return true;
+  return readyThreadId === threadId;
+}
+
+function DeferredThreadSwitchFallback() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-end">
+      <div className="space-y-8 px-4 pt-4 pb-8">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-11/12" />
+          <Skeleton className="h-5 w-4/5" />
+          <Skeleton className="h-5 w-3/4" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="ml-auto h-11 w-56 rounded-xl" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-10/12" />
+          <Skeleton className="h-5 w-9/12" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChatMessages() {
   const {
     threadId,
     messages,
     isStreaming,
     isAwaitingResponse,
-    specsMap,
+    liveSpecStore,
     savedArtifactKeys,
     submittedFormData,
     handleFormSubmit,
     handleSaveArtifact,
   } = useChatMessagesContext();
+  const hasMessages = messages.length > 0;
+  const shouldRenderConversation = useDeferredThreadSurface(
+    threadId,
+    hasMessages,
+  );
 
-  if (messages.length === 0) {
+  if (!hasMessages) {
     return (
       <div className="min-h-0 flex-1">
         <VirtualConversationEmptyState
@@ -402,13 +262,17 @@ export function ChatMessages() {
     );
   }
 
+  if (!shouldRenderConversation) {
+    return <DeferredThreadSwitchFallback />;
+  }
+
   return (
     <VirtualConversation
       threadId={threadId}
       messages={messages as unknown as ChatMessage[]}
       isStreaming={isStreaming}
       isAwaitingResponse={isAwaitingResponse}
-      specsMap={specsMap}
+      liveSpecStore={liveSpecStore}
       savedArtifactKeys={savedArtifactKeys}
       submittedFormData={submittedFormData}
       onFormSubmit={handleFormSubmit}
