@@ -337,6 +337,7 @@ export async function* withPersistence(
   threadCreated: boolean,
   userContent: string,
   userParts: Array<MessagePart>,
+  persistUserTurn: boolean,
   log: RequestLogger,
   telemetry: AgentRunTelemetry,
   userMessageId?: string,
@@ -374,24 +375,26 @@ export async function* withPersistence(
       }
     }
 
-    try {
-      await runPersistenceStep(
-        'agent.persistence.user_message',
-        () =>
-          persistUserMessage(
-            threadId,
-            userContent,
-            userParts,
-            createRunMetadata(telemetry),
-            userMessageId,
-          ),
-        {
-          'agent.thread_id': threadId,
-          'agent.message_role': 'user',
-        },
-      )
-    } catch (err) {
-      log.set({ persistUserError: String(err) })
+    if (persistUserTurn) {
+      try {
+        await runPersistenceStep(
+          'agent.persistence.user_message',
+          () =>
+            persistUserMessage(
+              threadId,
+              userContent,
+              userParts,
+              createRunMetadata(telemetry),
+              userMessageId,
+            ),
+          {
+            'agent.thread_id': threadId,
+            'agent.message_role': 'user',
+          },
+        )
+      } catch (err) {
+        log.set({ persistUserError: String(err) })
+      }
     }
 
     let accumulated = ''

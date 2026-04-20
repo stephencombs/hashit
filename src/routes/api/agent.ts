@@ -72,6 +72,7 @@ export const Route = createFileRoute('/api/agent')({
             prepared.threadCreated,
             prepared.prompt,
             prepared.userParts,
+            true,
             log,
             prepared.telemetry,
           ),

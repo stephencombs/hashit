@@ -74,6 +74,10 @@ export const Route = createFileRoute('/api/chat')({
           content: userContent,
           parts: userParts,
         } = extractUserMessage(messages)
+        const latestMessage = messages?.[messages.length - 1] as
+          | { role?: string }
+          | undefined
+        const hasNewUserTurn = latestMessage?.role === 'user'
 
         // Hard server-side capability guard: never let multimodal content
         // reach a non-vision model. Client also guards, this is defense in
@@ -96,6 +100,7 @@ export const Route = createFileRoute('/api/chat')({
         // Treat any non-empty user turn (text OR attachments) as valid for
         // thread creation and persistence so attachment-only sends work.
         const hasUserTurn = userContent.length > 0 || userParts.length > 0
+        const shouldPersistUserTurn = hasNewUserTurn && hasUserTurn
 
         if (!threadId && hasUserTurn) {
           const fallbackTitle = isPlaceholderUserContent(userContent)
@@ -181,6 +186,7 @@ export const Route = createFileRoute('/api/chat')({
               threadCreated,
               userContent,
               userParts,
+              shouldPersistUserTurn,
               log,
               telemetry,
               userMessageId,

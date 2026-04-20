@@ -83,6 +83,7 @@ export async function executeAutomationRun(
     prepared.threadCreated,
     prepared.prompt,
     prepared.userParts,
+    true,
     log ?? ({ set() {} } as RequestLogger),
     prepared.telemetry,
   )) {
