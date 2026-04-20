@@ -3,6 +3,8 @@ import { Chat } from '~/components/Chat'
 import { Separator } from '~/components/ui/separator'
 import { SidebarTrigger } from '~/components/ui/sidebar'
 
+const SILENT_PATHNAME_CHANGE_EVENT = 'hashit:silent-pathname-change'
+
 export const Route = createFileRoute('/_app/')({
   component: Home,
 })
@@ -28,6 +30,7 @@ function Home() {
       '',
       `/chat/${threadId}`,
     )
+    window.dispatchEvent(new Event(SILENT_PATHNAME_CHANGE_EVENT))
   }
 
   return (

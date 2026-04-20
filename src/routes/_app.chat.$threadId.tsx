@@ -21,21 +21,22 @@ import { Skeleton } from '~/components/ui/skeleton'
 export const getThread = createServerFn({ method: 'GET' })
   .inputValidator(zodValidator(z.string()))
   .handler(async ({ data: threadId }) => {
-    const [thread] = await db
-      .select()
-      .from(threads)
-      .where(eq(threads.id, threadId))
-      .limit(1)
+    const [[thread], threadMessages] = await Promise.all([
+      db
+        .select()
+        .from(threads)
+        .where(eq(threads.id, threadId))
+        .limit(1),
+      db
+        .select()
+        .from(messages)
+        .where(eq(messages.threadId, threadId))
+        .orderBy(asc(messages.createdAt)),
+    ])
 
     if (!thread) {
       throw new Error('Thread not found')
     }
-
-    const threadMessages = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.threadId, threadId))
-      .orderBy(asc(messages.createdAt))
 
     return { ...thread, messages: threadMessages }
   })

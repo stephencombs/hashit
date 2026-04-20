@@ -23,6 +23,33 @@ import {
   markTraceSuccess,
 } from '~/lib/telemetry/otel'
 
+const COLLECT_FORM_DATA_TOOL_NAME = 'collect_form_data'
+
+function isWaitingForFormInput(
+  telemetry: AgentRunTelemetry,
+  streamError: string | null,
+  assistantParts: Array<MessagePart>,
+): boolean {
+  if (streamError || telemetry.status !== 'running') return false
+  return assistantParts.some((part) => {
+    if ((part as { type?: string }).type !== 'tool-call') return false
+    const toolPart = part as { name?: string; state?: string }
+    return (
+      toolPart.name === COLLECT_FORM_DATA_TOOL_NAME &&
+      toolPart.state !== 'result'
+    )
+  })
+}
+
+function getRunTerminalEventName(
+  status: AgentRunTelemetry['status'],
+): 'run_complete' | 'run_aborted' | 'run_waiting_input' | 'run_error' {
+  if (status === 'completed') return 'run_complete'
+  if (status === 'aborted') return 'run_aborted'
+  if (status === 'awaiting_input') return 'run_waiting_input'
+  return 'run_error'
+}
+
 export function tryParseJSON(value: string): unknown {
   try {
     return JSON.parse(value)
@@ -334,6 +361,14 @@ export async function* withPersistence(
       assistantParts.push({ type: 'text', content: accumulated })
     }
 
+    if (isWaitingForFormInput(telemetry, streamError, assistantParts)) {
+      telemetry.status = 'awaiting_input'
+      telemetry.error = undefined
+      telemetry.finishReason ??= 'tool_input_required'
+      telemetry.completedAt = Date.now()
+      telemetry.durationMs = telemetry.completedAt - telemetry.startedAt
+    }
+
     if (assistantParts.length > 0) {
       try {
         await runPersistenceStep(
@@ -365,12 +400,7 @@ export async function* withPersistence(
 
     yield {
       type: 'CUSTOM' as const,
-      name:
-        telemetry.status === 'completed'
-          ? 'run_complete'
-          : telemetry.status === 'aborted'
-            ? 'run_aborted'
-            : 'run_error',
+      name: getRunTerminalEventName(telemetry.status),
       value: {
         threadId,
         status: telemetry.status,

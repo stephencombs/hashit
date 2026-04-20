@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { Separator } from '~/components/ui/separator'
 import { SidebarTrigger } from '~/components/ui/sidebar'
-import { JsonRenderDisplay } from '~/components/json-render-display'
 import { VirtualGrid } from '~/components/virtual-grid'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -36,6 +35,11 @@ import {
 } from '~/lib/artifact-queries'
 
 type ArtifactType = 'chart' | 'grid' | 'other'
+const JsonRenderDisplay = lazy(() =>
+  import('~/components/json-render-display').then((module) => ({
+    default: module.JsonRenderDisplay,
+  })),
+)
 
 function getArtifactType(spec: Record<string, unknown>): ArtifactType {
   const elements = spec.elements as
@@ -149,11 +153,13 @@ function ArtifactGalleryCard({
         className="pointer-events-none flex min-h-0 flex-col overflow-hidden p-4"
         style={{ height: CARD_HEIGHT - CARD_FOOTER_HEIGHT }}
       >
-        <JsonRenderDisplay
-          spec={artifact.spec as unknown as Spec}
-          isStreaming={false}
-          fill
-        />
+        <Suspense fallback={<ArtifactRenderFallback fill />}>
+          <JsonRenderDisplay
+            spec={artifact.spec as unknown as Spec}
+            isStreaming={false}
+            fill
+          />
+        </Suspense>
       </div>
       <div
         className="flex shrink-0 items-center gap-3 border-t px-4"
@@ -174,6 +180,15 @@ function ArtifactGalleryCard({
         </span>
       </div>
     </div>
+  )
+}
+
+function ArtifactRenderFallback({ fill = false }: { fill?: boolean }) {
+  return (
+    <div
+      className="w-full animate-pulse rounded-md bg-muted/30"
+      style={{ height: fill ? '100%' : 240 }}
+    />
   )
 }
 
@@ -404,10 +419,12 @@ function ArtifactsPage() {
                       )}
                     </div>
                     <div className="pointer-events-none overflow-hidden rounded-lg">
-                      <JsonRenderDisplay
-                        spec={featured.spec as unknown as Spec}
-                        isStreaming={false}
-                      />
+                      <Suspense fallback={<ArtifactRenderFallback />}>
+                        <JsonRenderDisplay
+                          spec={featured.spec as unknown as Spec}
+                          isStreaming={false}
+                        />
+                      </Suspense>
                     </div>
                   </div>
                 )}
@@ -450,10 +467,12 @@ function ArtifactsPage() {
                 Full-size preview of {selected.title}
               </DialogDescription>
               <div>
-                <JsonRenderDisplay
-                  spec={selected.spec as unknown as Spec}
-                  isStreaming={false}
-                />
+                <Suspense fallback={<ArtifactRenderFallback />}>
+                  <JsonRenderDisplay
+                    spec={selected.spec as unknown as Spec}
+                    isStreaming={false}
+                  />
+                </Suspense>
               </div>
               <div className="flex items-center justify-between border-t pt-4">
                 <div className="flex items-center gap-3">

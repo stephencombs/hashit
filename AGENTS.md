@@ -21,6 +21,7 @@ skills:
 - Animated icons (lucide-animated) must trigger on parent element hover, not on the icon directly.
 - Research summaries and architectural artifacts should be delivered as canvas files rather than long chat responses.
 - Prefers to plan before implementing; typical flow is: research → analyze project → create plan → "Implement the plan as specified".
+- Prefer minimal/local fixes over adding new abstractions (for example, avoid introducing a new hook file when an inline solution is sufficient).
 
 ## Learned Workspace Facts
 

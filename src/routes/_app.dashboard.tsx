@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { JsonRenderDisplay } from '~/components/json-render-display'
 import { VirtualGrid } from '~/components/virtual-grid'
 import { Separator } from '~/components/ui/separator'
 import {
@@ -40,6 +39,11 @@ import {
 } from '~/lib/dashboard-queries'
 
 const CATALOG_TYPES = new Set(uiCatalog.componentNames)
+const JsonRenderDisplay = lazy(() =>
+  import('~/components/json-render-display').then((module) => ({
+    default: module.JsonRenderDisplay,
+  })),
+)
 
 const PERSONA = 'HR Admin'
 
@@ -143,6 +147,10 @@ function Dashboard() {
       />
     </>
   )
+}
+
+function DashboardWidgetFallback() {
+  return <div className="h-full w-full animate-pulse rounded-md bg-muted/30" />
 }
 
 function DashboardHeader({
@@ -277,11 +285,13 @@ function DashboardContent({
                 </CardDescription>
               </CardHeader>
               <CardContent className="min-h-0 flex-1 overflow-hidden">
-                <JsonRenderDisplay
-                  spec={widget.spec}
-                  isStreaming={false}
-                  fill
-                />
+                <Suspense fallback={<DashboardWidgetFallback />}>
+                  <JsonRenderDisplay
+                    spec={widget.spec}
+                    isStreaming={false}
+                    fill
+                  />
+                </Suspense>
               </CardContent>
             </Card>
           )}

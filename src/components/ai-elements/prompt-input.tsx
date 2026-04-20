@@ -196,11 +196,6 @@ export interface TextInputContext {
 export interface PromptInputControllerProps {
   textInput: TextInputContext;
   attachments: AttachmentsContext;
-  /** INTERNAL: Allows PromptInput to register its file textInput + "open" callback */
-  __registerFileInput: (
-    ref: RefObject<HTMLInputElement | null>,
-    open: () => void
-  ) => void;
 }
 
 const PromptInputController = createContext<PromptInputControllerProps | null>(
@@ -209,6 +204,12 @@ const PromptInputController = createContext<PromptInputControllerProps | null>(
 const ProviderAttachmentsContext = createContext<AttachmentsContext | null>(
   null
 );
+type PromptInputFileRegistration = (
+  ref: RefObject<HTMLInputElement | null>,
+  open: () => void
+) => void;
+const PromptInputFileRegistrationContext =
+  createContext<PromptInputFileRegistration | null>(null);
 
 export const usePromptInputController = () => {
   const ctx = useContext(PromptInputController);
@@ -236,6 +237,8 @@ export const useProviderAttachments = () => {
 
 const useOptionalProviderAttachments = () =>
   useContext(ProviderAttachmentsContext);
+const useOptionalPromptInputFileRegistration = () =>
+  useContext(PromptInputFileRegistrationContext);
 
 export type PromptInputProviderProps = PropsWithChildren<{
   initialInput?: string;
@@ -335,7 +338,7 @@ export const PromptInputProvider = ({
     [attachmentFiles, add, remove, clear, openFileDialog]
   );
 
-  const __registerFileInput = useCallback(
+  const registerFileInput = useCallback(
     (ref: RefObject<HTMLInputElement | null>, open: () => void) => {
       fileInputRef.current = ref.current;
       openRef.current = open;
@@ -345,7 +348,6 @@ export const PromptInputProvider = ({
 
   const controller = useMemo<PromptInputControllerProps>(
     () => ({
-      __registerFileInput,
       attachments,
       textInput: {
         clear: clearInput,
@@ -353,14 +355,16 @@ export const PromptInputProvider = ({
         value: textInput,
       },
     }),
-    [textInput, clearInput, attachments, __registerFileInput]
+    [textInput, clearInput, attachments]
   );
 
   return (
     <PromptInputController.Provider value={controller}>
-      <ProviderAttachmentsContext.Provider value={attachments}>
-        {children}
-      </ProviderAttachmentsContext.Provider>
+      <PromptInputFileRegistrationContext.Provider value={registerFileInput}>
+        <ProviderAttachmentsContext.Provider value={attachments}>
+          {children}
+        </ProviderAttachmentsContext.Provider>
+      </PromptInputFileRegistrationContext.Provider>
     </PromptInputController.Provider>
   );
 };
@@ -526,6 +530,7 @@ export const PromptInput = ({
 }: PromptInputProps) => {
   // Try to use a provider controller if present
   const controller = useOptionalPromptInputController();
+  const registerFileInput = useOptionalPromptInputFileRegistration();
   const usingProvider = !!controller;
 
   // Refs
@@ -718,8 +723,8 @@ export const PromptInput = ({
     if (!usingProvider) {
       return;
     }
-    controller.__registerFileInput(inputRef, () => inputRef.current?.click());
-  }, [usingProvider, controller]);
+    registerFileInput?.(inputRef, () => inputRef.current?.click());
+  }, [usingProvider, registerFileInput]);
 
   // Note: File input cannot be programmatically set for security reasons
   // The syncHiddenInput prop is no longer functional

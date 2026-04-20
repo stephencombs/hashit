@@ -30,6 +30,45 @@ export type ChatMessageShape = {
   parts: Array<MessagePart>;
 };
 
+function getPendingFormTarget(
+  messages: Array<{ id: string; role: string; parts: Array<MessagePart> }>,
+  submittedFormData: Map<string, Record<string, unknown>>,
+): { messageId: string; toolCallId: string } | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "assistant") continue;
+
+    let latestFormToolCallId: string | null = null;
+    for (const part of message.parts) {
+      if ((part as { type?: string }).type !== "tool-call") continue;
+      const toolCall = part as { id?: string; name?: string; state?: string };
+      if (
+        toolCall.name === "collect_form_data" &&
+        typeof toolCall.id === "string" &&
+        toolCall.state !== "result"
+      ) {
+        latestFormToolCallId = toolCall.id;
+      }
+    }
+
+    if (!latestFormToolCallId) {
+      // If the latest assistant turn is not a form handoff, older forms are historical.
+      return null;
+    }
+
+    if (submittedFormData.has(latestFormToolCallId)) {
+      return null;
+    }
+
+    return {
+      messageId: message.id,
+      toolCallId: latestFormToolCallId,
+    };
+  }
+
+  return null;
+}
+
 export interface UseChatSessionOptions {
   /** Route param / loader thread id; undefined on the new-chat index route. */
   threadId?: string;
@@ -192,6 +231,11 @@ export function useChatSession({
     messagesRef.current = messages;
   }, [messages]);
 
+  const pendingFormTarget = useMemo(
+    () => getPendingFormTarget(messages, submittedFormData),
+    [messages, submittedFormData],
+  );
+
   const lastSyncedRouteThreadIdRef = useRef(routeThreadId);
   useLayoutEffect(() => {
     if (!syncOnRouteThreadChange) return;
@@ -223,6 +267,14 @@ export function useChatSession({
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      if (pendingFormTarget) {
+        requestAnimationFrame(() => {
+          document
+            .getElementById(`msg-${pendingFormTarget.messageId}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return;
+      }
 
       const now = new Date();
       if (!resolvedThreadId) {
@@ -233,7 +285,7 @@ export function useChatSession({
 
       sendMessage(trimmed);
     },
-    [resolvedThreadId, queryClient, sendMessage],
+    [pendingFormTarget, resolvedThreadId, queryClient, sendMessage],
   );
 
   const handleSaveArtifact = useCallback(

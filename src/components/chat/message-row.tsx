@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { lazy, memo, Suspense } from "react";
 import { parsePartialJSON } from "@tanstack/ai";
 import type { ToolCallPart, MessagePart } from "@tanstack/ai";
 import type { Spec } from "@json-render/core";
@@ -23,7 +23,6 @@ import {
   PlanTitle,
   PlanTrigger,
 } from "~/components/ai-elements/plan";
-import { JsonRenderDisplay } from "~/components/json-render-display";
 import { FormDisplay } from "~/components/form-display";
 import { ToolResultDisplay } from "~/components/tool-result-display";
 import type { FormSpec } from "~/lib/form-tool";
@@ -32,6 +31,16 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   parts: Array<MessagePart>;
+}
+
+const JsonRenderDisplay = lazy(() =>
+  import("~/components/json-render-display").then((module) => ({
+    default: module.JsonRenderDisplay,
+  })),
+);
+
+function JsonRenderDisplayFallback() {
+  return <div className="h-[220px] w-full animate-pulse rounded-md bg-muted/30" />;
 }
 
 interface PlanData {
@@ -359,31 +368,35 @@ function MessageRowImpl({
       {persistedSpecs.length > 0
         ? persistedSpecs.map(({ spec, idx }) => (
             <div key={`persisted-${idx}`} className="w-full min-w-0">
-              <JsonRenderDisplay
-                spec={spec}
-                isStreaming={false}
-                messageId={message.id}
-                specIndex={idx}
-                saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
-                onSaveArtifact={onSaveArtifact}
-              />
-            </div>
-          ))
-        : liveSpecs && liveSpecs.length > 0
-          ? liveSpecs.map((spec, idx) => (
-              <div key={`live-${idx}`} className="w-full min-w-0">
+              <Suspense fallback={<JsonRenderDisplayFallback />}>
                 <JsonRenderDisplay
                   spec={spec}
-                  isStreaming={
-                    isLastMessage &&
-                    isStreaming &&
-                    idx === liveSpecs.length - 1
-                  }
+                  isStreaming={false}
                   messageId={message.id}
                   specIndex={idx}
                   saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
                   onSaveArtifact={onSaveArtifact}
                 />
+              </Suspense>
+            </div>
+          ))
+        : liveSpecs && liveSpecs.length > 0
+          ? liveSpecs.map((spec, idx) => (
+              <div key={`live-${idx}`} className="w-full min-w-0">
+                <Suspense fallback={<JsonRenderDisplayFallback />}>
+                  <JsonRenderDisplay
+                    spec={spec}
+                    isStreaming={
+                      isLastMessage &&
+                      isStreaming &&
+                      idx === liveSpecs.length - 1
+                    }
+                    messageId={message.id}
+                    specIndex={idx}
+                    saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
+                    onSaveArtifact={onSaveArtifact}
+                  />
+                </Suspense>
               </div>
             ))
           : null}

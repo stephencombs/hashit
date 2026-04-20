@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatForDisplay } from "@tanstack/react-hotkeys"
 import { AppHotkeys } from "~/hooks/use-app-hotkeys"
 import { CommandPalette } from "~/components/command-palette"
 import { Kbd, KbdGroup } from "~/components/ui/kbd"
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
+import { Link, useLocation, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckSquare2Icon,
@@ -82,6 +82,10 @@ function KbdHint({ keys }: { keys: string }) {
 // that casually scanning the thread list doesn't flash tooltips on every
 // row, short enough to feel responsive when you actually pause on one.
 const THREAD_TOOLTIP_DELAY_MS = 500
+// Sidebar rows have a 4px vertical menu gap. Extend the clickable surface by
+// 2px above and below so there is no dead zone between adjacent thread items.
+const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5"
+const SILENT_PATHNAME_CHANGE_EVENT = "hashit:silent-pathname-change"
 
 function ItemTitle({ title }: { title: string }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -255,6 +259,7 @@ function ThreadItem({
   pinThread,
   deleteThread,
   bulkMode,
+  currentPathname,
   selected,
   onToggleSelect,
 }: {
@@ -262,11 +267,14 @@ function ThreadItem({
   pinThread: ReturnType<typeof usePinThread>
   deleteThread: ReturnType<typeof useDeleteThread>
   bulkMode: boolean
+  currentPathname?: string
   selected: boolean
   onToggleSelect: (id: string, shiftKey: boolean) => void
 }) {
   const matchRoute = useMatchRoute()
-  const isActive = !!matchRoute({ to: "/chat/$threadId", params: { threadId: conversation.id } })
+  const isActive = currentPathname
+    ? currentPathname === `/chat/${conversation.id}`
+    : !!matchRoute({ to: "/chat/$threadId", params: { threadId: conversation.id } })
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   if (bulkMode) {
@@ -274,6 +282,7 @@ function ThreadItem({
       <SidebarMenuItem>
         <SidebarMenuButton
           isActive={selected}
+          className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
           onMouseDown={(e) => {
             if (e.shiftKey) e.preventDefault()
           }}
@@ -288,7 +297,11 @@ function ThreadItem({
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={isActive} asChild>
+      <SidebarMenuButton
+        isActive={isActive}
+        asChild
+        className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
+      >
         <Link
           to="/chat/$threadId"
           params={{ threadId: conversation.id }}
@@ -365,17 +378,25 @@ function CanvasItem({
   canvas,
   pinCanvas,
   deleteCanvas,
+  currentPathname,
 }: {
   canvas: Canvas
   pinCanvas: ReturnType<typeof usePinCanvas>
   deleteCanvas: ReturnType<typeof useDeleteCanvas>
+  currentPathname?: string
 }) {
   const matchRoute = useMatchRoute()
-  const isActive = !!matchRoute({ to: "/canvas/$canvasId", params: { canvasId: canvas.id } })
+  const isActive = currentPathname
+    ? currentPathname === `/canvas/${canvas.id}`
+    : !!matchRoute({ to: "/canvas/$canvasId", params: { canvasId: canvas.id } })
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={isActive} asChild>
+      <SidebarMenuButton
+        isActive={isActive}
+        asChild
+        className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
+      >
         <Link
           to="/canvas/$canvasId"
           params={{ canvasId: canvas.id }}
@@ -411,12 +432,14 @@ function ThreadSection({
   pinThread,
   deleteThread,
   bulkAction,
+  currentPathname,
 }: {
   label: string
   threads: Thread[]
   pinThread: ReturnType<typeof usePinThread>
   deleteThread: ReturnType<typeof useDeleteThread>
   bulkAction: "pin" | "unpin"
+  currentPathname?: string
 }) {
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -586,6 +609,7 @@ function ThreadSection({
               pinThread={pinThread}
               deleteThread={deleteThread}
               bulkMode={bulkMode}
+              currentPathname={currentPathname}
               selected={selectedIds.has(conversation.id)}
               onToggleSelect={handleSelect}
             />
@@ -655,7 +679,7 @@ function SidebarListSkeleton() {
   )
 }
 
-function ChatSidebarContent() {
+function ChatSidebarContent({ currentPathname }: { currentPathname?: string }) {
   const { data: conversations = [], isPending } = useQuery(threadListQuery)
   const pinThread = usePinThread()
   const deleteThread = useDeleteThread()
@@ -688,6 +712,7 @@ function ChatSidebarContent() {
         pinThread={pinThread}
         deleteThread={deleteThread}
         bulkAction="unpin"
+        currentPathname={currentPathname}
       />
       <ThreadSection
         label="Recents"
@@ -695,12 +720,13 @@ function ChatSidebarContent() {
         pinThread={pinThread}
         deleteThread={deleteThread}
         bulkAction="pin"
+        currentPathname={currentPathname}
       />
     </>
   )
 }
 
-function CanvasSidebarContent() {
+function CanvasSidebarContent({ currentPathname }: { currentPathname?: string }) {
   const { data: canvases = [], isPending } = useQuery(canvasListQuery)
   const pinCanvas = usePinCanvas()
   const deleteCanvas = useDeleteCanvas()
@@ -738,6 +764,7 @@ function CanvasSidebarContent() {
                   canvas={canvas}
                   pinCanvas={pinCanvas}
                   deleteCanvas={deleteCanvas}
+                  currentPathname={currentPathname}
                 />
               ))}
             </SidebarMenu>
@@ -755,6 +782,7 @@ function CanvasSidebarContent() {
                   canvas={canvas}
                   pinCanvas={pinCanvas}
                   deleteCanvas={deleteCanvas}
+                  currentPathname={currentPathname}
                 />
               ))}
             </SidebarMenu>
@@ -767,8 +795,36 @@ function CanvasSidebarContent() {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute()
-  const isNewChatActive = !!matchRoute({ to: "/" })
-  const isCanvasSection = !!matchRoute({ to: "/canvas", fuzzy: true })
+  const location = useLocation()
+  const [silentPathnameOverride, setSilentPathnameOverride] = useState<string | null>(null)
+
+  // Reset any silent pathname override as soon as the router performs a
+  // normal navigation. This keeps standard Link navigations fully reactive.
+  useEffect(() => {
+    setSilentPathnameOverride(null)
+  }, [location.pathname])
+
+  // Home route performs a native History.replaceState to avoid remounting the
+  // active Chat tree while assigning the first thread URL. Listen for that
+  // explicit signal and temporarily override pathname-based selection.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const syncPathname = () => setSilentPathnameOverride(window.location.pathname)
+
+    window.addEventListener(SILENT_PATHNAME_CHANGE_EVENT, syncPathname)
+
+    return () => {
+      window.removeEventListener(SILENT_PATHNAME_CHANGE_EVENT, syncPathname)
+    }
+  }, [])
+  const currentPathname = silentPathnameOverride ?? location.pathname
+  const isNewChatActive = currentPathname
+    ? currentPathname === "/"
+    : !!matchRoute({ to: "/" })
+  const isCanvasSection = currentPathname
+    ? currentPathname === "/canvas" || currentPathname.startsWith("/canvas/")
+    : !!matchRoute({ to: "/canvas", fuzzy: true })
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   return (
@@ -840,7 +896,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {isCanvasSection ? <CanvasSidebarContent /> : <ChatSidebarContent />}
+        {isCanvasSection ? (
+          <CanvasSidebarContent currentPathname={currentPathname} />
+        ) : (
+          <ChatSidebarContent currentPathname={currentPathname} />
+        )}
       </SidebarContent>
 
       <SidebarFooter>

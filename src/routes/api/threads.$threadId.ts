@@ -9,21 +9,22 @@ export const Route = createFileRoute('/api/threads/$threadId')({
       GET: async ({ params }) => {
         const { threadId } = params
 
-        const [thread] = await db
-          .select()
-          .from(threads)
-          .where(eq(threads.id, threadId))
-          .limit(1)
+        const [[thread], threadMessages] = await Promise.all([
+          db
+            .select()
+            .from(threads)
+            .where(eq(threads.id, threadId))
+            .limit(1),
+          db
+            .select()
+            .from(messages)
+            .where(eq(messages.threadId, threadId))
+            .orderBy(asc(messages.createdAt)),
+        ])
 
         if (!thread) {
           return Response.json({ error: 'Thread not found' }, { status: 404 })
         }
-
-        const threadMessages = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.threadId, threadId))
-          .orderBy(asc(messages.createdAt))
 
         return Response.json({ ...thread, messages: threadMessages })
       },

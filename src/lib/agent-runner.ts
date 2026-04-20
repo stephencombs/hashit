@@ -36,7 +36,19 @@ import {
   setTraceAttributes,
 } from '~/lib/telemetry/otel'
 
-export type AgentRunStatus = 'running' | 'completed' | 'failed' | 'aborted'
+/**
+ * TanStack AI injects this synthetic tool when any tool has `lazy: true`
+ * (see LazyToolManager in @tanstack/ai). It is not part of the `tools` array
+ * we pass to `chat()`, so policy checks must allow it explicitly.
+ */
+const LAZY_TOOL_DISCOVERY_NAME = '__lazy__tool__discovery__'
+
+export type AgentRunStatus =
+  | 'running'
+  | 'awaiting_input'
+  | 'completed'
+  | 'failed'
+  | 'aborted'
 
 export interface AgentToolCallTelemetry {
   toolName: string
@@ -395,7 +407,6 @@ export async function createAgentRun({
 
   const traceSource = source ?? getDefaultTraceSource(profile)
   const telemetry = createAgentRunTelemetry(profile, messages.length, traceSource)
-  const allowedToolNames = new Set(tools.map((tool) => tool.name))
   const traceState =
     providedTraceState ??
     startAgentRunTrace({
@@ -412,6 +423,11 @@ export async function createAgentRun({
   telemetry.traceState = traceState
   telemetry.traceId = traceState.traceId
   telemetry.spanId = traceState.spanId
+
+  const allowedToolNames = new Set(tools.map((tool) => tool.name))
+  if (tools.some((t) => t.lazy)) {
+    allowedToolNames.add(LAZY_TOOL_DISCOVERY_NAME)
+  }
 
   const stream = chat({
     adapter,
@@ -434,9 +450,7 @@ export async function createAgentRun({
         reasoning: { effort: 'low', summary: 'auto' },
       },
     }),
-    middleware: [
-      createTelemetryMiddleware(telemetry, log, allowedToolNames),
-    ],
+    middleware: [createTelemetryMiddleware(telemetry, log, allowedToolNames)],
   })
 
   return { stream, telemetry }

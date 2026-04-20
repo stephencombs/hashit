@@ -24,6 +24,34 @@ import type { FormSpec } from '~/lib/form-tool'
 
 type FieldValues = Record<string, string | number | boolean>
 
+/**
+ * Radix Select.Item must not use value=""; LLM-generated options can include "".
+ * We use stable index-based values for items and map back to semantic option values.
+ */
+function selectRadixPrefix(fieldName: string): string {
+  return `__form_sel__${fieldName}__`
+}
+
+function selectIndexToRadixValue(fieldName: string, index: number): string {
+  return `${selectRadixPrefix(fieldName)}${index}`
+}
+
+function parseSelectRadixToIndex(fieldName: string, radixValue: string): number {
+  const p = selectRadixPrefix(fieldName)
+  if (!radixValue.startsWith(p)) return -1
+  const n = Number(radixValue.slice(p.length))
+  return Number.isFinite(n) ? n : -1
+}
+
+function selectSemanticToRadixValue(
+  field: Extract<FormSpec['fields'][number], { type: 'select' }>,
+  semantic: string,
+): string | undefined {
+  const idx = field.options?.findIndex((o) => o.value === semantic) ?? -1
+  if (idx < 0) return undefined
+  return selectIndexToRadixValue(field.name, idx)
+}
+
 function initValues(
   fields: FormSpec['fields'],
   submittedData?: Record<string, unknown>,
@@ -137,6 +165,8 @@ export function FormDisplay({
             }
 
             if (field.type === 'select') {
+              const stringVal = typeof value === 'string' ? value : ''
+              const radixValue = selectSemanticToRadixValue(field, stringVal)
               return (
                 <div key={field.name} className="flex flex-col gap-1.5">
                   <Label htmlFor={field.name}>
@@ -146,8 +176,12 @@ export function FormDisplay({
                     )}
                   </Label>
                   <Select
-                    value={typeof value === 'string' ? value : undefined}
-                    onValueChange={(v) => setValue(field.name, v)}
+                    value={radixValue}
+                    onValueChange={(v) => {
+                      const idx = parseSelectRadixToIndex(field.name, v)
+                      const opt = field.options?.[idx]
+                      if (opt) setValue(field.name, opt.value)
+                    }}
                     disabled={isSubmitted}
                   >
                     <SelectTrigger
@@ -160,8 +194,11 @@ export function FormDisplay({
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {field.options?.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
+                      {field.options?.map((opt, optIndex) => (
+                        <SelectItem
+                          key={`${field.name}-${optIndex}`}
+                          value={selectIndexToRadixValue(field.name, optIndex)}
+                        >
                           {opt.label}
                         </SelectItem>
                       ))}
