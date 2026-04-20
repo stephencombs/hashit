@@ -23,24 +23,6 @@ import {
   markTraceSuccess,
 } from '~/lib/telemetry/otel'
 
-const COLLECT_FORM_DATA_TOOL_NAME = 'collect_form_data'
-
-function isWaitingForFormInput(
-  telemetry: AgentRunTelemetry,
-  streamError: string | null,
-  assistantParts: Array<MessagePart>,
-): boolean {
-  if (streamError || telemetry.status !== 'running') return false
-  return assistantParts.some((part) => {
-    if ((part as { type?: string }).type !== 'tool-call') return false
-    const toolPart = part as { name?: string; state?: string }
-    return (
-      toolPart.name === COLLECT_FORM_DATA_TOOL_NAME &&
-      toolPart.state !== 'result'
-    )
-  })
-}
-
 function getRunTerminalEventName(
   status: AgentRunTelemetry['status'],
 ): 'run_complete' | 'run_aborted' | 'run_waiting_input' | 'run_error' {
@@ -65,24 +47,35 @@ export async function createThread(title: string, source?: string): Promise<stri
   return id
 }
 
+/**
+ * Idempotent by message id. Interactive client tools trigger continuation
+ * POSTs (/api/chat) that replay the full message history — including the
+ * original user text. We must only insert the user row once per id.
+ *
+ * If `incomingUserId` is provided and a row with that id already exists in
+ * `messages`, we short-circuit. Otherwise we insert using the provided id
+ * (or a generated one). This prevents the prior bug where continuations
+ * wrote duplicate user rows on every tool-result turn.
+ */
 export async function persistUserMessage(
   threadId: string,
   userContent: string,
   userParts: Array<MessagePart>,
   metadata?: Record<string, unknown>,
+  incomingUserId?: string,
 ) {
-  const latestMsg = await db
-    .select({ id: messagesTable.id, role: messagesTable.role })
-    .from(messagesTable)
-    .where(eq(messagesTable.threadId, threadId))
-    .orderBy(desc(messagesTable.createdAt))
-    .limit(1)
-
-  if (latestMsg.length > 0 && latestMsg[0].role === 'user') {
-    return latestMsg[0].id
+  if (incomingUserId) {
+    const existing = await db
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, incomingUserId))
+      .limit(1)
+    if (existing.length > 0) {
+      return existing[0].id
+    }
   }
 
-  const id = generateMessageId()
+  const id = incomingUserId ?? generateMessageId()
   const now = new Date()
   await db.insert(messagesTable).values({
     id,
@@ -100,23 +93,154 @@ export async function persistUserMessage(
   return id
 }
 
+/**
+ * On continuation POSTs (triggered by a `.client()` tool resolving), the
+ * client's message array carries the original assistant turn with its
+ * tool-call part now containing `output` plus a fresh `tool-result` part.
+ * The DB copy of that row still shows `state: "input-complete"` with no
+ * output because the server stream ended before the user submitted.
+ *
+ * This syncs the incoming version back into the DB row so reloads and new
+ * subscribers see the submitted state. Idempotent: only writes when parts
+ * actually changed.
+ */
+export async function syncPriorToolOutputs(
+  threadId: string,
+  incomingMessages: Array<{
+    id?: string
+    role?: string
+    parts?: Array<MessagePart>
+  }>,
+): Promise<void> {
+  const candidateMessageIds = new Set<string>()
+  const candidateToolCallIds = new Set<string>()
+  for (const m of incomingMessages) {
+    if (m.role !== 'assistant' || !Array.isArray(m.parts)) continue
+    if (typeof m.id === 'string') candidateMessageIds.add(m.id)
+    for (const id of extractToolCallIdsFromParts(m.parts)) {
+      candidateToolCallIds.add(id)
+    }
+  }
+  if (candidateMessageIds.size === 0 && candidateToolCallIds.size === 0) return
+
+  const rows = await db
+    .select({ id: messagesTable.id, parts: messagesTable.parts })
+    .from(messagesTable)
+    .where(eq(messagesTable.threadId, threadId))
+
+  const byId = new Map<string, Array<MessagePart> | null>()
+  const toolCallIdToRowId = new Map<string, string>()
+  for (const row of rows) {
+    byId.set(row.id, row.parts)
+    if (!row.parts) continue
+    for (const toolCallId of extractToolCallIdsFromParts(row.parts)) {
+      if (!toolCallIdToRowId.has(toolCallId)) {
+        toolCallIdToRowId.set(toolCallId, row.id)
+      }
+    }
+  }
+
+  for (const m of incomingMessages) {
+    if (m.role !== 'assistant') continue
+    const incomingParts = Array.isArray(m.parts) ? m.parts : []
+    const incomingToolCallIds = extractToolCallIdsFromParts(incomingParts)
+
+    // Primary match: assistant message id (works when ids are aligned).
+    // Fallback match: tool-call ids contained in the assistant row. This
+    // handles cases where persisted assistant ids differ from client ids.
+    const incomingId = typeof m.id === 'string' ? m.id : undefined
+    let targetRowId = incomingId && byId.has(incomingId) ? incomingId : undefined
+    if (!targetRowId) {
+      for (const id of incomingToolCallIds) {
+        const mapped = toolCallIdToRowId.get(id)
+        if (mapped) {
+          targetRowId = mapped
+          break
+        }
+      }
+    }
+    if (!targetRowId) continue
+
+    const dbParts = byId.get(targetRowId)
+    if (!dbParts) continue
+    if (!shouldUpgradeParts(dbParts, incomingParts)) continue
+    await db
+      .update(messagesTable)
+      .set({ parts: incomingParts })
+      .where(eq(messagesTable.id, targetRowId))
+    byId.set(targetRowId, incomingParts)
+  }
+}
+
+function extractToolCallIdsFromParts(parts: Array<MessagePart>): Array<string> {
+  const ids = new Set<string>()
+  for (const part of parts) {
+    if ((part as { type?: string }).type === 'tool-call') {
+      const toolCall = part as { id?: string }
+      if (typeof toolCall.id === 'string') ids.add(toolCall.id)
+      continue
+    }
+    if ((part as { type?: string }).type === 'tool-result') {
+      const toolResult = part as { toolCallId?: string }
+      if (typeof toolResult.toolCallId === 'string') ids.add(toolResult.toolCallId)
+    }
+  }
+  return Array.from(ids)
+}
+
+/**
+ * Returns true when `incoming` carries tool-call outputs or tool-result parts
+ * that `dbParts` lacks. Prevents redundant writes on every continuation.
+ */
+function shouldUpgradeParts(
+  dbParts: Array<MessagePart>,
+  incoming: Array<MessagePart>,
+): boolean {
+  const dbToolResults = new Set<string>()
+  const dbToolOutputs = new Set<string>()
+  for (const p of dbParts) {
+    if ((p as { type?: string }).type === 'tool-result') {
+      const tr = p as { toolCallId?: string }
+      if (typeof tr.toolCallId === 'string') dbToolResults.add(tr.toolCallId)
+    } else if ((p as { type?: string }).type === 'tool-call') {
+      const tc = p as { id?: string; output?: unknown }
+      if (typeof tc.id === 'string' && tc.output !== undefined) {
+        dbToolOutputs.add(tc.id)
+      }
+    }
+  }
+
+  for (const p of incoming) {
+    if ((p as { type?: string }).type === 'tool-result') {
+      const tr = p as { toolCallId?: string }
+      if (typeof tr.toolCallId === 'string' && !dbToolResults.has(tr.toolCallId)) {
+        return true
+      }
+    } else if ((p as { type?: string }).type === 'tool-call') {
+      const tc = p as { id?: string; output?: unknown }
+      if (
+        typeof tc.id === 'string' &&
+        tc.output !== undefined &&
+        !dbToolOutputs.has(tc.id)
+      ) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 export async function persistAssistantMessage(
   threadId: string,
   content: string,
   parts: Array<MessagePart>,
   metadata?: Record<string, unknown>,
 ) {
-  const latestMsg = await db
-    .select({ role: messagesTable.role })
-    .from(messagesTable)
-    .where(eq(messagesTable.threadId, threadId))
-    .orderBy(desc(messagesTable.createdAt))
-    .limit(1)
-
-  if (latestMsg.length === 0 || latestMsg[0].role !== 'user') {
-    return
-  }
-
+  // Every completed stream gets its own assistant row. Continuations after a
+  // client-tool resolution produce a fresh assistant turn, so appending is
+  // always correct. The previous "last must be user" guard was removed because
+  // it blocked continuation persistence once `persistUserMessage` became
+  // idempotent.
   const id = generateMessageId()
   await db.insert(messagesTable).values({
     id,
@@ -137,6 +261,8 @@ export async function persistAssistantMessage(
 }
 
 export async function maybeGenerateTitle(threadId: string, userContent: string) {
+  if (isPlaceholderUserContent(userContent)) return
+
   const msgCount = await db
     .select({ n: count() })
     .from(messagesTable)
@@ -213,6 +339,7 @@ export async function* withPersistence(
   userParts: Array<MessagePart>,
   log: RequestLogger,
   telemetry: AgentRunTelemetry,
+  userMessageId?: string,
 ): AsyncIterable<StreamChunk> {
   startPersistenceSpan(telemetry.traceState, {
     'agent.thread_id': threadId,
@@ -256,6 +383,7 @@ export async function* withPersistence(
             userContent,
             userParts,
             createRunMetadata(telemetry),
+            userMessageId,
           ),
         {
           'agent.thread_id': threadId,
@@ -361,14 +489,6 @@ export async function* withPersistence(
       assistantParts.push({ type: 'text', content: accumulated })
     }
 
-    if (isWaitingForFormInput(telemetry, streamError, assistantParts)) {
-      telemetry.status = 'awaiting_input'
-      telemetry.error = undefined
-      telemetry.finishReason ??= 'tool_input_required'
-      telemetry.completedAt = Date.now()
-      telemetry.durationMs = telemetry.completedAt - telemetry.startedAt
-    }
-
     if (assistantParts.length > 0) {
       try {
         await runPersistenceStep(
@@ -469,7 +589,31 @@ export async function* withPersistence(
   }
 }
 
+/**
+ * Marker prefix on `content` when the user turn carries only non-text parts
+ * (e.g. an image-only prompt). Persistence still needs a non-null content
+ * string for `messages.content`, but title generation and other text-only
+ * heuristics should not key off the placeholder. Use `isPlaceholderUserContent`
+ * to detect.
+ */
+export const ATTACHMENT_ONLY_CONTENT_PREFIX = '[attachments]'
+
+export function isPlaceholderUserContent(content: string): boolean {
+  return content.startsWith(ATTACHMENT_ONLY_CONTENT_PREFIX)
+}
+
+function summarizePartForPlaceholder(part: any): string | null {
+  const type = (part as { type?: string })?.type
+  if (!type) return null
+  if (type === 'image') return 'image'
+  if (type === 'audio') return 'audio'
+  if (type === 'video') return 'video'
+  if (type === 'document') return 'document'
+  return null
+}
+
 export function extractUserMessage(messages: Array<any>): {
+  id: string | undefined
   content: string
   parts: Array<MessagePart>
 } {
@@ -477,10 +621,13 @@ export function extractUserMessage(messages: Array<any>): {
     .reverse()
     .find((m: any) => m.role === 'user')
 
-  if (!lastUserMessage) return { content: '', parts: [] }
+  if (!lastUserMessage) return { id: undefined, content: '', parts: [] }
+
+  const id = typeof lastUserMessage.id === 'string' ? lastUserMessage.id : undefined
 
   if (typeof lastUserMessage.content === 'string') {
     return {
+      id,
       content: lastUserMessage.content,
       parts: [{ type: 'text', content: lastUserMessage.content }],
     }
@@ -491,11 +638,31 @@ export function extractUserMessage(messages: Array<any>): {
       .filter((p: any) => p.type === 'text')
       .map((p: any) => p.content)
       .join('')
-    return {
-      content: textContent,
-      parts: lastUserMessage.parts,
+
+    if (textContent.length > 0) {
+      return {
+        id,
+        content: textContent,
+        parts: lastUserMessage.parts,
+      }
     }
+
+    const summaries: string[] = []
+    for (const part of lastUserMessage.parts) {
+      const label = summarizePartForPlaceholder(part)
+      if (label) summaries.push(label)
+    }
+
+    if (summaries.length > 0) {
+      return {
+        id,
+        content: `${ATTACHMENT_ONLY_CONTENT_PREFIX} ${summaries.join(', ')}`,
+        parts: lastUserMessage.parts,
+      }
+    }
+
+    return { id, content: '', parts: lastUserMessage.parts }
   }
 
-  return { content: '', parts: [] }
+  return { id, content: '', parts: [] }
 }

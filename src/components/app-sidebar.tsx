@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { formatForDisplay } from "@tanstack/react-hotkeys"
 import { AppHotkeys } from "~/hooks/use-app-hotkeys"
 import { CommandPalette } from "~/components/command-palette"
@@ -85,7 +85,6 @@ const THREAD_TOOLTIP_DELAY_MS = 500
 // Sidebar rows have a 4px vertical menu gap. Extend the clickable surface by
 // 2px above and below so there is no dead zone between adjacent thread items.
 const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5"
-const SILENT_PATHNAME_CHANGE_EVENT = "hashit:silent-pathname-change"
 
 function ItemTitle({ title }: { title: string }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -796,29 +795,9 @@ function CanvasSidebarContent({ currentPathname }: { currentPathname?: string })
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute()
   const location = useLocation()
-  const [silentPathnameOverride, setSilentPathnameOverride] = useState<string | null>(null)
-
-  // Reset any silent pathname override as soon as the router performs a
-  // normal navigation. This keeps standard Link navigations fully reactive.
-  useEffect(() => {
-    setSilentPathnameOverride(null)
-  }, [location.pathname])
-
-  // Home route performs a native History.replaceState to avoid remounting the
-  // active Chat tree while assigning the first thread URL. Listen for that
-  // explicit signal and temporarily override pathname-based selection.
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    const syncPathname = () => setSilentPathnameOverride(window.location.pathname)
-
-    window.addEventListener(SILENT_PATHNAME_CHANGE_EVENT, syncPathname)
-
-    return () => {
-      window.removeEventListener(SILENT_PATHNAME_CHANGE_EVENT, syncPathname)
-    }
-  }, [])
-  const currentPathname = silentPathnameOverride ?? location.pathname
+  // Route masking keeps runtime route state at `/` while showing `/chat/$threadId`
+  // in the address bar. Prefer the masked pathname for sidebar active states.
+  const currentPathname = location.maskedLocation?.pathname ?? location.pathname
   const isNewChatActive = currentPathname
     ? currentPathname === "/"
     : !!matchRoute({ to: "/" })
@@ -849,7 +828,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               tooltip="New Chat"
             >
-              <Link to="/" draggable={false}>
+              <Link
+                to="/"
+                draggable={false}
+                state={(prev) => ({
+                  ...(prev ?? {}),
+                  __newChatNavNonce: Date.now(),
+                })}
+              >
                 <HoverIcon as={SquarePenIcon} />
                 <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
                 <KbdHint keys="Mod+Shift+N" />

@@ -9,6 +9,7 @@
 - Animated icons must animate on parent-element hover (button/link/menuitem), not on the icon itself — use `HoverIcon` from `~/components/animated-icon.tsx`.
 - Use dynamic `import()` inside POST handlers for heavy server modules (AI, MCP); do not statically import them at the top of route files that also handle GET.
 - Run `pnpm db:generate` and commit the `drizzle/` output after every schema change; never hand-write migration SQL.
+- Re-review plans against external sources (web search/fetch of how others solve the same problem) before implementing, especially for novel architecture or third-party integrations.
 
 ## Learned Workspace Facts
 
@@ -22,3 +23,5 @@
 - **Animated sidebar icons:** `lucide-animated` package installed; `HoverIcon` wrapper in `src/components/animated-icon.tsx` drives animation from ancestor hover. `LayoutDashboardIcon` stays on `lucide-react` (no animated equivalent).
 - **Deployment:** Docker → Azure Container Registry → Azure Container Apps; deploy script at `scripts/deploy.sh`.
 - **AGENTS.md** at repo root contains intent-skills mappings; `.agent/AGENTS.md` (this file) contains durable memory for learned preferences and workspace facts.
+- **Radix `Select.Item` cannot use `value=""`**; `src/components/form-display.tsx` maps options to index-based radix values (`__form_sel__{name}__{idx}`) and translates them back to semantic `opt.value` on submit so LLM-generated form specs with empty option values still render.
+- **`collect_form_data` runs end with `runStatus: "awaiting_input"`** and emit the `run_waiting_input` custom event (not `run_error`); `getPendingFormTarget()` in `src/components/chat/use-chat-session.ts` blocks duplicate sends while a form is unresolved and scrolls back to the pending form message.

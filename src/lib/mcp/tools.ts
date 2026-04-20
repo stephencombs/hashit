@@ -85,8 +85,11 @@ function sanitizeToolName(name: string): string {
 
 const MCP_TOOL_TIMEOUT_MS = 60_000
 
-function isOutputSchemaError(err: unknown): boolean {
-  return err instanceof Error && err.message.includes("does not match the tool's output schema")
+type RequestCapableClient = {
+  request: (
+    req: { method: 'tools/call'; params: { name: string; arguments: Record<string, unknown> } },
+    schema: unknown,
+  ) => Promise<Awaited<ReturnType<Client['callTool']>>>
 }
 
 async function callToolWithTimeout(
@@ -94,20 +97,27 @@ async function callToolWithTimeout(
   name: string,
   args: Record<string, unknown>,
 ) {
+  /**
+   * Use the raw `tools/call` request path (single invocation) instead of
+   * `client.callTool()` with output-schema retry behavior.
+   *
+   * For non-idempotent tools (create/update/delete), a schema-validation retry
+   * can execute the underlying operation twice:
+   *   1) first call succeeds but fails local output validation
+   *   2) retry runs again and returns a duplicate/conflict error
+   *
+   * That manifests as false "already exists" failures even when user edits are
+   * unique. Using one unvalidated call prevents double side effects.
+   */
   const doCall = async () => {
-    try {
-      return await client.callTool({ name, arguments: args })
-    } catch (err) {
-      if (isOutputSchemaError(err)) {
-        console.warn(`[mcp] Output schema validation failed for "${name}", retrying without validation`)
-        return (client as unknown as { request: (req: unknown, schema: unknown) => Promise<Awaited<ReturnType<Client['callTool']>>> })
-          .request(
-            { method: 'tools/call' as const, params: { name, arguments: args } },
-            CallToolResultSchema,
-          )
-      }
-      throw err
+    const requestClient = client as unknown as Partial<RequestCapableClient>
+    if (typeof requestClient.request === 'function') {
+      return requestClient.request(
+        { method: 'tools/call', params: { name, arguments: args } },
+        CallToolResultSchema,
+      )
     }
+    return client.callTool({ name, arguments: args })
   }
 
   return Promise.race([

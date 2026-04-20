@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import {
   Tooltip,
@@ -43,6 +44,8 @@ import { cn } from "~/lib/utils";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
+  FileIcon,
+  FileTextIcon,
   ImageIcon,
   Monitor,
   PlusIcon,
@@ -179,12 +182,19 @@ const captureScreenshot = async (): Promise<File | null> => {
 // ============================================================================
 
 export interface AttachmentsContext {
-  files: (FileUIPart & { id: string })[];
+  files: (FileUIPart & { id: string; size?: number })[];
   add: (files: File[] | FileList) => void;
   remove: (id: string) => void;
   clear: () => void;
   openFileDialog: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
+  /**
+   * Returns true (and resets the guard) when called within ~500 ms after the
+   * native file-picker's onChange fired. Used to suppress the accidental Enter
+   * that leaks from the OS picker confirmation into the textarea's keydown handler.
+   * Always returns false for programmatic add() calls (paste, drag-drop).
+   */
+  consumeRecentFileAdd: () => boolean;
 }
 
 export interface TextInputContext {
@@ -278,6 +288,7 @@ export const PromptInputProvider = ({
         mediaType: file.type,
         type: "file" as const,
         url: URL.createObjectURL(file),
+        size: file.size,
       })),
     ]);
   }, []);
@@ -326,16 +337,21 @@ export const PromptInputProvider = ({
     openRef.current?.();
   }, []);
 
+  // Provider does not own the file input so it cannot track when the native
+  // picker fires; return false so the textarea's guard is a no-op here.
+  const consumeRecentFileAdd = useCallback(() => false, []);
+
   const attachments = useMemo<AttachmentsContext>(
     () => ({
       add,
       clear,
+      consumeRecentFileAdd,
       fileInputRef,
       files: attachmentFiles,
       openFileDialog,
       remove,
     }),
-    [attachmentFiles, add, remove, clear, openFileDialog]
+    [attachmentFiles, add, remove, clear, openFileDialog, consumeRecentFileAdd]
   );
 
   const registerFileInput = useCallback(
@@ -410,6 +426,175 @@ export const usePromptInputReferencedSources = () => {
     );
   }
   return ctx;
+};
+
+// ============================================================================
+// Attachment Preview List
+// ============================================================================
+
+type AttachmentPreviewVariant = "image" | "file";
+
+function getAttachmentPreviewVariant(
+  mediaType: string,
+): AttachmentPreviewVariant {
+  if (mediaType.startsWith("image/")) return "image";
+  return "file";
+}
+
+type AttachmentPreviewFile = FileUIPart & { id: string; size?: number };
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileTypeLabel(file: AttachmentPreviewFile): string {
+  const ext = file.filename?.split(".").pop()?.toUpperCase();
+  if (ext) return ext;
+  const subtype = (file.mediaType ?? "").split("/")[1];
+  return subtype?.toUpperCase() ?? "FILE";
+}
+
+function getFileIcon(mediaType: string): typeof FileIcon {
+  if (mediaType === "application/pdf") return FileTextIcon;
+  return FileIcon;
+}
+
+type AttachmentHoverCardProps = {
+  file: AttachmentPreviewFile;
+  children: ReactNode;
+};
+
+function AttachmentHoverCard({ file, children }: AttachmentHoverCardProps) {
+  return (
+    <HoverCard openDelay={400}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent className="w-52 p-3 text-sm" side="top" align="start">
+        <p className="break-all font-medium leading-snug">
+          {file.filename ?? "Attachment"}
+        </p>
+        <p className="mt-1 text-muted-foreground">{file.mediaType}</p>
+        {file.size !== undefined && (
+          <p className="text-muted-foreground">{formatFileSize(file.size)}</p>
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+const tileRemoveButtonClass =
+  "absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+type ImagePreviewTileProps = {
+  file: AttachmentPreviewFile;
+  onRemove: (id: string) => void;
+};
+
+function ImagePreviewTile({ file, onRemove }: ImagePreviewTileProps) {
+  return (
+    <li className="shrink-0">
+      <AttachmentHoverCard file={file}>
+        <div className="relative size-20 overflow-hidden rounded-lg border border-border bg-muted">
+          <img
+            src={file.url}
+            alt={file.filename ?? "Attached image"}
+            className="size-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+          <button
+            type="button"
+            onClick={() => onRemove(file.id)}
+            aria-label={`Remove ${file.filename ?? "image"}`}
+            className={tileRemoveButtonClass}
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
+      </AttachmentHoverCard>
+    </li>
+  );
+}
+
+type FileTileProps = {
+  file: AttachmentPreviewFile;
+  onRemove: (id: string) => void;
+};
+
+function FileTile({ file, onRemove }: FileTileProps) {
+  const label = getFileTypeLabel(file);
+  const Icon = getFileIcon(file.mediaType ?? "");
+  return (
+    <li className="shrink-0">
+      <AttachmentHoverCard file={file}>
+        <div className="relative flex size-20 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-muted">
+          <Icon className="size-8 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </span>
+          <button
+            type="button"
+            onClick={() => onRemove(file.id)}
+            aria-label={`Remove ${file.filename ?? "attachment"}`}
+            className={tileRemoveButtonClass}
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
+      </AttachmentHoverCard>
+    </li>
+  );
+}
+
+export type PromptInputAttachmentPreviewListProps =
+  HTMLAttributes<HTMLUListElement>;
+
+export const PromptInputAttachmentPreviewList = ({
+  className,
+  ...props
+}: PromptInputAttachmentPreviewListProps) => {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul
+      className={cn(
+        "flex w-full list-none gap-2 overflow-x-auto px-3 pt-2 pb-1",
+        className,
+      )}
+      aria-label="Staged attachments"
+      {...props}
+    >
+      {attachments.files.map((file) => {
+        const variant = getAttachmentPreviewVariant(file.mediaType ?? "");
+        switch (variant) {
+          case "image":
+            return (
+              <ImagePreviewTile
+                key={file.id}
+                file={file}
+                onRemove={attachments.remove}
+              />
+            );
+          case "file":
+            return (
+              <FileTile
+                key={file.id}
+                file={file}
+                onRemove={attachments.remove}
+              />
+            );
+          default: {
+            const _exhaustiveCheck: never = variant;
+            return _exhaustiveCheck;
+          }
+        }
+      })}
+    </ul>
+  );
 };
 
 export type PromptInputActionAddAttachmentsProps = ComponentProps<
@@ -536,6 +721,9 @@ export const PromptInput = ({
   // Refs
   const inputRef = useRef<HTMLInputElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Tracks the timestamp of the most recent file-picker onChange. Used to
+  // suppress the accidental Enter that leaks from OS picker confirmation.
+  const lastFilePickerAddAtRef = useRef<number>(0);
 
   // ----- Local attachments (only used when no provider)
   const [items, setItems] = useState<(FileUIPart & { id: string })[]>([]);
@@ -615,7 +803,7 @@ export const PromptInput = ({
             message: "Too many files. Some were not added.",
           });
         }
-        const next: (FileUIPart & { id: string })[] = [];
+        const next: (FileUIPart & { id: string; size?: number })[] = [];
         for (const file of capped) {
           next.push({
             filename: file.name,
@@ -623,6 +811,7 @@ export const PromptInput = ({
             mediaType: file.type,
             type: "file",
             url: URL.createObjectURL(file),
+            size: file.size,
           });
         }
         return [...prev, ...next];
@@ -809,6 +998,9 @@ export const PromptInput = ({
     (event) => {
       if (event.currentTarget.files) {
         add(event.currentTarget.files);
+        // Mark that files just arrived from the native picker so the textarea
+        // can suppress any Enter that leaks from the OS dialog confirmation.
+        lastFilePickerAddAtRef.current = Date.now();
       }
       // Reset input value to allow selecting files that were previously removed
       event.currentTarget.value = "";
@@ -816,16 +1008,25 @@ export const PromptInput = ({
     [add]
   );
 
+  const consumeRecentFileAdd = useCallback(() => {
+    const isRecent = Date.now() - lastFilePickerAddAtRef.current < 500;
+    if (isRecent) {
+      lastFilePickerAddAtRef.current = 0;
+    }
+    return isRecent;
+  }, []);
+
   const attachmentsCtx = useMemo<AttachmentsContext>(
     () => ({
       add,
       clear: clearAttachments,
+      consumeRecentFileAdd,
       fileInputRef: inputRef,
       files: files.map((item) => ({ ...item, id: item.id })),
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, openFileDialog]
+    [files, add, remove, clearAttachments, openFileDialog, consumeRecentFileAdd]
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
@@ -995,6 +1196,13 @@ export const PromptInputTextarea = ({
           'button[type="submit"]'
         ) as HTMLButtonElement | null;
         if (submitButton?.disabled) {
+          return;
+        }
+
+        // Suppress Enter that leaks from native OS file-picker confirmation.
+        // Only the first Enter within ~500 ms of a file-picker onChange is
+        // eaten; subsequent intentional keypresses pass through normally.
+        if (attachments.consumeRecentFileAdd()) {
           return;
         }
 
@@ -1170,6 +1378,29 @@ export const PromptInputButton = ({
         )}
       </TooltipContent>
     </Tooltip>
+  );
+};
+
+export type PromptInputAttachButtonProps = Omit<
+  PromptInputButtonProps,
+  "onClick"
+>;
+
+export const PromptInputAttachButton = ({
+  tooltip = "Attach files",
+  children,
+  ...props
+}: PromptInputAttachButtonProps) => {
+  const attachments = usePromptInputAttachments();
+  return (
+    <PromptInputButton
+      tooltip={tooltip}
+      aria-label="Attach files"
+      onClick={attachments.openFileDialog}
+      {...props}
+    >
+      {children}
+    </PromptInputButton>
   );
 };
 

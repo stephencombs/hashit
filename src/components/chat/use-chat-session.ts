@@ -10,6 +10,7 @@ import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MessagePart } from "@tanstack/ai";
 import type { Spec } from "@json-render/core";
+import type { PromptInputMessage } from "~/components/ai-elements/prompt-input";
 import { useModelSettings } from "~/hooks/use-model-settings";
 import { useMcpSettings } from "~/hooks/use-mcp-settings";
 import {
@@ -23,6 +24,27 @@ import {
   invalidateThreadList,
   promoteOptimisticToRealThread,
 } from "~/components/chat/thread-list-cache";
+import {
+  attachmentResponseSchema,
+  type AttachmentResponse,
+} from "~/lib/attachment-schemas";
+import {
+  buildPromptContentParts,
+  isVisionCapableModel,
+} from "~/lib/multimodal-parts";
+import { collectFormDataTool, type CollectFormDataOutput } from "~/lib/form-tool";
+import {
+  resolveDuplicateEntityTool,
+  type ResolutionOutput,
+} from "~/lib/resolve-duplicate-tool";
+import {
+  cancelAllPending,
+  INTERACTIVE_TOOL_NAMES,
+  isInteractiveToolName,
+  registerPending,
+  resolvePending,
+  type InteractiveToolName,
+} from "~/lib/interactive-tool-registry";
 
 export type ChatMessageShape = {
   id: string;
@@ -30,39 +52,51 @@ export type ChatMessageShape = {
   parts: Array<MessagePart>;
 };
 
-function getPendingFormTarget(
+/**
+ * Finds the most recent assistant turn whose interactive tool-call is not
+ * yet resolved. The composer uses this to block sending new user messages
+ * until the user has responded to the form / resolution card.
+ */
+function getPendingInteractiveTarget(
   messages: Array<{ id: string; role: string; parts: Array<MessagePart> }>,
-  submittedFormData: Map<string, Record<string, unknown>>,
-): { messageId: string; toolCallId: string } | null {
+): { messageId: string; toolCallId: string; toolName: InteractiveToolName } | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
     if (message.role !== "assistant") continue;
 
-    let latestFormToolCallId: string | null = null;
+    let latestPending:
+      | { toolCallId: string; toolName: InteractiveToolName }
+      | null = null;
     for (const part of message.parts) {
       if ((part as { type?: string }).type !== "tool-call") continue;
-      const toolCall = part as { id?: string; name?: string; state?: string };
+      const toolCall = part as {
+        id?: string;
+        name?: string;
+        output?: unknown;
+      };
+      // TanStack AI client-tools leave state at "input-complete" even after
+      // resolution; presence of `output` is the reliable completion signal.
       if (
-        toolCall.name === "collect_form_data" &&
+        typeof toolCall.name === "string" &&
+        isInteractiveToolName(toolCall.name) &&
         typeof toolCall.id === "string" &&
-        toolCall.state !== "result"
+        toolCall.output === undefined
       ) {
-        latestFormToolCallId = toolCall.id;
+        latestPending = {
+          toolCallId: toolCall.id,
+          toolName: toolCall.name,
+        };
       }
     }
 
-    if (!latestFormToolCallId) {
-      // If the latest assistant turn is not a form handoff, older forms are historical.
-      return null;
-    }
-
-    if (submittedFormData.has(latestFormToolCallId)) {
+    if (!latestPending) {
       return null;
     }
 
     return {
       messageId: message.id,
-      toolCallId: latestFormToolCallId,
+      toolCallId: latestPending.toolCallId,
+      toolName: latestPending.toolName,
     };
   }
 
@@ -81,7 +115,7 @@ export interface UseChatSessionOptions {
   cancelQueriesOnUnmount?: boolean;
   /**
    * When true (e.g. `ChatProvider`), on `threadId` change: stop the stream,
-   * swap messages, clear live specs + form state — without remounting.
+   * swap messages, clear live specs — without remounting.
    */
   syncOnRouteThreadChange?: boolean;
 }
@@ -97,9 +131,97 @@ function useScrollToHashOnMount(): void {
   }, []);
 }
 
+async function uploadAttachmentSource(
+  url: string,
+  mediaType: string,
+  filename: string,
+): Promise<AttachmentResponse> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Could not read attachment source (${response.status})`);
+  }
+  const blob = await response.blob();
+  const file = new File([blob], filename || "upload", {
+    type: mediaType || blob.type || "application/octet-stream",
+  });
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const uploadResponse = await fetch("/api/prompt-attachments", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    let detail: string | undefined;
+    try {
+      const body = (await uploadResponse.json()) as {
+        message?: string;
+        why?: string;
+      };
+      detail = body.message ?? body.why;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail ?? `Upload failed (${uploadResponse.status})`);
+  }
+
+  const json = await uploadResponse.json();
+  return attachmentResponseSchema.parse(json);
+}
+
+function toAbsoluteAttachmentUrl(url: string): string {
+  try {
+    return new URL(url, window.location.origin).toString();
+  } catch {
+    return url;
+  }
+}
+
+function isLocalOrPrivateAttachmentUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+    return true;
+  }
+  if (hostname === "127.0.0.1" || hostname === "::1") {
+    return true;
+  }
+
+  if (/^10\./.test(hostname) || /^192\.168\./.test(hostname)) {
+    return true;
+  }
+
+  const match172 = hostname.match(/^172\.(\d{1,3})\./);
+  if (match172) {
+    const octet = Number(match172[1]);
+    if (octet >= 16 && octet <= 31) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Shared TanStack AI chat wiring: SSE, custom events, resolved thread id for
- * new-chat flows, live spec store, and thread-list cache updates.
+ * new-chat flows, live spec store, thread-list cache updates, and client
+ * tools for the interactive HITL flow (collect_form_data,
+ * resolve_duplicate_entity).
+ *
+ * The client tool handlers park on a promise from the interactive-tool
+ * registry; the UI resolves it when the user submits. TanStack AI's runtime
+ * pauses the agent loop on that await, writes the tool-call part with
+ * `state: "result"` + `output: <submitted data>` when it settles, and
+ * auto-continues via `checkForContinuation`. No custom stream-stopping or
+ * `addToolResult` plumbing is needed.
  */
 export function useChatSession({
   threadId: routeThreadId,
@@ -113,10 +235,6 @@ export function useChatSession({
   const { selectedServers, enabledTools } = useMcpSettings();
 
   const [liveSpecStore] = useState(() => new LiveSpecStore());
-
-  const [submittedFormData, setSubmittedFormData] = useState<
-    Map<string, Record<string, unknown>>
-  >(new Map());
 
   const [resolvedThreadId, setResolvedThreadId] = useState<string | undefined>(
     () => routeThreadId,
@@ -183,57 +301,71 @@ export function useChatSession({
     }
   }, [routeThreadId, onThreadCreated, queryClient]);
 
-  const { messages, sendMessage, status, addToolResult, setMessages, stop } =
-    useChat({
-      id: routeThreadId,
-      connection: fetchServerSentEvents("/api/chat"),
-      initialMessages: initialMessages as Array<ChatMessageShape>,
-      body: {
-        threadId: resolvedThreadId,
-        model,
-        temperature,
-        systemPrompt,
-        selectedServers,
-        enabledTools,
-      },
-      onCustomEvent: (
-        eventType: string,
-        data: unknown,
-        _context: { toolCallId?: string },
-      ) => {
-        if (eventType === "thread_created") {
-          const { threadId: realId } = data as { threadId: string };
-          resolvedThreadIdRef.current = realId;
-          setResolvedThreadId(realId);
-          promoteOptimisticToRealThread(queryClient, realId);
+  // Client tool handlers. Each one awaits a promise registered in the
+  // interactive-tool registry; the UI resolves it when the user submits.
+  // TanStack AI's runtime blocks the agent loop on that await and persists
+  // the result into the tool-call part automatically.
+  const clientTools = useMemo(() => {
+    const collectFormData = collectFormDataTool.client(async () =>
+      registerPending<CollectFormDataOutput>("collect_form_data"),
+    );
+    const resolveDuplicate = resolveDuplicateEntityTool.client(async () =>
+      registerPending<ResolutionOutput>("resolve_duplicate_entity"),
+    );
+    return [collectFormData, resolveDuplicate] as const;
+  }, []);
+
+  const { messages, sendMessage, status, setMessages, stop } = useChat({
+    id: routeThreadId,
+    connection: fetchServerSentEvents("/api/chat"),
+    tools: clientTools,
+    initialMessages: (initialMessages ?? []) as never,
+    body: {
+      threadId: resolvedThreadId,
+      model,
+      temperature,
+      systemPrompt,
+      selectedServers,
+      enabledTools,
+    },
+    onCustomEvent: (
+      eventType: string,
+      data: unknown,
+      _context: { toolCallId?: string },
+    ) => {
+      if (eventType === "thread_created") {
+        const { threadId: realId } = data as { threadId: string };
+        resolvedThreadIdRef.current = realId;
+        setResolvedThreadId(realId);
+        promoteOptimisticToRealThread(queryClient, realId);
+      }
+      if (eventType === "persistence_complete") {
+        invalidateThreadList(queryClient);
+        navigateIfReady();
+      }
+      if (eventType === "spec_patch" || eventType === "spec_complete") {
+        const { spec, specIndex: idx } = data as {
+          spec: Spec;
+          specIndex: number;
+        };
+        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+        if (lastMsg) {
+          liveSpecStore.set(lastMsg.id, idx, spec);
         }
-        if (eventType === "persistence_complete") {
-          invalidateThreadList(queryClient);
-          navigateIfReady();
-        }
-        if (eventType === "spec_patch" || eventType === "spec_complete") {
-          const { spec, specIndex: idx } = data as {
-            spec: Spec;
-            specIndex: number;
-          };
-          const lastMsg = messagesRef.current[messagesRef.current.length - 1];
-          if (lastMsg) {
-            liveSpecStore.set(lastMsg.id, idx, spec);
-          }
-        }
-      },
-      onFinish: () => {
-        // Navigation is handled by persistence_complete custom event instead.
-      },
-    });
+      }
+    },
+    onFinish: () => {
+      // Navigation is handled by persistence_complete custom event instead.
+    },
+  });
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  const pendingFormTarget = useMemo(
-    () => getPendingFormTarget(messages, submittedFormData),
-    [messages, submittedFormData],
+  const pendingInteractiveTarget = useMemo(
+    () => getPendingInteractiveTarget(messages),
+    [messages],
   );
 
   const lastSyncedRouteThreadIdRef = useRef(routeThreadId);
@@ -243,9 +375,13 @@ export function useChatSession({
     lastSyncedRouteThreadIdRef.current = routeThreadId;
 
     stop();
-    setMessages((initialMessages as ChatMessageShape[] | undefined) ?? []);
+    // Abandon any in-flight interactive handlers so their .client() promises
+    // reject cleanly instead of resolving against the new thread.
+    cancelAllPending("thread-changed");
+
+    const incoming = (initialMessages as ChatMessageShape[] | undefined) ?? [];
+    setMessages(incoming as never);
     liveSpecStore.clear();
-    setSubmittedFormData(new Map());
 
     if (routeThreadId !== undefined) {
       resolvedThreadIdRef.current = routeThreadId;
@@ -261,31 +397,106 @@ export function useChatSession({
     liveSpecStore,
   ]);
 
+  // Cancel any awaiting .client() promise if the session unmounts so the
+  // runtime error-reports the unresolved tool call instead of hanging.
+  useEffect(() => {
+    return () => {
+      cancelAllPending("session-unmount");
+    };
+  }, []);
+
   useScrollToHashOnMount();
 
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const clearSubmissionError = useCallback(() => setSubmissionError(null), []);
+
   const handleSubmit = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      if (pendingFormTarget) {
+    async (message: PromptInputMessage) => {
+      const trimmedText = message.text.trim();
+      const fileCount = message.files.length;
+      if (trimmedText.length === 0 && fileCount === 0) return;
+
+      if (pendingInteractiveTarget) {
         requestAnimationFrame(() => {
           document
-            .getElementById(`msg-${pendingFormTarget.messageId}`)
+            .getElementById(`msg-${pendingInteractiveTarget.messageId}`)
             ?.scrollIntoView({ behavior: "smooth", block: "center" });
         });
         return;
+      }
+
+      const hasMediaAttachment = message.files.some(
+        (file) =>
+          file.mediaType?.startsWith("image/") ||
+          file.mediaType?.startsWith("audio/") ||
+          file.mediaType?.startsWith("video/") ||
+          file.mediaType === "application/pdf",
+      );
+      if (hasMediaAttachment && !isVisionCapableModel(model)) {
+        setSubmissionError(
+          "Selected model does not support image or document input. Switch to a vision-capable model (e.g. gpt-4o, gpt-5).",
+        );
+        return;
+      }
+
+      setSubmissionError(null);
+
+      let attachments: AttachmentResponse[] = [];
+      if (fileCount > 0) {
+        try {
+          attachments = await Promise.all(
+            message.files.map((file) =>
+              uploadAttachmentSource(
+                file.url,
+                file.mediaType,
+                file.filename ?? "upload",
+              ),
+            ),
+          );
+        } catch (err) {
+          setSubmissionError(
+            err instanceof Error ? err.message : "Attachment upload failed",
+          );
+          return;
+        }
       }
 
       const now = new Date();
       if (!resolvedThreadId) {
         insertOptimisticThread(queryClient, now);
       }
-      // Existing threads: do not touch `['threads']` here — sidebar/command
-      // palette refresh on `persistence_complete` invalidation instead.
 
-      sendMessage(trimmed);
+      if (attachments.length === 0) {
+        sendMessage(trimmedText);
+        return;
+      }
+
+      const normalizedAttachments = attachments.map((a) => ({
+        url: toAbsoluteAttachmentUrl(a.url),
+        mimeType: a.mimeType,
+        filename: a.filename,
+      }));
+
+      if (
+        hasMediaAttachment &&
+        normalizedAttachments.some((attachment) =>
+          isLocalOrPrivateAttachmentUrl(attachment.url),
+        )
+      ) {
+        setSubmissionError(
+          "The selected model runs in Azure and cannot fetch attachments from local/private URLs. Expose your app with a public tunnel (for example cloudflared/ngrok), then retry.",
+        );
+        return;
+      }
+
+      const contentParts = buildPromptContentParts({
+        text: trimmedText,
+        attachments: normalizedAttachments,
+      });
+
+      sendMessage({ content: contentParts });
     },
-    [pendingFormTarget, resolvedThreadId, queryClient, sendMessage],
+    [pendingInteractiveTarget, resolvedThreadId, queryClient, sendMessage, model],
   );
 
   const handleSaveArtifact = useCallback(
@@ -324,20 +535,24 @@ export function useChatSession({
     [activeThreadId, queryClient],
   );
 
-  const handleFormSubmit = useCallback(
-    (toolCallId: string, data: Record<string, unknown>) => {
-      setSubmittedFormData((prev) => {
-        const next = new Map(prev);
-        next.set(toolCallId, data);
-        return next;
-      });
-      addToolResult({
-        toolCallId,
-        tool: "collect_form_data",
-        output: data,
-      });
+  /**
+   * Single callback the UI invokes when the user submits a form or picks a
+   * resolution action. Resolves the parked `.client()` promise for the
+   * given tool; TanStack AI's runtime then writes the tool-call part with
+   * `state: "result"` + `output` and POSTs a continuation automatically.
+   */
+  const resolveInteractive = useCallback(
+    (toolName: InteractiveToolName, output: unknown) => {
+      const resolved = resolvePending(toolName, output);
+      if (!resolved && process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[interactive-tool] resolvePending("${toolName}") had no awaiting handler; ` +
+            `this usually means the tool call finished before the UI responded ` +
+            `or the session was recreated while a form was open.`,
+        );
+      }
     },
-    [addToolResult],
+    [],
   );
 
   const isStreaming = status !== "ready";
@@ -354,17 +569,19 @@ export function useChatSession({
     messages,
     sendMessage,
     status,
-    addToolResult,
     setMessages,
     stop,
     liveSpecStore,
-    submittedFormData,
-    setSubmittedFormData,
     savedArtifactKeys,
     handleSubmit,
     handleSaveArtifact,
-    handleFormSubmit,
+    resolveInteractive,
+    pendingInteractiveTarget,
     isStreaming,
     isAwaitingResponse,
+    submissionError,
+    clearSubmissionError,
   };
 }
+
+export { INTERACTIVE_TOOL_NAMES } from "~/lib/interactive-tool-registry";

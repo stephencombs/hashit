@@ -94,7 +94,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               keywords={["new", "chat", "home", "create"]}
               onSelect={() =>
                 run(() => {
-                  navigate({ to: "/" })
+                  navigate({
+                    to: "/",
+                    state: (prev) => ({
+                      ...(prev ?? {}),
+                      __newChatNavNonce: Date.now(),
+                    }),
+                  })
                 })
               }
             >

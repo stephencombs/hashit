@@ -12,6 +12,7 @@ import type { Span } from '@opentelemetry/api'
 import type { RequestLogger } from 'evlog'
 import { createPlanTool } from '~/lib/tools'
 import { collectFormDataTool } from '~/lib/form-tool'
+import { resolveDuplicateEntityTool } from '~/lib/resolve-duplicate-tool'
 import { getMcpTools, type GetMcpToolsOptions } from '~/lib/mcp/client'
 import { getAzureAdapter } from '~/lib/openai-adapter'
 import {
@@ -400,7 +401,9 @@ export async function createAgentRun({
 
   const tools: Tool[] = [
     ...(profileConfig.includePlanTool ? [createPlanTool] : []),
-    ...(profileConfig.includeFormTool ? [collectFormDataTool] : []),
+    ...(profileConfig.includeFormTool
+      ? [collectFormDataTool, resolveDuplicateEntityTool]
+      : []),
     ...extraTools,
     ...mcpTools,
   ]

@@ -74,3 +74,11 @@ variable "mcp_client_secret" {
   sensitive   = true
 }
 
+# --- Blob Storage ---
+
+variable "blob_container_name" {
+  description = "Name of the Azure Blob Storage container for prompt attachments"
+  type        = string
+  default     = "prompt-attachments"
+}
+

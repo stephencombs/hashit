@@ -25,7 +25,13 @@ export function AppHotkeys({ onOpenCommandPalette }: AppHotkeysProps) {
 
   useHotkey("Mod+Shift+N", (event) => {
     event.preventDefault()
-    navigate({ to: "/" })
+    navigate({
+      to: "/",
+      state: (prev) => ({
+        ...(prev ?? {}),
+        __newChatNavNonce: Date.now(),
+      }),
+    })
   })
 
   useHotkey("Mod+Shift+L", (event) => {

@@ -3,40 +3,29 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useRequest } from 'nitro/context'
 import { createError } from 'evlog'
 import { chatRequestSchema } from '~/lib/schemas'
-import { createPlanTool } from '~/lib/tools'
-import { collectFormDataTool } from '~/lib/form-tool'
-import { uiCatalog } from '~/lib/ui-catalog'
 import { withJsonRender } from '~/lib/json-render-stream'
 import {
+  ATTACHMENT_ONLY_CONTENT_PREFIX,
   createThread,
   extractUserMessage,
+  isPlaceholderUserContent,
+  syncPriorToolOutputs,
   withPersistence,
 } from '~/lib/chat-helpers'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk } from '@tanstack/ai'
 import { createAgentRun } from '~/lib/agent-runner'
+import {
+  isVisionCapableModel,
+  userMessagesContainMedia,
+} from '~/lib/multimodal-parts'
 import { finalizeAgentRunTrace, startAgentRunTrace } from '~/lib/telemetry/agent-spans'
 
-/**
- * Stops the agent loop stream as soon as collect_form_data completes.
- * Without this, TanStack AI's agent loop sees a completed tool call and
- * runs the LLM again, causing it to call the form tool a second (or third)
- * time before the user has had a chance to fill the form.
- */
-async function* withFormStop(
-  stream: AsyncIterable<StreamChunk>,
-): AsyncIterable<StreamChunk> {
-  const formToolCallIds = new Set<string>()
-  for await (const chunk of stream) {
-    yield chunk
-    if (chunk.type === 'TOOL_CALL_START' && chunk.toolName === 'collect_form_data') {
-      formToolCallIds.add(chunk.toolCallId)
-    }
-    if (chunk.type === 'TOOL_CALL_END' && formToolCallIds.has(chunk.toolCallId)) {
-      return
-    }
-  }
-}
+// Interactive tools (collect_form_data, resolve_duplicate_entity) are now
+// client-side `.client()` tools registered on the client via `useChat({ tools })`.
+// TanStack AI's runtime owns pausing the agent loop on the client handler's
+// await and resuming via checkForContinuation once the user responds, so this
+// route no longer needs a custom stream-stop wrapper.
 
 async function* withTraceFinalization(
   stream: AsyncIterable<StreamChunk>,
@@ -80,16 +69,58 @@ export const Route = createFileRoute('/api/chat')({
         let threadId: string | undefined = data?.threadId
         let threadCreated = false
 
-        const { content: userContent, parts: userParts } =
-          extractUserMessage(messages)
+        const {
+          id: userMessageId,
+          content: userContent,
+          parts: userParts,
+        } = extractUserMessage(messages)
 
-        if (!threadId && userContent) {
-          const title =
-            userContent.length > 60
+        // Hard server-side capability guard: never let multimodal content
+        // reach a non-vision model. Client also guards, this is defense in
+        // depth so misconfigured clients fail fast instead of silently
+        // dropping the image context for the run.
+        const requestedModel =
+          data?.model?.trim() || process.env.AZURE_OPENAI_DEPLOYMENT
+        if (
+          userMessagesContainMedia(messages) &&
+          !isVisionCapableModel(requestedModel)
+        ) {
+          throw createError({
+            message: 'Model does not support image or document input',
+            status: 415,
+            why: `Selected model "${requestedModel ?? 'unknown'}" cannot process image, audio, video, or document parts`,
+            fix: 'Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)',
+          })
+        }
+
+        // Treat any non-empty user turn (text OR attachments) as valid for
+        // thread creation and persistence so attachment-only sends work.
+        const hasUserTurn = userContent.length > 0 || userParts.length > 0
+
+        if (!threadId && hasUserTurn) {
+          const fallbackTitle = isPlaceholderUserContent(userContent)
+            ? userContent.replace(ATTACHMENT_ONLY_CONTENT_PREFIX, 'Attachment').trim()
+            : userContent.length > 60
               ? userContent.slice(0, 60) + '...'
-              : userContent
-          threadId = await createThread(title, data?.source)
+              : userContent || 'New Chat'
+          threadId = await createThread(fallbackTitle, data?.source)
           threadCreated = true
+        }
+
+        // Client tool resolutions (e.g. collect_form_data, resolve_duplicate_entity)
+        // arrive here as continuation POSTs where prior assistant messages
+        // carry their tool-call `output` + a fresh tool-result part. Sync
+        // those back into the existing DB rows so reloads see the submitted
+        // state. No-op when there's nothing to upgrade.
+        if (threadId && !threadCreated) {
+          try {
+            await syncPriorToolOutputs(
+              threadId,
+              (messages ?? []) as Parameters<typeof syncPriorToolOutputs>[1],
+            )
+          } catch (err) {
+            log.set({ syncPriorToolOutputsError: String(err) })
+          }
         }
 
         const conversationId: string | undefined =
@@ -131,7 +162,7 @@ export const Route = createFileRoute('/api/chat')({
           traceState,
         })
 
-        const stream = withJsonRender(withFormStop(rawStream), (metrics) => {
+        const stream = withJsonRender(rawStream, (metrics) => {
           log.set({
             uiGenPatchLinesReceived: metrics.patchLinesReceived,
             uiGenPatchesEmitted: metrics.patchesEmitted,
@@ -142,7 +173,7 @@ export const Route = createFileRoute('/api/chat')({
 
         log.set({ phase: 'stream_started' })
 
-        if (threadId && userContent) {
+        if (threadId && hasUserTurn) {
           return toServerSentEventsResponse(
             withPersistence(
               stream,
@@ -152,6 +183,7 @@ export const Route = createFileRoute('/api/chat')({
               userParts,
               log,
               telemetry,
+              userMessageId,
             ),
           )
         }

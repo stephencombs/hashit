@@ -33,8 +33,10 @@ export interface VirtualConversationProps {
    */
   liveSpecStore: LiveSpecStore;
   savedArtifactKeys: Set<string>;
-  submittedFormData: Map<string, Record<string, unknown>>;
-  onFormSubmit: (toolCallId: string, data: Record<string, unknown>) => void;
+  onResolveInteractive: (
+    toolName: "collect_form_data" | "resolve_duplicate_entity",
+    output: unknown,
+  ) => void;
   onSaveArtifact: (
     spec: import("@json-render/core").Spec,
     messageId?: string,
@@ -50,8 +52,7 @@ export function VirtualConversation({
   isAwaitingResponse = false,
   liveSpecStore,
   savedArtifactKeys,
-  submittedFormData,
-  onFormSubmit,
+  onResolveInteractive,
   onSaveArtifact,
   className,
 }: VirtualConversationProps) {
@@ -229,8 +230,7 @@ export function VirtualConversation({
                     isStreaming={isStreaming}
                     liveSpecs={liveSpecsSnapshot.get(message.id)}
                     savedArtifactKeys={savedArtifactKeys}
-                    submittedFormData={submittedFormData}
-                    onFormSubmit={onFormSubmit}
+                    onResolveInteractive={onResolveInteractive}
                     onSaveArtifact={onSaveArtifact}
                   />
                 </div>

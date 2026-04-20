@@ -1,8 +1,15 @@
 import { lazy, memo, Suspense } from "react";
 import { parsePartialJSON } from "@tanstack/ai";
-import type { ToolCallPart, MessagePart } from "@tanstack/ai";
+import type {
+  AudioPart,
+  DocumentPart,
+  ImagePart,
+  MessagePart,
+  ToolCallPart,
+  VideoPart,
+} from "@tanstack/ai";
 import type { Spec } from "@json-render/core";
-import { BrainIcon, CheckIcon, WrenchIcon } from "lucide-react";
+import { BrainIcon, CheckIcon, FileIcon, WrenchIcon } from "lucide-react";
 import {
   Message,
   MessageContent,
@@ -24,8 +31,10 @@ import {
   PlanTrigger,
 } from "~/components/ai-elements/plan";
 import { FormDisplay } from "~/components/form-display";
+import { DuplicateResolutionDisplay } from "~/components/duplicate-resolution-display";
 import { ToolResultDisplay } from "~/components/tool-result-display";
 import type { FormSpec } from "~/lib/form-tool";
+import type { DuplicateResolutionSpec, ResolutionOutput } from "~/lib/resolve-duplicate-tool";
 
 export interface ChatMessage {
   id: string;
@@ -55,8 +64,16 @@ interface MessageRowProps {
   isStreaming: boolean;
   liveSpecs: Spec[] | undefined;
   savedArtifactKeys: Set<string>;
-  submittedFormData: Map<string, Record<string, unknown>>;
-  onFormSubmit: (toolCallId: string, data: Record<string, unknown>) => void;
+  /**
+   * Single callback for both interactive client tools. Internally resolves
+   * the parked `.client()` promise via the interactive-tool registry, so
+   * TanStack AI's runtime writes the tool-call part's `state: "result"` +
+   * `output` and resumes the agent loop.
+   */
+  onResolveInteractive: (
+    toolName: "collect_form_data" | "resolve_duplicate_entity",
+    output: unknown,
+  ) => void;
   onSaveArtifact: (
     spec: Spec,
     messageId?: string,
@@ -66,6 +83,106 @@ interface MessageRowProps {
 
 function isToolCallPart(part: { type: string }): part is ToolCallPart {
   return part.type === "tool-call";
+}
+
+function hasCollectFormDataOutput(
+  output: unknown,
+): output is { data: Record<string, unknown> } {
+  if (!output || typeof output !== "object") return false;
+  const maybe = output as { data?: unknown };
+  return (
+    !!maybe.data &&
+    typeof maybe.data === "object" &&
+    !Array.isArray(maybe.data)
+  );
+}
+
+function hasResolutionOutput(output: unknown): output is ResolutionOutput {
+  if (!output || typeof output !== "object") return false;
+  const maybe = output as {
+    actionId?: unknown;
+    values?: unknown;
+    changes?: unknown;
+  };
+  return (
+    typeof maybe.actionId === "string" &&
+    !!maybe.values &&
+    typeof maybe.values === "object" &&
+    !Array.isArray(maybe.values) &&
+    !!maybe.changes &&
+    typeof maybe.changes === "object" &&
+    !Array.isArray(maybe.changes)
+  );
+}
+
+function resolveSourceUrl(source: {
+  type: "url" | "data";
+  value: string;
+  mimeType?: string;
+}): string {
+  if (source.type === "url") return source.value;
+  return `data:${source.mimeType ?? "application/octet-stream"};base64,${source.value}`;
+}
+
+function ImagePartView({ part }: { part: ImagePart }) {
+  const src = resolveSourceUrl(part.source);
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className="block max-w-sm overflow-hidden rounded-md border border-border bg-muted/20"
+    >
+      <img
+        src={src}
+        alt="Attached image"
+        loading="lazy"
+        decoding="async"
+        className="h-auto w-full object-contain"
+      />
+    </a>
+  );
+}
+
+function MediaPartView({
+  part,
+  kind,
+}: {
+  part: AudioPart | VideoPart;
+  kind: "audio" | "video";
+}) {
+  const src = resolveSourceUrl(part.source);
+  return kind === "audio" ? (
+    <audio
+      controls
+      preload="metadata"
+      src={src}
+      className="w-full max-w-sm rounded-md border border-border bg-muted/20"
+    />
+  ) : (
+    <video
+      controls
+      preload="metadata"
+      src={src}
+      className="w-full max-w-sm rounded-md border border-border bg-muted/20"
+    />
+  );
+}
+
+function DocumentPartView({ part }: { part: DocumentPart }) {
+  const src = resolveSourceUrl(part.source);
+  const label = part.source.mimeType ?? "Document";
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex max-w-sm items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-foreground hover:bg-muted/30"
+    >
+      <FileIcon className="size-4 shrink-0" aria-hidden />
+      <span className="truncate">Open {label}</span>
+    </a>
+  );
 }
 
 function formatToolLabel(name: string, args: string): string {
@@ -154,11 +271,20 @@ function MessageRowImpl({
   isStreaming,
   liveSpecs,
   savedArtifactKeys,
-  submittedFormData,
-  onFormSubmit,
+  onResolveInteractive,
   onSaveArtifact,
 }: MessageRowProps) {
   const lastPart = message.parts.at(-1);
+  const lastInteractiveToolCallIndexById = new Map<string, number>();
+  for (let i = 0; i < message.parts.length; i++) {
+    const p = message.parts[i];
+    if (
+      p.type === "tool-call" &&
+      (p.name === "collect_form_data" || p.name === "resolve_duplicate_entity")
+    ) {
+      lastInteractiveToolCallIndexById.set(p.id, i);
+    }
+  }
 
   type ActivityStep =
     | { kind: "thinking"; text: string; isStreaming: boolean }
@@ -200,12 +326,13 @@ function MessageRowImpl({
       isToolCallPart(p) &&
       p.name !== "create_plan" &&
       p.name !== "collect_form_data" &&
+      p.name !== "resolve_duplicate_entity" &&
       !seenToolIds.has(p.id)
     ) {
       seenToolIds.add(p.id);
       const tr = toolResults.get(p.id);
       const done =
-        messageComplete || (tr ? tr.state === "complete" : p.state === "result");
+        messageComplete || (tr ? tr.state === "complete" : p.output !== undefined);
       steps.push({
         kind: "tool",
         tc: p,
@@ -308,61 +435,163 @@ function MessageRowImpl({
             );
           })()}
         {message.parts.map((part, i) => {
-          if (part.type === "text") {
-            return (
-              <MessageResponse
-                key={`${message.id}-${i}`}
-                deferMarkdown={!isStreaming}
-              >
-                {part.content}
-              </MessageResponse>
-            );
-          }
-          if (isToolCallPart(part) && part.name === "create_plan") {
-            const plan = parsePlan(part.arguments);
-            if (plan) {
+          const key = `${message.id}-${i}`;
+          switch (part.type) {
+            case "text":
               return (
-                <PlanDisplay
-                  key={`${message.id}-${i}`}
-                  plan={plan}
-                  isStreaming={isStreaming}
-                />
+                <MessageResponse key={key} deferMarkdown={!isStreaming}>
+                  {part.content}
+                </MessageResponse>
               );
+            case "image":
+              return <ImagePartView key={key} part={part} />;
+            case "audio":
+              return <MediaPartView key={key} part={part} kind="audio" />;
+            case "video":
+              return <MediaPartView key={key} part={part} kind="video" />;
+            case "document":
+              return <DocumentPartView key={key} part={part} />;
+            case "tool-call": {
+              const interactiveLastIndex = lastInteractiveToolCallIndexById.get(
+                part.id,
+              );
+              // Keep only the latest entry per interactive toolCallId. The
+              // stream can carry intermediate snapshots for the same call
+              // (input-complete -> result), and rendering all of them creates
+              // duplicate cards.
+              if (
+                interactiveLastIndex !== undefined &&
+                interactiveLastIndex !== i
+              ) {
+                return null;
+              }
+
+              if (part.name === "create_plan") {
+                const plan = parsePlan(part.arguments);
+                if (!plan) return null;
+                return (
+                  <PlanDisplay
+                    key={key}
+                    plan={plan}
+                    isStreaming={isStreaming}
+                  />
+                );
+              }
+              if (part.name === "collect_form_data") {
+                let formSpec: FormSpec | null = null;
+                try {
+                  const parsed = parsePartialJSON(part.arguments);
+                  if (
+                    parsed &&
+                    typeof (parsed as Record<string, unknown>).title === "string" &&
+                    Array.isArray(
+                      (parsed as Record<string, unknown>).fields,
+                    )
+                  ) {
+                    formSpec = parsed as FormSpec;
+                  }
+                } catch {}
+                if (!formSpec) return null;
+
+                // The TanStack AI client's addToolResult writes `output` into
+                // the tool-call part but leaves `state` at "input-complete".
+                // Presence of `output` is the canonical "submitted" signal.
+                // `output` has shape { data: Record<...> } per
+                // collectFormDataTool's outputSchema.
+                const isFormSubmitted = hasCollectFormDataOutput(part.output);
+                if (part.output !== undefined && !isFormSubmitted) {
+                  // Validation/tool errors can be attached as `output` objects
+                  // that are not user submissions. Skip rendering these stale
+                  // snapshots as "submitted" cards.
+                  return null;
+                }
+                const submittedOutput = isFormSubmitted ? part.output : undefined;
+                const userSubmittedData = submittedOutput?.data;
+
+                return (
+                  <FormDisplay
+                    key={key}
+                    spec={formSpec}
+                    disabled={isFormSubmitted}
+                    submittedData={userSubmittedData}
+                    draftStorageKey={`collect_form_data:${part.id}`}
+                    onSubmit={
+                      isFormSubmitted
+                        ? undefined
+                        : (data) =>
+                            onResolveInteractive("collect_form_data", {
+                              data: data as Record<
+                                string,
+                                string | number | boolean
+                              >,
+                            })
+                    }
+                  />
+                );
+              }
+              if (part.name === "resolve_duplicate_entity") {
+                let dupSpec: DuplicateResolutionSpec | null = null;
+                try {
+                  const parsed = parsePartialJSON(part.arguments);
+                  if (
+                    parsed &&
+                    typeof (parsed as Record<string, unknown>).title === "string" &&
+                    Array.isArray((parsed as Record<string, unknown>).fields)
+                  ) {
+                    dupSpec = parsed as DuplicateResolutionSpec;
+                  }
+                } catch {}
+                if (!dupSpec) return null;
+
+                const isResolved = hasResolutionOutput(part.output);
+                if (part.output !== undefined && !isResolved) {
+                  return null;
+                }
+                const resolutionSubmittedData = isResolved
+                  ? part.output
+                  : undefined;
+
+                return (
+                  <DuplicateResolutionDisplay
+                    key={key}
+                    spec={dupSpec}
+                    disabled={isResolved}
+                    submittedData={
+                      resolutionSubmittedData as
+                        | Record<string, unknown>
+                        | undefined
+                    }
+                    onResolve={
+                      isResolved
+                        ? undefined
+                        : (output: ResolutionOutput) =>
+                            onResolveInteractive(
+                              "resolve_duplicate_entity",
+                              output,
+                            )
+                    }
+                  />
+                );
+              }
+              // Generic tool-call: rendered in the chain-of-thought above.
+              return null;
+            }
+            case "tool-result":
+              // Handled inside the chain-of-thought activity panel above.
+              return null;
+            case "thinking":
+              // Handled inside the chain-of-thought activity panel above.
+              return null;
+            default: {
+              // Custom (non-TanStack) parts like ui-spec / tool-summary land
+              // here and are handled by sibling sections (persistedSpecs etc).
+              // The strict `never` check below catches future MessagePart
+              // additions at compile time so we can decide how to render them.
+              const _exhaustive: never = part;
+              void _exhaustive;
+              return null;
             }
           }
-          if (isToolCallPart(part) && part.name === "collect_form_data") {
-            let formSpec: FormSpec | null = null;
-            try {
-              const parsed = parsePartialJSON(part.arguments);
-              if (
-                parsed &&
-                typeof (parsed as Record<string, unknown>).title === "string" &&
-                Array.isArray((parsed as Record<string, unknown>).fields)
-              ) {
-                formSpec = parsed as FormSpec;
-              }
-            } catch {}
-            if (!formSpec) return null;
-
-            const userSubmittedData = submittedFormData.get(part.id);
-            const isFormSubmitted = !!userSubmittedData;
-
-            return (
-              <FormDisplay
-                key={`${message.id}-${i}`}
-                spec={formSpec}
-                disabled={isFormSubmitted}
-                submittedData={userSubmittedData}
-                onSubmit={
-                  isFormSubmitted
-                    ? undefined
-                    : (data) =>
-                        onFormSubmit(part.id, data as Record<string, unknown>)
-                }
-              />
-            );
-          }
-          return null;
         })}
       </MessageContent>
       {persistedSpecs.length > 0

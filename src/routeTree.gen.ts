@@ -13,6 +13,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as ApiThreadsRouteImport } from './routes/api/threads'
+import { Route as ApiPromptAttachmentsRouteImport } from './routes/api/prompt-attachments'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiCanvasRouteImport } from './routes/api/canvas'
@@ -28,6 +29,7 @@ import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/ind
 import { Route as AppCanvasIndexRouteImport } from './routes/_app.canvas.index'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
 import { Route as ApiSettingsMcpTokenRouteImport } from './routes/api/settings/mcp-token'
+import { Route as ApiPromptAttachmentsAttachmentIdRouteImport } from './routes/api/prompt-attachments.$attachmentId'
 import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
 import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
 import { Route as ApiDashboardHistoryRouteImport } from './routes/api/dashboard.history'
@@ -66,6 +68,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const ApiThreadsRoute = ApiThreadsRouteImport.update({
   id: '/api/threads',
   path: '/api/threads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPromptAttachmentsRoute = ApiPromptAttachmentsRouteImport.update({
+  id: '/api/prompt-attachments',
+  path: '/api/prompt-attachments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDashboardRoute = ApiDashboardRouteImport.update({
@@ -143,6 +150,12 @@ const ApiSettingsMcpTokenRoute = ApiSettingsMcpTokenRouteImport.update({
   path: '/api/settings/mcp-token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPromptAttachmentsAttachmentIdRoute =
+  ApiPromptAttachmentsAttachmentIdRouteImport.update({
+    id: '/$attachmentId',
+    path: '/$attachmentId',
+    getParentRoute: () => ApiPromptAttachmentsRoute,
+  } as any)
 const ApiMcpToolsRoute = ApiMcpToolsRouteImport.update({
   id: '/api/mcp/tools',
   path: '/api/mcp/tools',
@@ -265,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
   '/chat/$threadId': typeof AppChatThreadIdRoute
@@ -278,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/canvas/': typeof AppCanvasIndexRoute
@@ -302,6 +317,7 @@ export interface FileRoutesByTo {
   '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/': typeof AppIndexRoute
   '/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
@@ -316,6 +332,7 @@ export interface FileRoutesByTo {
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/canvas': typeof AppCanvasIndexRoute
@@ -344,6 +361,7 @@ export interface FileRoutesById {
   '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
@@ -358,6 +376,7 @@ export interface FileRoutesById {
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/_app/canvas/': typeof AppCanvasIndexRoute
@@ -387,6 +406,7 @@ export interface FileRouteTypes {
     | '/api/canvas'
     | '/api/chat'
     | '/api/dashboard'
+    | '/api/prompt-attachments'
     | '/api/threads'
     | '/canvas/$canvasId'
     | '/chat/$threadId'
@@ -400,6 +420,7 @@ export interface FileRouteTypes {
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/canvas/'
@@ -424,6 +445,7 @@ export interface FileRouteTypes {
     | '/api/canvas'
     | '/api/chat'
     | '/api/dashboard'
+    | '/api/prompt-attachments'
     | '/api/threads'
     | '/'
     | '/canvas/$canvasId'
@@ -438,6 +460,7 @@ export interface FileRouteTypes {
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/canvas'
@@ -465,6 +488,7 @@ export interface FileRouteTypes {
     | '/api/canvas'
     | '/api/chat'
     | '/api/dashboard'
+    | '/api/prompt-attachments'
     | '/api/threads'
     | '/_app/'
     | '/_app/canvas/$canvasId'
@@ -479,6 +503,7 @@ export interface FileRouteTypes {
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
     | '/_app/canvas/'
@@ -502,6 +527,7 @@ export interface RootRouteChildren {
   ApiCanvasRoute: typeof ApiCanvasRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
   ApiDashboardRoute: typeof ApiDashboardRouteWithChildren
+  ApiPromptAttachmentsRoute: typeof ApiPromptAttachmentsRouteWithChildren
   ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
   ApiMcpServersRoute: typeof ApiMcpServersRoute
   ApiMcpToolsRoute: typeof ApiMcpToolsRoute
@@ -536,6 +562,13 @@ declare module '@tanstack/react-router' {
       path: '/api/threads'
       fullPath: '/api/threads'
       preLoaderRoute: typeof ApiThreadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prompt-attachments': {
+      id: '/api/prompt-attachments'
+      path: '/api/prompt-attachments'
+      fullPath: '/api/prompt-attachments'
+      preLoaderRoute: typeof ApiPromptAttachmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/dashboard': {
@@ -642,6 +675,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/settings/mcp-token'
       preLoaderRoute: typeof ApiSettingsMcpTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/prompt-attachments/$attachmentId': {
+      id: '/api/prompt-attachments/$attachmentId'
+      path: '/$attachmentId'
+      fullPath: '/api/prompt-attachments/$attachmentId'
+      preLoaderRoute: typeof ApiPromptAttachmentsAttachmentIdRouteImport
+      parentRoute: typeof ApiPromptAttachmentsRoute
     }
     '/api/mcp/tools': {
       id: '/api/mcp/tools'
@@ -967,6 +1007,17 @@ const ApiDashboardRouteWithChildren = ApiDashboardRoute._addFileChildren(
   ApiDashboardRouteChildren,
 )
 
+interface ApiPromptAttachmentsRouteChildren {
+  ApiPromptAttachmentsAttachmentIdRoute: typeof ApiPromptAttachmentsAttachmentIdRoute
+}
+
+const ApiPromptAttachmentsRouteChildren: ApiPromptAttachmentsRouteChildren = {
+  ApiPromptAttachmentsAttachmentIdRoute: ApiPromptAttachmentsAttachmentIdRoute,
+}
+
+const ApiPromptAttachmentsRouteWithChildren =
+  ApiPromptAttachmentsRoute._addFileChildren(ApiPromptAttachmentsRouteChildren)
+
 interface ApiThreadsRouteChildren {
   ApiThreadsThreadIdRoute: typeof ApiThreadsThreadIdRoute
 }
@@ -988,6 +1039,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCanvasRoute: ApiCanvasRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
   ApiDashboardRoute: ApiDashboardRouteWithChildren,
+  ApiPromptAttachmentsRoute: ApiPromptAttachmentsRouteWithChildren,
   ApiThreadsRoute: ApiThreadsRouteWithChildren,
   ApiMcpServersRoute: ApiMcpServersRoute,
   ApiMcpToolsRoute: ApiMcpToolsRoute,

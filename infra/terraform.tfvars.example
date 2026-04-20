@@ -13,3 +13,5 @@ azure_openai_deployment = "<deployment-name>"
 mcp_subscription_key = "..."
 mcp_client_id        = "..."
 mcp_client_secret    = "..."
+
+# blob_container_name = "prompt-attachments" # optional – default matches app expectation

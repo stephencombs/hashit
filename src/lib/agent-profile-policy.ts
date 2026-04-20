@@ -31,6 +31,14 @@ const CHAT_CATALOG_RULES = [
 const FORM_RULE =
   'Use the collect_form_data tool when you need structured input from the user (e.g. registration, configuration, multi-field queries). Do not ask for multiple pieces of information via plain text when a form would be clearer. After calling collect_form_data, end your turn immediately with no text - the user must fill and submit the form before you respond again.'
 
+const DUPLICATE_RESOLUTION_RULE =
+  'When an MCP tool returns a uniqueness, duplicate, or conflict error, call resolve_duplicate_entity immediately. ' +
+  'Populate fields with both the existing (currentValue) and proposed (proposedValue) values. ' +
+  'Mark the conflicting fields with conflicting: true. ' +
+  'Provide clear resolution actions (e.g. retry with a different value, overwrite/force, skip). ' +
+  'Do NOT print markdown tables, do NOT ask the user to reply with corrected values in chat. ' +
+  'After calling resolve_duplicate_entity, end your turn immediately with no text and wait for the user to pick a resolution.'
+
 export function sanitizeCustomSystemPrompt(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
@@ -53,7 +61,7 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
         ...(customSystemPrompt ? [customSystemPrompt] : []),
         uiCatalog.prompt({
           mode: 'inline',
-          customRules: [...CHAT_CATALOG_RULES, FORM_RULE],
+          customRules: [...CHAT_CATALOG_RULES, FORM_RULE, DUPLICATE_RESOLUTION_RULE],
         }),
       ]
       if (extraSystemPrompts?.length) prompts.push(...extraSystemPrompts)

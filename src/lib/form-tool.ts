@@ -9,6 +9,7 @@ export const collectFormDataTool = toolDefinition({
     title: z.string().describe('Form heading displayed to the user'),
     description: z
       .string()
+      .nullable()
       .optional()
       .describe('Brief explanation of what the form collects'),
     fields: z
@@ -29,10 +30,12 @@ export const collectFormDataTool = toolDefinition({
           ]),
           required: z
             .boolean()
+            .nullable()
             .optional()
             .describe('Whether the field must be filled'),
           placeholder: z
             .string()
+            .nullable()
             .optional()
             .describe('Hint text shown when empty'),
           options: z
@@ -42,31 +45,35 @@ export const collectFormDataTool = toolDefinition({
                 value: z.string(),
               }),
             )
+            .nullable()
             .optional()
             .describe('Choices for select fields'),
           defaultValue: z
             .union([z.string(), z.number(), z.boolean()])
+            .nullable()
             .optional(),
         }),
       )
       .describe('Ordered list of form fields'),
     submitLabel: z
       .string()
+      .nullable()
       .optional()
       .describe('Custom submit button text (default: "Submit")'),
   }),
+  outputSchema: z.object({
+    data: z.record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean()]),
+    ),
+  }),
 })
-// NOTE: No .server() execute — intentional.
-//
-// With a .server() execute, TanStack AI's StreamProcessor receives TOOL_CALL_END
-// with a non-null result and automatically calls checkForContinuation, triggering
-// a server round-trip before the user has submitted the form. When the user then
-// submits (addToolResult), a second continuation fires, producing two separate
-// agent responses and duplicate tool calls.
-//
-// As a ToolDefinitionInstance (no execute), TOOL_CALL_END carries a null result.
-// StreamProcessor does not trigger checkForContinuation for null results, so only
-// the user's explicit addToolResult call produces a continuation.
+// NOTE: No .server() execute. This is a client tool. The UI supplies the
+// output via a .client() handler registered on the client side (see
+// src/components/chat/use-chat-session.ts and
+// src/lib/interactive-tool-registry.ts). The TanStack AI runtime pauses the
+// agent loop until that handler resolves, persists the tool-call part with
+// state: "result" and the submitted output, then resumes automatically.
 
 export type FormField = {
   name: string
@@ -83,4 +90,8 @@ export type FormSpec = {
   description?: string
   fields: FormField[]
   submitLabel?: string
+}
+
+export type CollectFormDataOutput = {
+  data: Record<string, string | number | boolean>
 }

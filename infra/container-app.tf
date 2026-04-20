@@ -65,6 +65,11 @@ resource "azurerm_container_app" "this" {
     value = "postgresql://${var.postgres_admin_login}:${urlencode(var.postgres_admin_password)}@${azurerm_postgresql_flexible_server.this.fqdn}:5432/${azurerm_postgresql_flexible_server_database.this.name}?sslmode=require"
   }
 
+  secret {
+    name  = "azure-blob-account-key"
+    value = azurerm_storage_account.attachments.primary_access_key
+  }
+
   ingress {
     external_enabled = true
     target_port      = 3000
@@ -123,6 +128,26 @@ resource "azurerm_container_app" "this" {
       env {
         name  = "APP_URL"
         value = "https://${var.app_name}.${azurerm_container_app_environment.this.default_domain}"
+      }
+
+      env {
+        name  = "AZURE_BLOB_ACCOUNT_NAME"
+        value = azurerm_storage_account.attachments.name
+      }
+
+      env {
+        name  = "AZURE_BLOB_ENDPOINT"
+        value = azurerm_storage_account.attachments.primary_blob_endpoint
+      }
+
+      env {
+        name  = "AZURE_BLOB_CONTAINER"
+        value = azurerm_storage_container.attachments.name
+      }
+
+      env {
+        name        = "AZURE_BLOB_ACCOUNT_KEY"
+        secret_name = "azure-blob-account-key"
       }
 
       liveness_probe {

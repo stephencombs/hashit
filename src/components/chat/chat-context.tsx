@@ -21,11 +21,16 @@ import type { ChatMessage } from "~/components/chat/message-row";
 import {
   PromptInput,
   type PromptInputMessage,
-  PromptInputTextarea,
-  PromptInputSubmit,
-  PromptInputFooter,
+  PromptInputAttachButton,
+  PromptInputAttachmentPreviewList,
   PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+  usePromptInputAttachments,
 } from "~/components/ai-elements/prompt-input";
+import { PaperclipIcon, XCircleIcon } from "lucide-react";
 import {
   useChatSession,
   type ChatMessageShape,
@@ -33,6 +38,25 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 
 type ChatStatus = UseChatReturn["status"];
+
+
+function PromptInputSubmitButton({
+  input,
+  status,
+}: {
+  input: string;
+  status: ChatStatus;
+}) {
+  const attachments = usePromptInputAttachments();
+  const canSubmit = input.trim().length > 0 || attachments.files.length > 0;
+
+  return (
+    <PromptInputSubmit
+      disabled={!canSubmit && status === "ready"}
+      status={status}
+    />
+  );
+}
 
 /** Conversation + message actions — excludes composer `input` so typing does not re-render the message list. */
 interface ChatMessagesContextValue {
@@ -43,8 +67,7 @@ interface ChatMessagesContextValue {
   isAwaitingResponse: boolean;
   liveSpecStore: ReturnType<typeof useChatSession>["liveSpecStore"];
   savedArtifactKeys: Set<string>;
-  submittedFormData: Map<string, Record<string, unknown>>;
-  handleFormSubmit: (toolCallId: string, data: Record<string, unknown>) => void;
+  resolveInteractive: ReturnType<typeof useChatSession>["resolveInteractive"];
   handleSaveArtifact: (
     spec: Spec,
     messageId?: string,
@@ -59,6 +82,8 @@ interface ChatComposerContextValue {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   handleSubmit: (message: PromptInputMessage) => void;
   status: ChatStatus;
+  submissionError: string | null;
+  clearSubmissionError: () => void;
 }
 
 const ChatMessagesContext = createContext<ChatMessagesContextValue | null>(
@@ -97,12 +122,13 @@ export function ChatProvider({
     status,
     liveSpecStore,
     savedArtifactKeys,
-    submittedFormData,
-    handleSubmit: submitChatText,
-    handleFormSubmit,
+    resolveInteractive,
+    handleSubmit: submitChatMessage,
     handleSaveArtifact,
     isStreaming,
     isAwaitingResponse,
+    submissionError,
+    clearSubmissionError,
   } = session;
 
   const prevThreadIdRef = useRef(threadId);
@@ -113,12 +139,12 @@ export function ChatProvider({
   }, [threadId]);
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
-      if (!message.text.trim()) return;
-      submitChatText(message.text);
+    async (message: PromptInputMessage) => {
+      if (!message.text.trim() && message.files.length === 0) return;
+      await submitChatMessage(message);
       setInput("");
     },
-    [submitChatText],
+    [submitChatMessage],
   );
 
   const chatStatus: ChatStatus = status;
@@ -132,8 +158,7 @@ export function ChatProvider({
       isAwaitingResponse,
       liveSpecStore,
       savedArtifactKeys,
-      submittedFormData,
-      handleFormSubmit,
+      resolveInteractive,
       handleSaveArtifact,
     }),
     [
@@ -144,8 +169,7 @@ export function ChatProvider({
       isAwaitingResponse,
       liveSpecStore,
       savedArtifactKeys,
-      submittedFormData,
-      handleFormSubmit,
+      resolveInteractive,
       handleSaveArtifact,
     ],
   );
@@ -157,8 +181,10 @@ export function ChatProvider({
       textareaRef,
       handleSubmit,
       status: chatStatus,
+      submissionError,
+      clearSubmissionError,
     }),
-    [input, handleSubmit, chatStatus],
+    [input, handleSubmit, chatStatus, submissionError, clearSubmissionError],
   );
 
   return (
@@ -240,8 +266,7 @@ export function ChatMessages() {
     isAwaitingResponse,
     liveSpecStore,
     savedArtifactKeys,
-    submittedFormData,
-    handleFormSubmit,
+    resolveInteractive,
     handleSaveArtifact,
   } = useChatMessagesContext();
   const hasMessages = messages.length > 0;
@@ -274,22 +299,50 @@ export function ChatMessages() {
       isAwaitingResponse={isAwaitingResponse}
       liveSpecStore={liveSpecStore}
       savedArtifactKeys={savedArtifactKeys}
-      submittedFormData={submittedFormData}
-      onFormSubmit={handleFormSubmit}
+      onResolveInteractive={resolveInteractive}
       onSaveArtifact={handleSaveArtifact}
     />
   );
 }
 
 export function ChatPromptDock() {
-  const { status, input, setInput, textareaRef, handleSubmit } =
-    useChatComposerContext();
+  const {
+    status,
+    input,
+    setInput,
+    textareaRef,
+    handleSubmit,
+    submissionError,
+    clearSubmissionError,
+  } = useChatComposerContext();
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-6">
       <div className="pointer-events-auto mx-auto w-full max-w-4xl">
-        <PromptInput onSubmit={handleSubmit}>
+        {submissionError && (
+          <div
+            role="alert"
+            className="mb-2 flex items-start justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            <span className="min-w-0 flex-1">{submissionError}</span>
+            <button
+              type="button"
+              onClick={clearSubmissionError}
+              aria-label="Dismiss error"
+              className="text-destructive/70 hover:text-destructive"
+            >
+              <XCircleIcon className="size-4" />
+            </button>
+          </div>
+        )}
+        <PromptInput
+          onSubmit={handleSubmit}
+          accept="image/*,application/pdf"
+          globalDrop
+          multiple
+        >
           <PromptInputBody>
+            <PromptInputAttachmentPreviewList />
             <PromptInputTextarea
               ref={textareaRef}
               value={input}
@@ -297,11 +350,12 @@ export function ChatPromptDock() {
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <div />
-            <PromptInputSubmit
-              disabled={!input.trim() && status === "ready"}
-              status={status}
-            />
+            <PromptInputTools>
+              <PromptInputAttachButton>
+                <PaperclipIcon className="size-4" />
+              </PromptInputAttachButton>
+            </PromptInputTools>
+            <PromptInputSubmitButton input={input} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
