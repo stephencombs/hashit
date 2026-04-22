@@ -1,0 +1,15 @@
+{
+	admin off
+}
+
+:4437 {
+	respond /health 200
+
+	route /v1/stream/* {
+		durable_streams {
+			# Azure Files mounts can deny bbolt open() in some revisions/users.
+			# Keep the service healthy by using node-local writable storage.
+			data_dir /tmp/durable-streams/data
+		}
+	}
+}

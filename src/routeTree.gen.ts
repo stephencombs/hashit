@@ -9,31 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as V2RouteImport } from './routes/v2'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as V2IndexRouteImport } from './routes/v2.index'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as V2ChatRouteImport } from './routes/v2.chat'
 import { Route as ApiThreadsRouteImport } from './routes/api/threads'
 import { Route as ApiPromptAttachmentsRouteImport } from './routes/api/prompt-attachments'
 import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
+import { Route as ApiChatStreamRouteImport } from './routes/api/chat-stream'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as ApiCanvasRouteImport } from './routes/api/canvas'
 import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
 import { Route as ApiArtifactsRouteImport } from './routes/api/artifacts'
 import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
-import { Route as AppCanvasRouteImport } from './routes/_app.canvas'
 import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppArtifactsRouteImport } from './routes/_app.artifacts'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/index'
-import { Route as AppCanvasIndexRouteImport } from './routes/_app.canvas.index'
+import { Route as V2ChatThreadIdRouteImport } from './routes/v2.chat.$threadId'
+import { Route as ApiV2ChatStreamRouteImport } from './routes/api/v2/chat-stream'
+import { Route as ApiV2ChatRouteImport } from './routes/api/v2/chat'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
 import { Route as ApiSettingsMcpTokenRouteImport } from './routes/api/settings/mcp-token'
 import { Route as ApiPromptAttachmentsAttachmentIdRouteImport } from './routes/api/prompt-attachments.$attachmentId'
 import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
 import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
 import { Route as ApiDashboardHistoryRouteImport } from './routes/api/dashboard.history'
-import { Route as ApiCanvasCanvasIdRouteImport } from './routes/api/canvas.$canvasId'
 import { Route as ApiAutomationsAutomationIdRouteImport } from './routes/api/automations.$automationId'
 import { Route as ApiArtifactsArtifactIdRouteImport } from './routes/api/artifacts.$artifactId'
 import { Route as AppSettingsModelRouteImport } from './routes/_app.settings/model'
@@ -41,16 +44,14 @@ import { Route as AppSettingsMcpRouteImport } from './routes/_app.settings/mcp'
 import { Route as AppSettingsDataRouteImport } from './routes/_app.settings/data'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app.settings/appearance'
 import { Route as AppChatThreadIdRouteImport } from './routes/_app.chat.$threadId'
-import { Route as AppCanvasCanvasIdRouteImport } from './routes/_app.canvas.$canvasId'
 import { Route as ApiDashboardSnapshotsSnapshotIdRouteImport } from './routes/api/dashboard.snapshots.$snapshotId'
-import { Route as ApiCanvasCanvasIdNodesRouteImport } from './routes/api/canvas.$canvasId.nodes'
-import { Route as ApiCanvasCanvasIdEdgesRouteImport } from './routes/api/canvas.$canvasId.edges'
 import { Route as ApiAutomationsAutomationIdRunsRouteImport } from './routes/api/automations.$automationId.runs'
-import { Route as ApiCanvasCanvasIdNodesNodeIdRouteImport } from './routes/api/canvas.$canvasId.nodes.$nodeId'
-import { Route as ApiCanvasCanvasIdNodesNodeIdVersionsRouteImport } from './routes/api/canvas.$canvasId.nodes.$nodeId.versions'
-import { Route as ApiCanvasCanvasIdNodesNodeIdGenerateRouteImport } from './routes/api/canvas.$canvasId.nodes.$nodeId.generate'
-import { Route as ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRouteImport } from './routes/api/canvas.$canvasId.nodes.$nodeId.versions.$versionId.restore'
 
+const V2Route = V2RouteImport.update({
+  id: '/v2',
+  path: '/v2',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
@@ -60,10 +61,20 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V2IndexRoute = V2IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => V2Route,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const V2ChatRoute = V2ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => V2Route,
 } as any)
 const ApiThreadsRoute = ApiThreadsRouteImport.update({
   id: '/api/threads',
@@ -80,14 +91,14 @@ const ApiDashboardRoute = ApiDashboardRouteImport.update({
   path: '/api/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatStreamRoute = ApiChatStreamRouteImport.update({
+  id: '/api/chat-stream',
+  path: '/api/chat-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCanvasRoute = ApiCanvasRouteImport.update({
-  id: '/api/canvas',
-  path: '/api/canvas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAutomationsRoute = ApiAutomationsRouteImport.update({
@@ -115,11 +126,6 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCanvasRoute = AppCanvasRouteImport.update({
-  id: '/canvas',
-  path: '/canvas',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAutomationsRoute = AppAutomationsRouteImport.update({
   id: '/automations',
   path: '/automations',
@@ -135,10 +141,20 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSettingsRoute,
 } as any)
-const AppCanvasIndexRoute = AppCanvasIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppCanvasRoute,
+const V2ChatThreadIdRoute = V2ChatThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => V2ChatRoute,
+} as any)
+const ApiV2ChatStreamRoute = ApiV2ChatStreamRouteImport.update({
+  id: '/api/v2/chat-stream',
+  path: '/api/v2/chat-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2ChatRoute = ApiV2ChatRouteImport.update({
+  id: '/api/v2/chat',
+  path: '/api/v2/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
   id: '/$threadId',
@@ -170,11 +186,6 @@ const ApiDashboardHistoryRoute = ApiDashboardHistoryRouteImport.update({
   id: '/history',
   path: '/history',
   getParentRoute: () => ApiDashboardRoute,
-} as any)
-const ApiCanvasCanvasIdRoute = ApiCanvasCanvasIdRouteImport.update({
-  id: '/$canvasId',
-  path: '/$canvasId',
-  getParentRoute: () => ApiCanvasRoute,
 } as any)
 const ApiAutomationsAutomationIdRoute =
   ApiAutomationsAutomationIdRouteImport.update({
@@ -212,75 +223,37 @@ const AppChatThreadIdRoute = AppChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppCanvasCanvasIdRoute = AppCanvasCanvasIdRouteImport.update({
-  id: '/$canvasId',
-  path: '/$canvasId',
-  getParentRoute: () => AppCanvasRoute,
-} as any)
 const ApiDashboardSnapshotsSnapshotIdRoute =
   ApiDashboardSnapshotsSnapshotIdRouteImport.update({
     id: '/snapshots/$snapshotId',
     path: '/snapshots/$snapshotId',
     getParentRoute: () => ApiDashboardRoute,
   } as any)
-const ApiCanvasCanvasIdNodesRoute = ApiCanvasCanvasIdNodesRouteImport.update({
-  id: '/nodes',
-  path: '/nodes',
-  getParentRoute: () => ApiCanvasCanvasIdRoute,
-} as any)
-const ApiCanvasCanvasIdEdgesRoute = ApiCanvasCanvasIdEdgesRouteImport.update({
-  id: '/edges',
-  path: '/edges',
-  getParentRoute: () => ApiCanvasCanvasIdRoute,
-} as any)
 const ApiAutomationsAutomationIdRunsRoute =
   ApiAutomationsAutomationIdRunsRouteImport.update({
     id: '/runs',
     path: '/runs',
     getParentRoute: () => ApiAutomationsAutomationIdRoute,
   } as any)
-const ApiCanvasCanvasIdNodesNodeIdRoute =
-  ApiCanvasCanvasIdNodesNodeIdRouteImport.update({
-    id: '/$nodeId',
-    path: '/$nodeId',
-    getParentRoute: () => ApiCanvasCanvasIdNodesRoute,
-  } as any)
-const ApiCanvasCanvasIdNodesNodeIdVersionsRoute =
-  ApiCanvasCanvasIdNodesNodeIdVersionsRouteImport.update({
-    id: '/versions',
-    path: '/versions',
-    getParentRoute: () => ApiCanvasCanvasIdNodesNodeIdRoute,
-  } as any)
-const ApiCanvasCanvasIdNodesNodeIdGenerateRoute =
-  ApiCanvasCanvasIdNodesNodeIdGenerateRouteImport.update({
-    id: '/generate',
-    path: '/generate',
-    getParentRoute: () => ApiCanvasCanvasIdNodesNodeIdRoute,
-  } as any)
-const ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute =
-  ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRouteImport.update({
-    id: '/$versionId/restore',
-    path: '/$versionId/restore',
-    getParentRoute: () => ApiCanvasCanvasIdNodesNodeIdVersionsRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/health': typeof HealthRoute
+  '/v2': typeof V2RouteWithChildren
   '/artifacts': typeof AppArtifactsRoute
   '/automations': typeof AppAutomationsRoute
-  '/canvas': typeof AppCanvasRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/settings': typeof AppSettingsRouteWithChildren
   '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
-  '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
-  '/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
+  '/v2/chat': typeof V2ChatRouteWithChildren
+  '/v2/': typeof V2IndexRoute
   '/chat/$threadId': typeof AppChatThreadIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/data': typeof AppSettingsDataRoute
@@ -288,23 +261,18 @@ export interface FileRoutesByFullPath {
   '/settings/model': typeof AppSettingsModelRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
-  '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
-  '/canvas/': typeof AppCanvasIndexRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
-  '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
-  '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
-  '/api/canvas/$canvasId/nodes/$nodeId': typeof ApiCanvasCanvasIdNodesNodeIdRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/generate': typeof ApiCanvasCanvasIdNodesNodeIdGenerateRoute
-  '/api/canvas/$canvasId/nodes/$nodeId/versions': typeof ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore': typeof ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -314,13 +282,14 @@ export interface FileRoutesByTo {
   '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
-  '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/v2/chat': typeof V2ChatRouteWithChildren
   '/': typeof AppIndexRoute
-  '/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
+  '/v2': typeof V2IndexRoute
   '/chat/$threadId': typeof AppChatThreadIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/data': typeof AppSettingsDataRoute
@@ -328,43 +297,39 @@ export interface FileRoutesByTo {
   '/settings/model': typeof AppSettingsModelRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
-  '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
-  '/canvas': typeof AppCanvasIndexRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
-  '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
-  '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
-  '/api/canvas/$canvasId/nodes/$nodeId': typeof ApiCanvasCanvasIdNodesNodeIdRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/generate': typeof ApiCanvasCanvasIdNodesNodeIdGenerateRoute
-  '/api/canvas/$canvasId/nodes/$nodeId/versions': typeof ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore': typeof ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/health': typeof HealthRoute
+  '/v2': typeof V2RouteWithChildren
   '/_app/artifacts': typeof AppArtifactsRoute
   '/_app/automations': typeof AppAutomationsRoute
-  '/_app/canvas': typeof AppCanvasRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/settings': typeof AppSettingsRouteWithChildren
   '/api/agent': typeof ApiAgentRoute
   '/api/artifacts': typeof ApiArtifactsRouteWithChildren
   '/api/automations': typeof ApiAutomationsRouteWithChildren
-  '/api/canvas': typeof ApiCanvasRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
   '/api/dashboard': typeof ApiDashboardRouteWithChildren
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/v2/chat': typeof V2ChatRouteWithChildren
   '/_app/': typeof AppIndexRoute
-  '/_app/canvas/$canvasId': typeof AppCanvasCanvasIdRoute
+  '/v2/': typeof V2IndexRoute
   '/_app/chat/$threadId': typeof AppChatThreadIdRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/data': typeof AppSettingsDataRoute
@@ -372,43 +337,39 @@ export interface FileRoutesById {
   '/_app/settings/model': typeof AppSettingsModelRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
   '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
-  '/api/canvas/$canvasId': typeof ApiCanvasCanvasIdRouteWithChildren
   '/api/dashboard/history': typeof ApiDashboardHistoryRoute
   '/api/mcp/servers': typeof ApiMcpServersRoute
   '/api/mcp/tools': typeof ApiMcpToolsRoute
   '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
   '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
-  '/_app/canvas/': typeof AppCanvasIndexRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
-  '/api/canvas/$canvasId/edges': typeof ApiCanvasCanvasIdEdgesRoute
-  '/api/canvas/$canvasId/nodes': typeof ApiCanvasCanvasIdNodesRouteWithChildren
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
-  '/api/canvas/$canvasId/nodes/$nodeId': typeof ApiCanvasCanvasIdNodesNodeIdRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/generate': typeof ApiCanvasCanvasIdNodesNodeIdGenerateRoute
-  '/api/canvas/$canvasId/nodes/$nodeId/versions': typeof ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren
-  '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore': typeof ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/health'
+    | '/v2'
     | '/artifacts'
     | '/automations'
-    | '/canvas'
     | '/dashboard'
     | '/settings'
     | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
-    | '/api/canvas'
     | '/api/chat'
+    | '/api/chat-stream'
     | '/api/dashboard'
     | '/api/prompt-attachments'
     | '/api/threads'
-    | '/canvas/$canvasId'
+    | '/v2/chat'
+    | '/v2/'
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
@@ -416,23 +377,18 @@ export interface FileRouteTypes {
     | '/settings/model'
     | '/api/artifacts/$artifactId'
     | '/api/automations/$automationId'
-    | '/api/canvas/$canvasId'
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
     | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
-    | '/canvas/'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
     | '/settings/'
     | '/api/automations/$automationId/runs'
-    | '/api/canvas/$canvasId/edges'
-    | '/api/canvas/$canvasId/nodes'
     | '/api/dashboard/snapshots/$snapshotId'
-    | '/api/canvas/$canvasId/nodes/$nodeId'
-    | '/api/canvas/$canvasId/nodes/$nodeId/generate'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -442,13 +398,14 @@ export interface FileRouteTypes {
     | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
-    | '/api/canvas'
     | '/api/chat'
+    | '/api/chat-stream'
     | '/api/dashboard'
     | '/api/prompt-attachments'
     | '/api/threads'
+    | '/v2/chat'
     | '/'
-    | '/canvas/$canvasId'
+    | '/v2'
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
@@ -456,42 +413,38 @@ export interface FileRouteTypes {
     | '/settings/model'
     | '/api/artifacts/$artifactId'
     | '/api/automations/$automationId'
-    | '/api/canvas/$canvasId'
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
     | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
-    | '/canvas'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
     | '/settings'
     | '/api/automations/$automationId/runs'
-    | '/api/canvas/$canvasId/edges'
-    | '/api/canvas/$canvasId/nodes'
     | '/api/dashboard/snapshots/$snapshotId'
-    | '/api/canvas/$canvasId/nodes/$nodeId'
-    | '/api/canvas/$canvasId/nodes/$nodeId/generate'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore'
   id:
     | '__root__'
     | '/_app'
     | '/health'
+    | '/v2'
     | '/_app/artifacts'
     | '/_app/automations'
-    | '/_app/canvas'
     | '/_app/dashboard'
     | '/_app/settings'
     | '/api/agent'
     | '/api/artifacts'
     | '/api/automations'
-    | '/api/canvas'
     | '/api/chat'
+    | '/api/chat-stream'
     | '/api/dashboard'
     | '/api/prompt-attachments'
     | '/api/threads'
+    | '/v2/chat'
     | '/_app/'
-    | '/_app/canvas/$canvasId'
+    | '/v2/'
     | '/_app/chat/$threadId'
     | '/_app/settings/appearance'
     | '/_app/settings/data'
@@ -499,43 +452,48 @@ export interface FileRouteTypes {
     | '/_app/settings/model'
     | '/api/artifacts/$artifactId'
     | '/api/automations/$automationId'
-    | '/api/canvas/$canvasId'
     | '/api/dashboard/history'
     | '/api/mcp/servers'
     | '/api/mcp/tools'
     | '/api/prompt-attachments/$attachmentId'
     | '/api/settings/mcp-token'
     | '/api/threads/$threadId'
-    | '/_app/canvas/'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
     | '/_app/settings/'
     | '/api/automations/$automationId/runs'
-    | '/api/canvas/$canvasId/edges'
-    | '/api/canvas/$canvasId/nodes'
     | '/api/dashboard/snapshots/$snapshotId'
-    | '/api/canvas/$canvasId/nodes/$nodeId'
-    | '/api/canvas/$canvasId/nodes/$nodeId/generate'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions'
-    | '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   HealthRoute: typeof HealthRoute
+  V2Route: typeof V2RouteWithChildren
   ApiAgentRoute: typeof ApiAgentRoute
   ApiArtifactsRoute: typeof ApiArtifactsRouteWithChildren
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
-  ApiCanvasRoute: typeof ApiCanvasRouteWithChildren
   ApiChatRoute: typeof ApiChatRoute
+  ApiChatStreamRoute: typeof ApiChatStreamRoute
   ApiDashboardRoute: typeof ApiDashboardRouteWithChildren
   ApiPromptAttachmentsRoute: typeof ApiPromptAttachmentsRouteWithChildren
   ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
   ApiMcpServersRoute: typeof ApiMcpServersRoute
   ApiMcpToolsRoute: typeof ApiMcpToolsRoute
   ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
+  ApiV2ChatRoute: typeof ApiV2ChatRoute
+  ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/v2': {
+      id: '/v2'
+      path: '/v2'
+      fullPath: '/v2'
+      preLoaderRoute: typeof V2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/health': {
       id: '/health'
       path: '/health'
@@ -550,12 +508,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v2/': {
+      id: '/v2/'
+      path: '/'
+      fullPath: '/v2/'
+      preLoaderRoute: typeof V2IndexRouteImport
+      parentRoute: typeof V2Route
+    }
     '/_app/': {
       id: '/_app/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/v2/chat': {
+      id: '/v2/chat'
+      path: '/chat'
+      fullPath: '/v2/chat'
+      preLoaderRoute: typeof V2ChatRouteImport
+      parentRoute: typeof V2Route
     }
     '/api/threads': {
       id: '/api/threads'
@@ -578,18 +550,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat-stream': {
+      id: '/api/chat-stream'
+      path: '/api/chat-stream'
+      fullPath: '/api/chat-stream'
+      preLoaderRoute: typeof ApiChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/canvas': {
-      id: '/api/canvas'
-      path: '/api/canvas'
-      fullPath: '/api/canvas'
-      preLoaderRoute: typeof ApiCanvasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/automations': {
@@ -627,13 +599,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/canvas': {
-      id: '/_app/canvas'
-      path: '/canvas'
-      fullPath: '/canvas'
-      preLoaderRoute: typeof AppCanvasRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/automations': {
       id: '/_app/automations'
       path: '/automations'
@@ -655,12 +620,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRoute
     }
-    '/_app/canvas/': {
-      id: '/_app/canvas/'
-      path: '/'
-      fullPath: '/canvas/'
-      preLoaderRoute: typeof AppCanvasIndexRouteImport
-      parentRoute: typeof AppCanvasRoute
+    '/v2/chat/$threadId': {
+      id: '/v2/chat/$threadId'
+      path: '/$threadId'
+      fullPath: '/v2/chat/$threadId'
+      preLoaderRoute: typeof V2ChatThreadIdRouteImport
+      parentRoute: typeof V2ChatRoute
+    }
+    '/api/v2/chat-stream': {
+      id: '/api/v2/chat-stream'
+      path: '/api/v2/chat-stream'
+      fullPath: '/api/v2/chat-stream'
+      preLoaderRoute: typeof ApiV2ChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/chat': {
+      id: '/api/v2/chat'
+      path: '/api/v2/chat'
+      fullPath: '/api/v2/chat'
+      preLoaderRoute: typeof ApiV2ChatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/threads/$threadId': {
       id: '/api/threads/$threadId'
@@ -703,13 +682,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/dashboard/history'
       preLoaderRoute: typeof ApiDashboardHistoryRouteImport
       parentRoute: typeof ApiDashboardRoute
-    }
-    '/api/canvas/$canvasId': {
-      id: '/api/canvas/$canvasId'
-      path: '/$canvasId'
-      fullPath: '/api/canvas/$canvasId'
-      preLoaderRoute: typeof ApiCanvasCanvasIdRouteImport
-      parentRoute: typeof ApiCanvasRoute
     }
     '/api/automations/$automationId': {
       id: '/api/automations/$automationId'
@@ -760,33 +732,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatThreadIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/canvas/$canvasId': {
-      id: '/_app/canvas/$canvasId'
-      path: '/$canvasId'
-      fullPath: '/canvas/$canvasId'
-      preLoaderRoute: typeof AppCanvasCanvasIdRouteImport
-      parentRoute: typeof AppCanvasRoute
-    }
     '/api/dashboard/snapshots/$snapshotId': {
       id: '/api/dashboard/snapshots/$snapshotId'
       path: '/snapshots/$snapshotId'
       fullPath: '/api/dashboard/snapshots/$snapshotId'
       preLoaderRoute: typeof ApiDashboardSnapshotsSnapshotIdRouteImport
       parentRoute: typeof ApiDashboardRoute
-    }
-    '/api/canvas/$canvasId/nodes': {
-      id: '/api/canvas/$canvasId/nodes'
-      path: '/nodes'
-      fullPath: '/api/canvas/$canvasId/nodes'
-      preLoaderRoute: typeof ApiCanvasCanvasIdNodesRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdRoute
-    }
-    '/api/canvas/$canvasId/edges': {
-      id: '/api/canvas/$canvasId/edges'
-      path: '/edges'
-      fullPath: '/api/canvas/$canvasId/edges'
-      preLoaderRoute: typeof ApiCanvasCanvasIdEdgesRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdRoute
     }
     '/api/automations/$automationId/runs': {
       id: '/api/automations/$automationId/runs'
@@ -795,50 +746,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAutomationsAutomationIdRunsRouteImport
       parentRoute: typeof ApiAutomationsAutomationIdRoute
     }
-    '/api/canvas/$canvasId/nodes/$nodeId': {
-      id: '/api/canvas/$canvasId/nodes/$nodeId'
-      path: '/$nodeId'
-      fullPath: '/api/canvas/$canvasId/nodes/$nodeId'
-      preLoaderRoute: typeof ApiCanvasCanvasIdNodesNodeIdRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdNodesRoute
-    }
-    '/api/canvas/$canvasId/nodes/$nodeId/versions': {
-      id: '/api/canvas/$canvasId/nodes/$nodeId/versions'
-      path: '/versions'
-      fullPath: '/api/canvas/$canvasId/nodes/$nodeId/versions'
-      preLoaderRoute: typeof ApiCanvasCanvasIdNodesNodeIdVersionsRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdNodesNodeIdRoute
-    }
-    '/api/canvas/$canvasId/nodes/$nodeId/generate': {
-      id: '/api/canvas/$canvasId/nodes/$nodeId/generate'
-      path: '/generate'
-      fullPath: '/api/canvas/$canvasId/nodes/$nodeId/generate'
-      preLoaderRoute: typeof ApiCanvasCanvasIdNodesNodeIdGenerateRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdNodesNodeIdRoute
-    }
-    '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore': {
-      id: '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore'
-      path: '/$versionId/restore'
-      fullPath: '/api/canvas/$canvasId/nodes/$nodeId/versions/$versionId/restore'
-      preLoaderRoute: typeof ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRouteImport
-      parentRoute: typeof ApiCanvasCanvasIdNodesNodeIdVersionsRoute
-    }
   }
 }
-
-interface AppCanvasRouteChildren {
-  AppCanvasCanvasIdRoute: typeof AppCanvasCanvasIdRoute
-  AppCanvasIndexRoute: typeof AppCanvasIndexRoute
-}
-
-const AppCanvasRouteChildren: AppCanvasRouteChildren = {
-  AppCanvasCanvasIdRoute: AppCanvasCanvasIdRoute,
-  AppCanvasIndexRoute: AppCanvasIndexRoute,
-}
-
-const AppCanvasRouteWithChildren = AppCanvasRoute._addFileChildren(
-  AppCanvasRouteChildren,
-)
 
 interface AppSettingsRouteChildren {
   AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
@@ -863,7 +772,6 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 interface AppRouteChildren {
   AppArtifactsRoute: typeof AppArtifactsRoute
   AppAutomationsRoute: typeof AppAutomationsRoute
-  AppCanvasRoute: typeof AppCanvasRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -873,7 +781,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppArtifactsRoute: AppArtifactsRoute,
   AppAutomationsRoute: AppAutomationsRoute,
-  AppCanvasRoute: AppCanvasRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppSettingsRoute: AppSettingsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
@@ -881,6 +788,29 @@ const AppRouteChildren: AppRouteChildren = {
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface V2ChatRouteChildren {
+  V2ChatThreadIdRoute: typeof V2ChatThreadIdRoute
+}
+
+const V2ChatRouteChildren: V2ChatRouteChildren = {
+  V2ChatThreadIdRoute: V2ChatThreadIdRoute,
+}
+
+const V2ChatRouteWithChildren =
+  V2ChatRoute._addFileChildren(V2ChatRouteChildren)
+
+interface V2RouteChildren {
+  V2ChatRoute: typeof V2ChatRouteWithChildren
+  V2IndexRoute: typeof V2IndexRoute
+}
+
+const V2RouteChildren: V2RouteChildren = {
+  V2ChatRoute: V2ChatRouteWithChildren,
+  V2IndexRoute: V2IndexRoute,
+}
+
+const V2RouteWithChildren = V2Route._addFileChildren(V2RouteChildren)
 
 interface ApiArtifactsRouteChildren {
   ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute
@@ -918,79 +848,6 @@ const ApiAutomationsRouteChildren: ApiAutomationsRouteChildren = {
 
 const ApiAutomationsRouteWithChildren = ApiAutomationsRoute._addFileChildren(
   ApiAutomationsRouteChildren,
-)
-
-interface ApiCanvasCanvasIdNodesNodeIdVersionsRouteChildren {
-  ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute: typeof ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute
-}
-
-const ApiCanvasCanvasIdNodesNodeIdVersionsRouteChildren: ApiCanvasCanvasIdNodesNodeIdVersionsRouteChildren =
-  {
-    ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute:
-      ApiCanvasCanvasIdNodesNodeIdVersionsVersionIdRestoreRoute,
-  }
-
-const ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren =
-  ApiCanvasCanvasIdNodesNodeIdVersionsRoute._addFileChildren(
-    ApiCanvasCanvasIdNodesNodeIdVersionsRouteChildren,
-  )
-
-interface ApiCanvasCanvasIdNodesNodeIdRouteChildren {
-  ApiCanvasCanvasIdNodesNodeIdGenerateRoute: typeof ApiCanvasCanvasIdNodesNodeIdGenerateRoute
-  ApiCanvasCanvasIdNodesNodeIdVersionsRoute: typeof ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren
-}
-
-const ApiCanvasCanvasIdNodesNodeIdRouteChildren: ApiCanvasCanvasIdNodesNodeIdRouteChildren =
-  {
-    ApiCanvasCanvasIdNodesNodeIdGenerateRoute:
-      ApiCanvasCanvasIdNodesNodeIdGenerateRoute,
-    ApiCanvasCanvasIdNodesNodeIdVersionsRoute:
-      ApiCanvasCanvasIdNodesNodeIdVersionsRouteWithChildren,
-  }
-
-const ApiCanvasCanvasIdNodesNodeIdRouteWithChildren =
-  ApiCanvasCanvasIdNodesNodeIdRoute._addFileChildren(
-    ApiCanvasCanvasIdNodesNodeIdRouteChildren,
-  )
-
-interface ApiCanvasCanvasIdNodesRouteChildren {
-  ApiCanvasCanvasIdNodesNodeIdRoute: typeof ApiCanvasCanvasIdNodesNodeIdRouteWithChildren
-}
-
-const ApiCanvasCanvasIdNodesRouteChildren: ApiCanvasCanvasIdNodesRouteChildren =
-  {
-    ApiCanvasCanvasIdNodesNodeIdRoute:
-      ApiCanvasCanvasIdNodesNodeIdRouteWithChildren,
-  }
-
-const ApiCanvasCanvasIdNodesRouteWithChildren =
-  ApiCanvasCanvasIdNodesRoute._addFileChildren(
-    ApiCanvasCanvasIdNodesRouteChildren,
-  )
-
-interface ApiCanvasCanvasIdRouteChildren {
-  ApiCanvasCanvasIdEdgesRoute: typeof ApiCanvasCanvasIdEdgesRoute
-  ApiCanvasCanvasIdNodesRoute: typeof ApiCanvasCanvasIdNodesRouteWithChildren
-}
-
-const ApiCanvasCanvasIdRouteChildren: ApiCanvasCanvasIdRouteChildren = {
-  ApiCanvasCanvasIdEdgesRoute: ApiCanvasCanvasIdEdgesRoute,
-  ApiCanvasCanvasIdNodesRoute: ApiCanvasCanvasIdNodesRouteWithChildren,
-}
-
-const ApiCanvasCanvasIdRouteWithChildren =
-  ApiCanvasCanvasIdRoute._addFileChildren(ApiCanvasCanvasIdRouteChildren)
-
-interface ApiCanvasRouteChildren {
-  ApiCanvasCanvasIdRoute: typeof ApiCanvasCanvasIdRouteWithChildren
-}
-
-const ApiCanvasRouteChildren: ApiCanvasRouteChildren = {
-  ApiCanvasCanvasIdRoute: ApiCanvasCanvasIdRouteWithChildren,
-}
-
-const ApiCanvasRouteWithChildren = ApiCanvasRoute._addFileChildren(
-  ApiCanvasRouteChildren,
 )
 
 interface ApiDashboardRouteChildren {
@@ -1033,17 +890,20 @@ const ApiThreadsRouteWithChildren = ApiThreadsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   HealthRoute: HealthRoute,
+  V2Route: V2RouteWithChildren,
   ApiAgentRoute: ApiAgentRoute,
   ApiArtifactsRoute: ApiArtifactsRouteWithChildren,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
-  ApiCanvasRoute: ApiCanvasRouteWithChildren,
   ApiChatRoute: ApiChatRoute,
+  ApiChatStreamRoute: ApiChatStreamRoute,
   ApiDashboardRoute: ApiDashboardRouteWithChildren,
   ApiPromptAttachmentsRoute: ApiPromptAttachmentsRouteWithChildren,
   ApiThreadsRoute: ApiThreadsRouteWithChildren,
   ApiMcpServersRoute: ApiMcpServersRoute,
   ApiMcpToolsRoute: ApiMcpToolsRoute,
   ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
+  ApiV2ChatRoute: ApiV2ChatRoute,
+  ApiV2ChatStreamRoute: ApiV2ChatStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

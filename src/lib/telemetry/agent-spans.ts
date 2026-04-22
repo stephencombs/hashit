@@ -11,6 +11,7 @@ import {
 
 export type AgentTraceSource =
   | 'interactive-chat'
+  | 'interactive-chat-v2'
   | 'automation-api'
   | 'automation-executor'
   | 'dashboard-generation'

@@ -6,6 +6,11 @@ import { eq, desc, count, asc } from 'drizzle-orm'
 import type { RequestLogger } from 'evlog'
 import type { StreamChunk, MessagePart } from '@tanstack/ai'
 import type { AgentRunTelemetry } from '~/lib/agent-runner'
+import type { AppMessagePart } from '~/components/chat/message-row.types'
+import {
+  buildArgsPreview,
+  buildResultSummary,
+} from '~/lib/server/message-part-previews'
 import {
   createRunMetadata,
   summarizeToolActivity,
@@ -22,6 +27,10 @@ import {
   markTraceError,
   markTraceSuccess,
 } from '~/lib/telemetry/otel'
+import {
+  buildChatStreamPath,
+  readDurableStreamHeadOffset,
+} from '~/lib/durable-streams'
 
 function getRunTerminalEventName(
   status: AgentRunTelemetry['status'],
@@ -104,6 +113,27 @@ export async function persistUserMessage(
  * subscribers see the submitted state. Idempotent: only writes when parts
  * actually changed.
  */
+/**
+ * Enriches incoming parts with server-computed preview fields before writing
+ * to the DB. Safe to call multiple times — already-enriched parts are skipped.
+ */
+function normalizeIncomingParts(parts: Array<MessagePart>): Array<AppMessagePart> {
+  return parts.map((part) => {
+    const p = part as AppMessagePart
+    if (p.type === 'tool-result') {
+      const tr = p as import('~/components/chat/message-row.types').ToolResultPart
+      if (tr.summary !== undefined) return p
+      return { ...tr, summary: buildResultSummary(tr.content) }
+    }
+    if (p.type === 'tool-call') {
+      const tc = p as import('~/components/chat/message-row.types').AppToolCallPart
+      if (tc.argsPreview !== undefined) return p
+      return { ...tc, argsPreview: buildArgsPreview(tc.arguments) }
+    }
+    return p
+  })
+}
+
 export async function syncPriorToolOutputs(
   threadId: string,
   incomingMessages: Array<{
@@ -128,10 +158,10 @@ export async function syncPriorToolOutputs(
     .from(messagesTable)
     .where(eq(messagesTable.threadId, threadId))
 
-  const byId = new Map<string, Array<MessagePart> | null>()
+  const byId = new Map<string, Array<AppMessagePart> | null>()
   const toolCallIdToRowId = new Map<string, string>()
   for (const row of rows) {
-    byId.set(row.id, row.parts)
+    byId.set(row.id, row.parts as Array<AppMessagePart> | null)
     if (!row.parts) continue
     for (const toolCallId of extractToolCallIdsFromParts(row.parts)) {
       if (!toolCallIdToRowId.has(toolCallId)) {
@@ -142,8 +172,9 @@ export async function syncPriorToolOutputs(
 
   for (const m of incomingMessages) {
     if (m.role !== 'assistant') continue
-    const incomingParts = Array.isArray(m.parts) ? m.parts : []
-    const incomingToolCallIds = extractToolCallIdsFromParts(incomingParts)
+    const rawParts = Array.isArray(m.parts) ? m.parts : []
+    const incomingParts = normalizeIncomingParts(rawParts)
+    const incomingToolCallIds = extractToolCallIdsFromParts(rawParts)
 
     // Primary match: assistant message id (works when ids are aligned).
     // Fallback match: tool-call ids contained in the assistant row. This
@@ -163,7 +194,7 @@ export async function syncPriorToolOutputs(
 
     const dbParts = byId.get(targetRowId)
     if (!dbParts) continue
-    if (!shouldUpgradeParts(dbParts, incomingParts)) continue
+    if (!shouldUpgradeParts(dbParts as Array<MessagePart>, rawParts)) continue
     await db
       .update(messagesTable)
       .set({ parts: incomingParts })
@@ -233,8 +264,9 @@ function shouldUpgradeParts(
 export async function persistAssistantMessage(
   threadId: string,
   content: string,
-  parts: Array<MessagePart>,
+  parts: Array<AppMessagePart>,
   metadata?: Record<string, unknown>,
+  resumeOffset?: string,
 ) {
   // Every completed stream gets its own assistant row. Continuations after a
   // client-tool resolution produce a fresh assistant turn, so appending is
@@ -242,33 +274,43 @@ export async function persistAssistantMessage(
   // it blocked continuation persistence once `persistUserMessage` became
   // idempotent.
   const id = generateMessageId()
-  await db.insert(messagesTable).values({
-    id,
-    threadId,
-    role: 'assistant',
-    content,
-    parts,
-    metadata,
-    createdAt: new Date(),
-  })
+  const now = new Date()
 
-  await db
-    .update(threads)
-    .set({ updatedAt: new Date() })
-    .where(eq(threads.id, threadId))
+  await db.transaction(async (tx) => {
+    await tx.insert(messagesTable).values({
+      id,
+      threadId,
+      role: 'assistant',
+      content,
+      parts,
+      metadata,
+      createdAt: now,
+    })
+
+    await tx
+      .update(threads)
+      .set({
+        updatedAt: now,
+        ...(resumeOffset ? { resumeOffset } : {}),
+      })
+      .where(eq(threads.id, threadId))
+  })
 
   return id
 }
 
-export async function maybeGenerateTitle(threadId: string, userContent: string) {
-  if (isPlaceholderUserContent(userContent)) return
+export async function maybeGenerateTitle(
+  threadId: string,
+  userContent: string,
+): Promise<string | null> {
+  if (isPlaceholderUserContent(userContent)) return null
 
   const msgCount = await db
     .select({ n: count() })
     .from(messagesTable)
     .where(eq(messagesTable.threadId, threadId))
 
-  if (msgCount[0].n > 2) return
+  if (msgCount[0].n > 2) return null
 
   const [thread] = await db
     .select({ title: threads.title })
@@ -276,12 +318,15 @@ export async function maybeGenerateTitle(threadId: string, userContent: string) 
     .where(eq(threads.id, threadId))
     .limit(1)
 
-  if (!thread) return
+  if (!thread) return null
 
   const isGenericTitle =
-    thread.title === 'New Chat' || thread.title === userContent || thread.title.endsWith('...')
+    thread.title === 'New Chat' ||
+    thread.title === 'Untitled' ||
+    thread.title === userContent ||
+    thread.title.endsWith('...')
 
-  if (!isGenericTitle) return
+  if (!isGenericTitle) return null
 
   try {
     const adapter = getAzureAdapter()
@@ -305,10 +350,12 @@ export async function maybeGenerateTitle(threadId: string, userContent: string) 
     title = title.replace(/^["']|["']$/g, '').trim()
     if (title) {
       await db.update(threads).set({ title }).where(eq(threads.id, threadId))
+      return title
     }
   } catch {
     // Best-effort
   }
+  return null
 }
 
 export async function generateToolSummary(
@@ -397,9 +444,22 @@ export async function* withPersistence(
       }
     }
 
+    // Start title generation early so the sidebar can receive a title update
+    // while the assistant turn is still streaming.
+    const titlePromise = persistUserTurn
+      ? maybeGenerateTitle(threadId, userContent).catch(() => null)
+      : null
+    let generatedTitle: string | null = null
+    let titleEventEmitted = false
+    if (titlePromise) {
+      void titlePromise.then((title) => {
+        generatedTitle = title
+      })
+    }
+
     let accumulated = ''
     let accumulatedThinking = ''
-    const assistantParts: Array<MessagePart> = []
+    const assistantParts: Array<AppMessagePart> = []
     const toolCalls = new Map<string, { name: string; args: string }>()
     let summaryEmitted = false
     let streamError: string | null = null
@@ -415,6 +475,15 @@ export async function* withPersistence(
             delta,
             content: accumulatedThinking,
           } as StreamChunk
+          if (!titleEventEmitted && generatedTitle) {
+            titleEventEmitted = true
+            yield {
+              type: 'CUSTOM' as const,
+              name: 'thread_title_updated',
+              value: { threadId, title: generatedTitle },
+              timestamp: Date.now(),
+            }
+          }
           continue
         }
 
@@ -430,7 +499,7 @@ export async function* withPersistence(
             summaryEmitted = true
             const summary = await generateToolSummary(chunk.toolName)
             assistantParts.push({
-              type: 'tool-summary' as 'text',
+              type: 'tool-summary',
               content: summary,
             })
             yield {
@@ -451,9 +520,10 @@ export async function* withPersistence(
               id: chunk.toolCallId,
               name: tc.name,
               arguments: tc.args,
+              argsPreview: buildArgsPreview(tc.args),
               state: chunk.result ? 'result' : 'input-complete',
               output: chunk.result ? tryParseJSON(chunk.result) : undefined,
-            } as MessagePart)
+            })
           }
         } else if (chunk.type === 'CUSTOM' && chunk.name === 'spec_complete') {
           const { spec, specIndex } = chunk.value as {
@@ -461,13 +531,22 @@ export async function* withPersistence(
             specIndex: number
           }
           assistantParts.push({
-            type: 'ui-spec' as 'text',
-            content: JSON.stringify(spec),
+            type: 'ui-spec',
+            spec: spec as import('@json-render/core').Spec,
             specIndex,
-          } as MessagePart)
+          })
         }
         yield {
           ...chunk,
+        }
+        if (!titleEventEmitted && generatedTitle) {
+          titleEventEmitted = true
+          yield {
+            type: 'CUSTOM' as const,
+            name: 'thread_title_updated',
+            value: { threadId, title: generatedTitle },
+            timestamp: Date.now(),
+          }
         }
       }
     } catch (err) {
@@ -485,7 +564,7 @@ export async function* withPersistence(
     }
 
     if (accumulatedThinking) {
-      assistantParts.unshift({ type: 'thinking', content: accumulatedThinking } as MessagePart)
+      assistantParts.unshift({ type: 'thinking', content: accumulatedThinking })
     }
 
     if (accumulated) {
@@ -493,6 +572,19 @@ export async function* withPersistence(
     }
 
     if (assistantParts.length > 0) {
+      let resumeOffset: string | undefined
+      try {
+        resumeOffset = await runPersistenceStep(
+          'agent.persistence.resume_offset',
+          () => readDurableStreamHeadOffset(buildChatStreamPath(threadId)),
+          {
+            'agent.thread_id': threadId,
+          },
+        )
+      } catch (err) {
+        log.set({ resumeOffsetError: String(err) })
+      }
+
       try {
         await runPersistenceStep(
           'agent.persistence.assistant_message',
@@ -505,6 +597,7 @@ export async function* withPersistence(
                 error: streamError ?? undefined,
                 partial: !!streamError,
               }),
+              resumeOffset,
             ),
           {
             'agent.thread_id': threadId,
@@ -512,12 +605,31 @@ export async function* withPersistence(
             'agent.partial': !!streamError,
           },
         )
-        if (!streamError && telemetry.status === 'completed') {
-          maybeGenerateTitle(threadId, userContent).catch(() => {})
-        }
       } catch (err) {
         persistenceError = err instanceof Error ? err.message : String(err)
         log.set({ persistAssistantError: persistenceError })
+      }
+    }
+
+    // Try to deliver a title update before terminal events without stalling the
+    // response tail; if generation is still running, continue after a short wait.
+    if (!titleEventEmitted && titlePromise) {
+      const settledTitle =
+        generatedTitle ??
+        (await Promise.race<string | null>([
+          titlePromise,
+          new Promise<null>((resolve) => {
+            setTimeout(() => resolve(null), 200)
+          }),
+        ]))
+      if (settledTitle) {
+        titleEventEmitted = true
+        yield {
+          type: 'CUSTOM' as const,
+          name: 'thread_title_updated',
+          value: { threadId, title: settledTitle },
+          timestamp: Date.now(),
+        }
       }
     }
 

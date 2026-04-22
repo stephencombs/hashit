@@ -5,19 +5,136 @@ import { cn } from "~/lib/utils";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
-export type ConversationProps = ComponentProps<typeof StickToBottom>;
+export type ConversationProps = ComponentProps<typeof StickToBottom> & {
+  onSurfaceReady?: () => void;
+  readinessTimeoutMs?: number;
+};
 
-export const Conversation = ({ className, ...props }: ConversationProps) => (
+function ConversationInitialSnapToBottom({
+  onSurfaceReady,
+  readinessTimeoutMs = 2_500,
+}: {
+  onSurfaceReady?: () => void;
+  readinessTimeoutMs?: number;
+}) {
+  const readyRef = useRef(false);
+  const startedRef = useRef(false);
+  const { contentRef, scrollRef, scrollToBottom } = useStickToBottomContext();
+
+  useLayoutEffect(() => {
+    let cancelled = false;
+    let waitForRefFrame = 0;
+    let settleFrame = 0;
+    let timeoutId = 0;
+    let viewportObserver: ResizeObserver | undefined;
+
+    const notifyReady = () => {
+      if (readyRef.current || cancelled) return;
+      readyRef.current = true;
+      onSurfaceReady?.();
+    };
+
+    const startWhenReady = () => {
+      if (cancelled || startedRef.current || readyRef.current) return;
+      const scrollEl = scrollRef.current;
+      if (!scrollEl) {
+        waitForRefFrame = requestAnimationFrame(startWhenReady);
+        return;
+      }
+      startedRef.current = true;
+
+      let settledFrames = 0;
+
+      const anchorBottom = () =>
+        scrollToBottom({
+          animation: "instant",
+          wait: true,
+          preserveScrollPosition: true,
+        });
+
+      const distanceFromBottom = () =>
+        Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight - scrollEl.scrollTop);
+
+      const settleLoop = () => {
+        settleFrame = requestAnimationFrame(() => {
+          if (cancelled || readyRef.current) return;
+          const drift = distanceFromBottom();
+          if (drift <= 2) {
+            settledFrames += 1;
+          } else {
+            settledFrames = 0;
+            void anchorBottom();
+          }
+          if (settledFrames >= 2) {
+            notifyReady();
+            return;
+          }
+          settleLoop();
+        });
+      };
+
+      void anchorBottom();
+      settleLoop();
+
+      timeoutId = window.setTimeout(() => {
+        if (readyRef.current || cancelled) return;
+        void anchorBottom();
+        notifyReady();
+      }, readinessTimeoutMs);
+
+      if (typeof ResizeObserver !== "undefined") {
+        viewportObserver = new ResizeObserver(() => {
+          if (readyRef.current || cancelled) return;
+          void anchorBottom();
+        });
+        viewportObserver.observe(scrollEl);
+        if (contentRef.current) {
+          viewportObserver.observe(contentRef.current);
+        }
+      }
+    };
+
+    startWhenReady();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      if (waitForRefFrame) cancelAnimationFrame(waitForRefFrame);
+      if (settleFrame) cancelAnimationFrame(settleFrame);
+      viewportObserver?.disconnect();
+    };
+  }, [contentRef, onSurfaceReady, readinessTimeoutMs, scrollRef, scrollToBottom]);
+
+  return null;
+}
+
+export const Conversation = ({
+  onSurfaceReady,
+  readinessTimeoutMs,
+  className,
+  children,
+  ...props
+}: ConversationProps) => (
   <StickToBottom
     className={cn("relative flex-1 overflow-y-hidden", className)}
     initial="instant"
     resize="instant"
     role="log"
     {...props}
-  />
+  >
+    {(context) => (
+      <>
+        <ConversationInitialSnapToBottom
+          onSurfaceReady={onSurfaceReady}
+          readinessTimeoutMs={readinessTimeoutMs}
+        />
+        {typeof children === "function" ? children(context) : children}
+      </>
+    )}
+  </StickToBottom>
 );
 
 export type ConversationContentProps = ComponentProps<

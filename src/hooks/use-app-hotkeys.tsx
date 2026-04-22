@@ -1,7 +1,6 @@
 import { useEffect } from "react"
 import { useHotkey } from "@tanstack/react-hotkeys"
 import { useNavigate } from "@tanstack/react-router"
-import { useSidebar } from "~/components/ui/sidebar"
 import { useTheme } from "~/hooks/use-theme"
 
 export interface AppHotkeysProps {
@@ -10,17 +9,11 @@ export interface AppHotkeysProps {
 
 export function AppHotkeys({ onOpenCommandPalette }: AppHotkeysProps) {
   const navigate = useNavigate()
-  const { toggleSidebar } = useSidebar()
   const { resolvedTheme, setTheme } = useTheme()
 
   useHotkey("Mod+K", (event) => {
     event.preventDefault()
     onOpenCommandPalette()
-  })
-
-  useHotkey("Mod+B", (event) => {
-    event.preventDefault()
-    toggleSidebar()
   })
 
   useHotkey("Mod+Shift+N", (event) => {

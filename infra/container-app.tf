@@ -13,11 +13,17 @@ resource "azurerm_container_app_environment" "this" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
 }
 
+locals {
+  durable_streams_app_name = "${var.app_name}-durable-streams"
+  durable_streams_base_url = "https://${azurerm_container_app.durable_streams.ingress[0].fqdn}${var.durable_streams_route_prefix}"
+}
+
 resource "azurerm_container_app" "this" {
   name                         = var.app_name
   resource_group_name          = data.azurerm_resource_group.this.name
   container_app_environment_id = azurerm_container_app_environment.this.id
   revision_mode                = "Single"
+  depends_on                   = [azurerm_storage_account.attachments]
 
   registry {
     server               = azurerm_container_registry.this.login_server
@@ -150,6 +156,11 @@ resource "azurerm_container_app" "this" {
         secret_name = "azure-blob-account-key"
       }
 
+      env {
+        name  = "DURABLE_STREAMS_URL"
+        value = local.durable_streams_base_url
+      }
+
       liveness_probe {
         transport               = "HTTP"
         path                    = "/health"
@@ -164,6 +175,75 @@ resource "azurerm_container_app" "this" {
         transport               = "HTTP"
         path                    = "/health"
         port                    = 3000
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 10
+      }
+    }
+  }
+}
+
+resource "azurerm_container_app" "durable_streams" {
+  name                         = local.durable_streams_app_name
+  resource_group_name          = data.azurerm_resource_group.this.name
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  revision_mode                = "Single"
+  depends_on                   = [azurerm_container_app_environment_storage.durable_streams]
+
+  registry {
+    server               = azurerm_container_registry.this.login_server
+    username             = azurerm_container_registry.this.admin_username
+    password_secret_name = "acr-password"
+  }
+
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.this.admin_password
+  }
+
+  ingress {
+    external_enabled = false
+    target_port      = 4437
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
+
+  template {
+    min_replicas = var.durable_streams_min_replicas
+    max_replicas = var.durable_streams_max_replicas
+
+    volume {
+      name         = "durable-streams-data"
+      storage_type = "AzureFile"
+      storage_name = azurerm_container_app_environment_storage.durable_streams.name
+    }
+
+    container {
+      name   = "durable-streams"
+      image  = "${azurerm_container_registry.this.login_server}/${var.durable_streams_image_name}:${var.durable_streams_image_tag}"
+      cpu    = var.durable_streams_cpu
+      memory = var.durable_streams_memory
+
+      volume_mounts {
+        name = "durable-streams-data"
+        path = "/var/lib/durable-streams"
+      }
+
+      liveness_probe {
+        transport               = "TCP"
+        port                    = 4437
+        initial_delay           = 10
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 3
+      }
+
+      startup_probe {
+        transport               = "TCP"
+        port                    = 4437
         interval_seconds        = 5
         timeout                 = 3
         failure_count_threshold = 10

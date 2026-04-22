@@ -27,3 +27,13 @@ output "blob_container_name" {
   description = "Name of the blob container for prompt attachments"
   value       = azurerm_storage_container.attachments.name
 }
+
+output "durable_streams_internal_base_url" {
+  description = "Internal base URL for the Durable Streams server (includes route prefix)"
+  value       = local.durable_streams_base_url
+}
+
+output "durable_streams_container_app_name" {
+  description = "Azure Container App name for Durable Streams"
+  value       = azurerm_container_app.durable_streams.name
+}

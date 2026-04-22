@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { desc, isNull, sql } from 'drizzle-orm'
 import { db } from '~/db'
 import { threads } from '~/db/schema'
+import { isThreadRunActive } from '~/lib/server/thread-run-state'
 
 export const listThreads = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -13,6 +14,9 @@ export const listThreads = createServerFn({ method: 'GET' }).handler(
         sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
         desc(threads.updatedAt),
       )
-    return rows
+    return rows.map((row) => ({
+      ...row,
+      isStreaming: isThreadRunActive(row.id),
+    }))
   },
 )

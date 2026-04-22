@@ -10,7 +10,6 @@ import {
 } from '@tanstack/ai'
 import type { Span } from '@opentelemetry/api'
 import type { RequestLogger } from 'evlog'
-import { createPlanTool } from '~/lib/tools'
 import { collectFormDataTool } from '~/lib/form-tool'
 import { resolveDuplicateEntityTool } from '~/lib/resolve-duplicate-tool'
 import { getMcpTools, type GetMcpToolsOptions } from '~/lib/mcp/client'
@@ -346,6 +345,8 @@ function getDefaultTraceSource(
   switch (profile) {
     case 'interactiveChat':
       return 'interactive-chat'
+    case 'interactiveChatV2':
+      return 'interactive-chat-v2'
     case 'dashboardPlanning':
       return 'dashboard-planning'
     case 'dashboardRender':
@@ -400,7 +401,6 @@ export async function createAgentRun({
       : []
 
   const tools: Tool[] = [
-    ...(profileConfig.includePlanTool ? [createPlanTool] : []),
     ...(profileConfig.includeFormTool
       ? [collectFormDataTool, resolveDuplicateEntityTool]
       : []),

@@ -1,14 +1,14 @@
-import { toServerSentEventsResponse } from '@tanstack/ai'
 import { createFileRoute } from '@tanstack/react-router'
 import { useRequest } from 'nitro/context'
 import { createError } from 'evlog'
+import {
+  toDurableChatSessionResponse,
+  type DurableSessionMessage,
+} from '@durable-streams/tanstack-ai-transport'
 import { chatRequestSchema } from '~/lib/schemas'
 import { withJsonRender } from '~/lib/json-render-stream'
 import {
-  ATTACHMENT_ONLY_CONTENT_PREFIX,
-  createThread,
   extractUserMessage,
-  isPlaceholderUserContent,
   syncPriorToolOutputs,
   withPersistence,
 } from '~/lib/chat-helpers'
@@ -20,12 +20,24 @@ import {
   userMessagesContainMedia,
 } from '~/lib/multimodal-parts'
 import { finalizeAgentRunTrace, startAgentRunTrace } from '~/lib/telemetry/agent-spans'
+import {
+  buildChatStreamPath,
+  getDurableChatSessionTarget,
+} from '~/lib/durable-streams'
+import { beginThreadRun, endThreadRun } from '~/lib/server/thread-run-state'
 
-// Interactive tools (collect_form_data, resolve_duplicate_entity) are now
-// client-side `.client()` tools registered on the client via `useChat({ tools })`.
-// TanStack AI's runtime owns pausing the agent loop on the client handler's
-// await and resuming via checkForContinuation once the user responds, so this
-// route no longer needs a custom stream-stop wrapper.
+async function* withThreadRunTracking(
+  stream: AsyncIterable<StreamChunk>,
+  threadId: string,
+): AsyncIterable<StreamChunk> {
+  try {
+    for await (const chunk of stream) {
+      yield chunk
+    }
+  } finally {
+    endThreadRun(threadId)
+  }
+}
 
 async function* withTraceFinalization(
   stream: AsyncIterable<StreamChunk>,
@@ -45,12 +57,24 @@ async function* withTraceFinalization(
   }
 }
 
+function extractLatestUserMessage(
+  messages: Array<{ role?: string; id?: string; content?: string; parts?: Array<unknown> }>,
+): DurableSessionMessage | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message?.role === 'user') {
+      return message as DurableSessionMessage
+    }
+  }
+  return undefined
+}
+
 export const Route = createFileRoute('/api/chat')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const req = useRequest()
-        const log = req.context.log as RequestLogger
+        const log = req.context?.log as RequestLogger
 
         if (
           !process.env.AZURE_OPENAI_API_KEY ||
@@ -65,151 +89,173 @@ export const Route = createFileRoute('/api/chat')({
           })
         }
 
+        const url = new URL(request.url)
         const { messages, data } = chatRequestSchema.parse(await request.json())
-        let threadId: string | undefined = data?.threadId
-        let threadCreated = false
 
-        const {
-          id: userMessageId,
-          content: userContent,
-          parts: userParts,
-        } = extractUserMessage(messages)
-        const latestMessage = messages?.[messages.length - 1] as
-          | { role?: string }
-          | undefined
-        const hasNewUserTurn = latestMessage?.role === 'user'
-
-        // Hard server-side capability guard: never let multimodal content
-        // reach a non-vision model. Client also guards, this is defense in
-        // depth so misconfigured clients fail fast instead of silently
-        // dropping the image context for the run.
-        const requestedModel =
-          data?.model?.trim() || process.env.AZURE_OPENAI_DEPLOYMENT
-        if (
-          userMessagesContainMedia(messages) &&
-          !isVisionCapableModel(requestedModel)
-        ) {
+        // Thread id comes from (in priority order): query string (durable
+        // connection `sendUrl` convention), body.data.threadId (legacy).
+        // Pre-create happens client-side via POST /api/threads so we can
+        // require a stable id here and key the durable session stream on it.
+        const threadId = url.searchParams.get('id') ?? data?.threadId
+        if (!threadId) {
           throw createError({
-            message: 'Model does not support image or document input',
-            status: 415,
-            why: `Selected model "${requestedModel ?? 'unknown'}" cannot process image, audio, video, or document parts`,
-            fix: 'Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)',
+            message: 'Missing thread id for durable chat session',
+            status: 400,
+            why: 'Request is missing an `id` query param and data.threadId — durable connections require a stable session id.',
+            fix: 'Create a thread via POST /api/threads first, then pass its id as `?id=<threadId>` in the sendUrl.',
           })
         }
 
-        // Treat any non-empty user turn (text OR attachments) as valid for
-        // thread creation and persistence so attachment-only sends work.
-        const hasUserTurn = userContent.length > 0 || userParts.length > 0
-        const shouldPersistUserTurn = hasNewUserTurn && hasUserTurn
+        beginThreadRun(threadId)
+        try {
+          const {
+            id: userMessageId,
+            content: userContent,
+            parts: userParts,
+          } = extractUserMessage(messages)
+          const latestMessage = messages?.[messages.length - 1] as
+            | { role?: string }
+            | undefined
+          const hasNewUserTurn = latestMessage?.role === 'user'
+          const isContinuationTurn = !hasNewUserTurn
 
-        if (!threadId && hasUserTurn) {
-          const fallbackTitle = isPlaceholderUserContent(userContent)
-            ? userContent.replace(ATTACHMENT_ONLY_CONTENT_PREFIX, 'Attachment').trim()
-            : userContent.length > 60
-              ? userContent.slice(0, 60) + '...'
-              : userContent || 'New Chat'
-          threadId = await createThread(fallbackTitle, data?.source)
-          threadCreated = true
-        }
-
-        // Client tool resolutions (e.g. collect_form_data, resolve_duplicate_entity)
-        // arrive here as continuation POSTs where prior assistant messages
-        // carry their tool-call `output` + a fresh tool-result part. Sync
-        // those back into the existing DB rows so reloads see the submitted
-        // state. No-op when there's nothing to upgrade.
-        if (threadId && !threadCreated) {
-          try {
-            await syncPriorToolOutputs(
-              threadId,
-              (messages ?? []) as Parameters<typeof syncPriorToolOutputs>[1],
-            )
-          } catch (err) {
-            log.set({ syncPriorToolOutputsError: String(err) })
+          const requestedModel =
+            data?.model?.trim() || process.env.AZURE_OPENAI_DEPLOYMENT
+          if (
+            userMessagesContainMedia(messages) &&
+            !isVisionCapableModel(requestedModel)
+          ) {
+            throw createError({
+              message: 'Model does not support image or document input',
+              status: 415,
+              why: `Selected model "${requestedModel ?? 'unknown'}" cannot process image, audio, video, or document parts`,
+              fix: 'Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)',
+            })
           }
-        }
 
-        const conversationId: string | undefined =
-          data?.conversationId || threadId
-        const traceState = startAgentRunTrace({
-          profile: 'interactiveChat',
-          source: 'interactive-chat',
-          conversationId,
-          log,
-          attributes: {
-            'http.route': '/api/chat',
-            'agent.thread_id': threadId,
-            'agent.thread_created': threadCreated,
-            'agent.message_count': messages?.length,
-          },
-        })
+          const hasUserTurn = userContent.length > 0 || userParts.length > 0
+          const shouldPersistUserTurn = hasNewUserTurn && hasUserTurn
 
-        log.set({
-          conversationId,
-          threadId,
-          threadCreated,
-          messageCount: messages?.length,
-          model: data?.model,
-          traceId: traceState.traceId,
-          spanId: traceState.spanId,
-        })
+          const streamPath = buildChatStreamPath(threadId)
+          const streamTarget = getDurableChatSessionTarget(streamPath)
 
-        const { stream: rawStream, telemetry } = await createAgentRun({
-          profile: 'interactiveChat',
-          source: 'interactive-chat',
-          messages,
-          conversationId,
-          model: data?.model,
-          temperature: data?.temperature,
-          customSystemPrompt: data?.systemPrompt,
-          selectedServers: data?.selectedServers,
-          enabledTools: data?.enabledTools,
-          log,
-          traceState,
-        })
+          // Continuation POSTs from a client tool resolution replay the full
+          // message history with the assistant tool-call `output` now populated.
+          // Reconcile those into Postgres so reloads and snapshots see the
+          // submitted state. Skip this for fresh user turns.
+          if (isContinuationTurn) {
+            try {
+              await syncPriorToolOutputs(
+                threadId,
+                (messages ?? []) as Parameters<typeof syncPriorToolOutputs>[1],
+              )
+            } catch (err) {
+              log.set({ syncPriorToolOutputsError: String(err) })
+            }
+          }
 
-        const stream = withJsonRender(rawStream, (metrics) => {
-          log.set({
-            uiGenPatchLinesReceived: metrics.patchLinesReceived,
-            uiGenPatchesEmitted: metrics.patchesEmitted,
-            uiGenSpecsCompleted: metrics.specsCompleted,
-            uiGenTotalMs: metrics.totalMs,
-          })
-        })
-
-        log.set({ phase: 'stream_started' })
-
-        if (threadId && hasUserTurn) {
-          return toServerSentEventsResponse(
-            withPersistence(
-              stream,
-              threadId,
-              threadCreated,
-              userContent,
-              userParts,
-              shouldPersistUserTurn,
-              log,
-              telemetry,
-              userMessageId,
-            ),
-          )
-        }
-
-        return toServerSentEventsResponse(
-          withTraceFinalization(
-            stream,
-            traceState,
-            () => ({
-              'agent.status': telemetry.status,
+          const conversationId: string | undefined =
+            data?.conversationId || threadId
+          const traceState = startAgentRunTrace({
+            profile: 'interactiveChat',
+            source: 'interactive-chat',
+            conversationId,
+            log,
+            attributes: {
+              'http.route': '/api/chat',
               'agent.thread_id': threadId,
-              'agent.tool_call_count': telemetry.toolCallCount,
-              'agent.iteration_count': telemetry.iterationCount,
-            }),
-            () =>
-              telemetry.status === 'failed' || telemetry.status === 'aborted'
-                ? telemetry.error
-                : undefined,
-          ),
-        )
+              'agent.thread_created': false,
+              'agent.message_count': messages?.length,
+            },
+          })
+
+          log.set({
+            conversationId,
+            threadId,
+            messageCount: messages?.length,
+            model: data?.model,
+            traceId: traceState.traceId,
+            spanId: traceState.spanId,
+          })
+
+          const { stream: rawStream, telemetry } = await createAgentRun({
+            profile: 'interactiveChat',
+            source: 'interactive-chat',
+            messages,
+            conversationId,
+            model: data?.model,
+            temperature: data?.temperature,
+            customSystemPrompt: data?.systemPrompt,
+            selectedServers: data?.selectedServers,
+            enabledTools: data?.enabledTools,
+            log,
+            traceState,
+          })
+
+          const renderedStream = withJsonRender(rawStream, (metrics) => {
+            log.set({
+              uiGenPatchLinesReceived: metrics.patchLinesReceived,
+              uiGenPatchesEmitted: metrics.patchesEmitted,
+              uiGenSpecsCompleted: metrics.specsCompleted,
+              uiGenTotalMs: metrics.totalMs,
+            })
+          })
+
+          log.set({ phase: 'stream_started' })
+
+        // Only persist + echo a new user message when this POST represents a
+        // fresh user turn. Tool-result continuations must pass `newMessages:
+        // []` so the durable stream is not polluted with re-echoed prompts.
+          const newUserMessage =
+            shouldPersistUserTurn ? extractLatestUserMessage(messages) : undefined
+          const newMessages: Array<DurableSessionMessage> = newUserMessage
+            ? [newUserMessage]
+            : []
+
+          const responseStream: AsyncIterable<StreamChunk> = hasUserTurn
+            ? withPersistence(
+                renderedStream,
+                threadId,
+                /* threadCreated */ false,
+                userContent,
+                userParts,
+                shouldPersistUserTurn,
+                log,
+                telemetry,
+                userMessageId,
+              )
+            : withTraceFinalization(
+                renderedStream,
+                traceState,
+                () => ({
+                  'agent.status': telemetry.status,
+                  'agent.thread_id': threadId,
+                  'agent.tool_call_count': telemetry.toolCallCount,
+                  'agent.iteration_count': telemetry.iterationCount,
+                }),
+                () =>
+                  telemetry.status === 'failed' || telemetry.status === 'aborted'
+                    ? telemetry.error
+                    : undefined,
+              )
+          const trackedResponseStream = withThreadRunTracking(
+            responseStream,
+            threadId,
+          )
+
+          return toDurableChatSessionResponse({
+            stream: streamTarget,
+            newMessages,
+            responseStream: trackedResponseStream,
+            // In Node/Container Apps we observed fire-and-forget writes being
+            // dropped after returning 202, which leaves durable streams empty.
+            // `await` keeps the request open until durable append completes.
+            mode: 'await',
+          })
+        } catch (error) {
+          endThreadRun(threadId)
+          throw error
+        }
       },
     },
   },

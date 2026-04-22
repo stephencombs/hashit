@@ -9,6 +9,8 @@ export const selectThreadSchema = createSelectSchema(threads, {
   updatedAt: coercedDate,
   deletedAt: coercedDate.nullable(),
   pinnedAt: coercedDate.nullable(),
+}).extend({
+  isStreaming: z.boolean().optional().default(false),
 })
 export const insertThreadSchema = createInsertSchema(threads)
 
@@ -22,12 +24,18 @@ export const threadWithMessagesSchema = selectThreadSchema.extend({
 })
 
 export const createThreadBodySchema = z.object({
+  id: z.string().min(1).max(128).optional(),
   title: z.string().optional(),
 })
 
 export const chatRequestSchema = z.object({
   messages: z.array(
     z.object({
+      // Preserved verbatim so durable-stream echoes reuse the client-side
+      // message id; without it the transport mints a new UUID for the echo
+      // and the client renders a duplicate user bubble alongside its
+      // locally-added message.
+      id: z.string().optional(),
       role: z.string(),
       parts: z
         .array(z.object({ type: z.string() }).passthrough())

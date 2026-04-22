@@ -1,16 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { formatForDisplay } from "@tanstack/react-hotkeys"
 import { AppHotkeys } from "~/hooks/use-app-hotkeys"
 import { CommandPalette } from "~/components/command-palette"
 import { Kbd, KbdGroup } from "~/components/ui/kbd"
-import { Link, useLocation, useMatchRoute, useNavigate } from "@tanstack/react-router"
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckSquare2Icon,
+  FlaskConicalIcon,
   PinIcon,
   PinOffIcon,
   Trash2Icon,
-  LayoutDashboardIcon,
   TriangleAlertIcon,
   XIcon,
   ZapIcon,
@@ -51,15 +51,21 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { useIsOverflowing } from "~/hooks/use-is-overflowing"
 import { Skeleton } from "~/components/ui/skeleton"
-import { threadListQuery } from "~/lib/queries"
-import { canvasListQuery } from "~/lib/canvas-queries"
+import {
+  artifactsByThreadQuery,
+  threadDetailQuery,
+  threadListQuery,
+} from "~/lib/queries"
 import type { Thread } from "~/lib/schemas"
-import type { Canvas } from "~/lib/canvas-schemas"
+import {
+  clearThreadStreaming,
+  markThreadStreaming,
+  useStreamingThreadIds,
+} from "~/components/chat/thread-streaming-db"
 
 const user = {
   name: "User",
@@ -85,26 +91,25 @@ const THREAD_TOOLTIP_DELAY_MS = 500
 // Sidebar rows have a 4px vertical menu gap. Extend the clickable surface by
 // 2px above and below so there is no dead zone between adjacent thread items.
 const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5"
+const EMPTY_STREAMING_IDS: ReadonlySet<string> = new Set<string>()
 
-function ItemTitle({ title }: { title: string }) {
+const ItemTitle = memo(function ItemTitle({ title }: { title: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const isOverflowing = useIsOverflowing(title, ref)
 
   return (
-    <TooltipProvider delayDuration={THREAD_TOOLTIP_DELAY_MS}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span ref={ref} className="min-w-0 truncate">
-            {title}
-          </span>
-        </TooltipTrigger>
-        {isOverflowing && (
-          <TooltipContent side="bottom">{title}</TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip delayDuration={THREAD_TOOLTIP_DELAY_MS}>
+      <TooltipTrigger asChild>
+        <span ref={ref} className="min-w-0 truncate">
+          {title}
+        </span>
+      </TooltipTrigger>
+      {isOverflowing && (
+        <TooltipContent side="bottom">{title}</TooltipContent>
+      )}
+    </Tooltip>
   )
-}
+})
 
 /** Right-edge slide-in actions. Render inside `HoverActionsClip` so overflow does not clip the row link’s hit-area. */
 function HoverActions({ children }: { children: React.ReactNode }) {
@@ -115,7 +120,7 @@ function HoverActions({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Clips off-screen hover actions horizontally without clipping the thread/canvas link (hit-area ::before). */
+/** Clips off-screen hover actions horizontally without clipping the row link (hit-area ::before). */
 function HoverActionsClip({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -221,60 +226,29 @@ function useBulkPinThreads() {
   })
 }
 
-function usePinCanvas() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ canvasId, pinned }: { canvasId: string; pinned: boolean }) => {
-      await fetch(`/api/canvas/${canvasId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned }),
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["canvases"] })
-    },
-  })
-}
-
-function useDeleteCanvas() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  return useMutation({
-    mutationFn: async (canvasId: string) => {
-      await fetch(`/api/canvas/${canvasId}`, { method: "DELETE" })
-    },
-    onSuccess: (_data, canvasId) => {
-      queryClient.invalidateQueries({ queryKey: ["canvases"] })
-      if (window.location.pathname.includes(canvasId)) {
-        navigate({ to: "/canvas" })
-      }
-    },
-  })
-}
-
 function ThreadItem({
   conversation,
   pinThread,
   deleteThread,
   bulkMode,
-  currentPathname,
   selected,
+  isStreaming,
   onToggleSelect,
 }: {
   conversation: Thread
   pinThread: ReturnType<typeof usePinThread>
   deleteThread: ReturnType<typeof useDeleteThread>
   bulkMode: boolean
-  currentPathname?: string
   selected: boolean
+  isStreaming: boolean
   onToggleSelect: (id: string, shiftKey: boolean) => void
 }) {
-  const matchRoute = useMatchRoute()
-  const isActive = currentPathname
-    ? currentPathname === `/chat/${conversation.id}`
-    : !!matchRoute({ to: "/chat/$threadId", params: { threadId: conversation.id } })
+  const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const prefetchThread = useCallback(() => {
+    void queryClient.prefetchQuery(threadDetailQuery(conversation.id))
+    void queryClient.prefetchQuery(artifactsByThreadQuery(conversation.id))
+  }, [conversation.id, queryClient])
 
   if (bulkMode) {
     return (
@@ -297,13 +271,16 @@ function ThreadItem({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        isActive={isActive}
         asChild
         className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
       >
         <Link
           to="/chat/$threadId"
           params={{ threadId: conversation.id }}
+          activeOptions={{ exact: true }}
+          className="relative"
+          onFocus={prefetchThread}
+          onMouseEnter={prefetchThread}
           draggable={false}
         >
           {conversation.source === "automation" && (
@@ -317,6 +294,15 @@ function ThreadItem({
             </Tooltip>
           )}
           <ItemTitle title={conversation.title} />
+          {isStreaming ? (
+            <>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-md border border-sidebar-ring/60"
+              />
+              <span className="sr-only">Streaming response</span>
+            </>
+          ) : null}
         </Link>
       </SidebarMenuButton>
       <HoverActionsClip>
@@ -373,72 +359,20 @@ function ThreadItem({
   )
 }
 
-function CanvasItem({
-  canvas,
-  pinCanvas,
-  deleteCanvas,
-  currentPathname,
-}: {
-  canvas: Canvas
-  pinCanvas: ReturnType<typeof usePinCanvas>
-  deleteCanvas: ReturnType<typeof useDeleteCanvas>
-  currentPathname?: string
-}) {
-  const matchRoute = useMatchRoute()
-  const isActive = currentPathname
-    ? currentPathname === `/canvas/${canvas.id}`
-    : !!matchRoute({ to: "/canvas/$canvasId", params: { canvasId: canvas.id } })
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={isActive}
-        asChild
-        className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
-      >
-        <Link
-          to="/canvas/$canvasId"
-          params={{ canvasId: canvas.id }}
-          draggable={false}
-        >
-          <LayoutDashboardIcon className="size-4" />
-          <ItemTitle title={canvas.title} />
-        </Link>
-      </SidebarMenuButton>
-      <HoverActionsClip>
-        <HoverActions>
-          <HoverButton
-            onClick={() => pinCanvas.mutate({ canvasId: canvas.id, pinned: !canvas.pinnedAt })}
-            label={canvas.pinnedAt ? "Unpin" : "Pin"}
-          >
-            {canvas.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
-          </HoverButton>
-          <HoverButton
-            onClick={() => deleteCanvas.mutate(canvas.id)}
-            label="Delete"
-          >
-            <Trash2Icon className="size-5" />
-          </HoverButton>
-        </HoverActions>
-      </HoverActionsClip>
-    </SidebarMenuItem>
-  )
-}
-
 function ThreadSection({
   label,
   threads,
   pinThread,
   deleteThread,
   bulkAction,
-  currentPathname,
+  streamingIds,
 }: {
   label: string
   threads: Thread[]
   pinThread: ReturnType<typeof usePinThread>
   deleteThread: ReturnType<typeof useDeleteThread>
   bulkAction: "pin" | "unpin"
-  currentPathname?: string
+  streamingIds: ReadonlySet<string>
 }) {
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -608,8 +542,8 @@ function ThreadSection({
               pinThread={pinThread}
               deleteThread={deleteThread}
               bulkMode={bulkMode}
-              currentPathname={currentPathname}
               selected={selectedIds.has(conversation.id)}
+              isStreaming={streamingIds.has(conversation.id)}
               onToggleSelect={handleSelect}
             />
           ))}
@@ -646,6 +580,61 @@ function ThreadSection({
   )
 }
 
+type ThreadSectionsProps = {
+  pinned: Thread[]
+  recents: Thread[]
+  pinThread: ReturnType<typeof usePinThread>
+  deleteThread: ReturnType<typeof useDeleteThread>
+  streamingIds: ReadonlySet<string>
+}
+
+function ThreadSections({
+  pinned,
+  recents,
+  pinThread,
+  deleteThread,
+  streamingIds,
+}: ThreadSectionsProps) {
+  return (
+    <>
+      <ThreadSection
+        label="Pinned"
+        threads={pinned}
+        pinThread={pinThread}
+        deleteThread={deleteThread}
+        bulkAction="unpin"
+        streamingIds={streamingIds}
+      />
+      <ThreadSection
+        label="Recents"
+        threads={recents}
+        pinThread={pinThread}
+        deleteThread={deleteThread}
+        bulkAction="pin"
+        streamingIds={streamingIds}
+      />
+    </>
+  )
+}
+
+function LiveThreadSections({
+  pinned,
+  recents,
+  pinThread,
+  deleteThread,
+}: Omit<ThreadSectionsProps, "streamingIds">) {
+  const streamingIds = useStreamingThreadIds()
+  return (
+    <ThreadSections
+      pinned={pinned}
+      recents={recents}
+      pinThread={pinThread}
+      deleteThread={deleteThread}
+      streamingIds={streamingIds}
+    />
+  )
+}
+
 function SidebarSkeletonGroup({ widths }: { widths: string[] }) {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -678,10 +667,17 @@ function SidebarListSkeleton() {
   )
 }
 
-function ChatSidebarContent({ currentPathname }: { currentPathname?: string }) {
-  const { data: conversations = [], isPending } = useQuery(threadListQuery)
+function ChatSidebarContent() {
+  const { data: conversations = [], isPending } = useQuery({
+    ...threadListQuery,
+    // Reduced from 2 s: the critical freshness path is invalidateThreadList on
+    // persistence_complete; polling at 10 s covers automation-created threads
+    // and title updates without generating frequent thread-list re-renders.
+    refetchInterval: 10_000,
+  })
   const pinThread = usePinThread()
   const deleteThread = useDeleteThread()
+  const [hasHydratedStreamingState, setHasHydratedStreamingState] = useState(false)
 
   const { pinned, recents } = useMemo(() => {
     const pinned: Thread[] = []
@@ -691,6 +687,20 @@ function ChatSidebarContent({ currentPathname }: { currentPathname?: string }) {
       else recents.push(c)
     }
     return { pinned, recents }
+  }, [conversations])
+
+  useEffect(() => {
+    setHasHydratedStreamingState(true)
+  }, [])
+
+  useEffect(() => {
+    for (const conversation of conversations) {
+      if (conversation.isStreaming) {
+        markThreadStreaming(conversation.id, "event")
+      } else {
+        clearThreadStreaming(conversation.id)
+      }
+    }
   }, [conversations])
 
   if (isPending) return <SidebarListSkeleton />
@@ -703,107 +713,32 @@ function ChatSidebarContent({ currentPathname }: { currentPathname?: string }) {
     )
   }
 
-  return (
-    <>
-      <ThreadSection
-        label="Pinned"
-        threads={pinned}
-        pinThread={pinThread}
-        deleteThread={deleteThread}
-        bulkAction="unpin"
-        currentPathname={currentPathname}
-      />
-      <ThreadSection
-        label="Recents"
-        threads={recents}
-        pinThread={pinThread}
-        deleteThread={deleteThread}
-        bulkAction="pin"
-        currentPathname={currentPathname}
-      />
-    </>
-  )
-}
-
-function CanvasSidebarContent({ currentPathname }: { currentPathname?: string }) {
-  const { data: canvases = [], isPending } = useQuery(canvasListQuery)
-  const pinCanvas = usePinCanvas()
-  const deleteCanvas = useDeleteCanvas()
-
-  const { pinned, recents } = useMemo(() => {
-    const pinned: Canvas[] = []
-    const recents: Canvas[] = []
-    for (const c of canvases) {
-      if (c.pinnedAt) pinned.push(c)
-      else recents.push(c)
-    }
-    return { pinned, recents }
-  }, [canvases])
-
-  if (isPending) return <SidebarListSkeleton />
-
-  if (canvases.length === 0) {
+  if (!hasHydratedStreamingState) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
-        No canvases yet
-      </div>
+      <ThreadSections
+        pinned={pinned}
+        recents={recents}
+        pinThread={pinThread}
+        deleteThread={deleteThread}
+        streamingIds={EMPTY_STREAMING_IDS}
+      />
     )
   }
 
   return (
-    <>
-      {pinned.length > 0 && (
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Pinned</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {pinned.map((canvas) => (
-                <CanvasItem
-                  key={canvas.id}
-                  canvas={canvas}
-                  pinCanvas={pinCanvas}
-                  deleteCanvas={deleteCanvas}
-                  currentPathname={currentPathname}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
-      {recents.length > 0 && (
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Recents</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {recents.map((canvas) => (
-                <CanvasItem
-                  key={canvas.id}
-                  canvas={canvas}
-                  pinCanvas={pinCanvas}
-                  deleteCanvas={deleteCanvas}
-                  currentPathname={currentPathname}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      )}
-    </>
+    <LiveThreadSections
+      pinned={pinned}
+      recents={recents}
+      pinThread={pinThread}
+      deleteThread={deleteThread}
+    />
   )
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute()
-  const location = useLocation()
-  // Route masking keeps runtime route state at `/` while showing `/chat/$threadId`
-  // in the address bar. Prefer the masked pathname for sidebar active states.
-  const currentPathname = location.maskedLocation?.pathname ?? location.pathname
-  const isNewChatActive = currentPathname
-    ? currentPathname === "/"
-    : !!matchRoute({ to: "/" })
-  const isCanvasSection = currentPathname
-    ? currentPathname === "/canvas" || currentPathname.startsWith("/canvas/")
-    : !!matchRoute({ to: "/canvas", fuzzy: true })
+  const isNewChatActive = !!matchRoute({ to: "/" })
+  const isV2Active = !!matchRoute({ to: "/v2", fuzzy: true })
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   return (
@@ -882,14 +817,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {isCanvasSection ? (
-          <CanvasSidebarContent currentPathname={currentPathname} />
-        ) : (
-          <ChatSidebarContent currentPathname={currentPathname} />
-        )}
+        <ChatSidebarContent />
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton isActive={isV2Active} asChild tooltip="Try V2 Sidebar/Chat">
+              <Link to="/v2" draggable={false}>
+                <FlaskConicalIcon className="size-4" />
+                <span className="group-data-[collapsible=icon]:hidden">Try V2 Beta</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>

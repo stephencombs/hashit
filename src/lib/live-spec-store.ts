@@ -7,9 +7,9 @@ type Listener = () => void
  * External store for in-flight UI specs during streaming.
  *
  * Kept outside React state so patch updates don't cascade through the full
- * context/provider tree — only the VirtualConversation component (which
- * subscribes via useSyncExternalStore) and the specific MessageRow that owns
- * the streaming message will re-render on each patch.
+ * context/provider tree — only the message list subscriber (via
+ * useSyncExternalStore) and the specific MessageRow that owns the streaming
+ * message will re-render on each patch.
  *
  * After streaming ends the store continues holding the final specs so that
  * messages can render them even before a page reload delivers persisted ui-spec

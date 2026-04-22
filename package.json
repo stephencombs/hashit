@@ -4,12 +4,18 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "dotenv -e .env.local -e .env -- portless run vite dev",
+    "dev": "concurrently -n streams,app -c cyan,magenta --kill-others-on-fail \"pnpm dev:streams\" \"pnpm dev:app\"",
+    "dev:app": "dotenv -e .env.local -e .env -- portless run vite dev",
+    "dev:streams": "dotenv -e .env.local -e .env -- tsx scripts/durable-streams-server.ts",
     "build": "vite build",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:run": "vitest run",
     "start": "node .output/server/index.mjs",
     "eval:agent-runtime": "tsx scripts/evals/agent-runtime.ts",
     "db:generate": "dotenv -e .env.local -e .env -- drizzle-kit generate",
-    "db:studio": "dotenv -e .env.local -e .env -- drizzle-kit studio"
+    "db:studio": "dotenv -e .env.local -e .env -- drizzle-kit studio",
+    "db:backfill-previews": "dotenv -e .env.local -e .env -- tsx scripts/backfill-message-part-previews.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +29,8 @@
   "dependencies": {
     "@azure/storage-blob": "^12.31.0",
     "@chenglou/pretext": "^0.0.5",
+    "@durable-streams/client": "^0.2.3",
+    "@durable-streams/tanstack-ai-transport": "^0.0.4",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/inter": "^5.2.8",
     "@json-render/core": "^0.17.0",
@@ -45,6 +53,9 @@
     "@tanstack/ai": "^0.10.1",
     "@tanstack/ai-openai": "^0.7.4",
     "@tanstack/ai-react": "^0.7.9",
+    "@tanstack/db": "^0.6.5",
+    "@tanstack/query-db-collection": "^1.0.36",
+    "@tanstack/react-db": "^0.1.83",
     "@tanstack/react-hotkeys": "^0.9.1",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/react-router": "^1.168.18",
@@ -104,6 +115,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@durable-streams/server": "^0.3.1",
     "@tanstack/react-query-devtools": "^5.99.0",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
@@ -111,12 +123,14 @@
     "@types/react-dom": "^19.2.3",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "1.0.0-beta.21",
     "portless": "^0.10.1",
     "react-scan": "^0.5.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8"
+    "vite": "^8.0.8",
+    "vitest": "^4.1.5"
   }
 }

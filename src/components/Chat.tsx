@@ -1,178 +1,167 @@
-import { memo, useCallback, useState } from "react";
 import type { ChatStatus } from "ai";
-import type { MessagePart } from "@tanstack/ai";
-import { PaperclipIcon, XCircleIcon } from "lucide-react";
-import {
-  VirtualConversation,
-  VirtualConversationEmptyState,
-} from "~/components/chat/virtual-conversation";
-import {
-  PromptInput,
-  type PromptInputMessage,
-  PromptInputAttachButton,
-  PromptInputAttachmentPreviewList,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-  usePromptInputAttachments,
-} from "~/components/ai-elements/prompt-input";
-import { MessageSquare } from "lucide-react";
-import { useChatSession } from "~/components/chat/use-chat-session";
+import { useCallback, useEffect, useState } from "react";
+import { ChatComposer } from "~/components/chat/chat-composer";
+import { ChatConversation } from "~/components/chat/chat-conversation";
+import { ChatEmptyState } from "~/components/chat/chat-empty-state";
+import { ChatMessageList } from "~/components/chat/chat-message-list";
+import type { ChatMessageShape } from "~/components/chat/chat-session-types";
+import { useChatRuntime } from "~/components/chat/use-chat-runtime";
+import type { ChatMessage } from "~/components/chat/message-row";
 
-interface ChatProps {
+export interface ChatProps {
+  /** Existing thread to attach to. Omit for a new-chat surface. */
   threadId?: string;
-  initialMessages?: Array<{
-    id: string;
-    role: "user" | "assistant";
-    parts: Array<MessagePart>;
-  }>;
+  /** Server-rendered messages to hydrate before the live stream resumes. */
+  initialMessages?: Array<ChatMessageShape>;
+  /**
+   * Opaque offset returned by `materializeSnapshotFromDurableStream`. Resumes
+   * the durable stream where the SSR snapshot left off.
+   */
+  initialResumeOffset?: string;
+  /** Called once a brand-new thread has been created server-side. */
   onThreadCreated?: (threadId: string) => void;
 }
 
-
-function PromptInputSubmitButton({
-  input,
-  status,
-}: {
-  input: string;
-  status: ChatStatus;
-}) {
-  const attachments = usePromptInputAttachments();
-  const canSubmit = input.trim().length > 0 || attachments.files.length > 0;
-
-  return (
-    <PromptInputSubmit
-      disabled={!canSubmit && status === "ready"}
-      status={status}
-    />
-  );
-}
-
-/** Composer is isolated so typing does not re-render the transcript / virtualizer. */
-const ChatComposer = memo(function ChatComposer({
-  onSubmitMessage,
-  status,
-  submissionError,
-  clearSubmissionError,
-}: {
-  onSubmitMessage: (message: PromptInputMessage) => Promise<void> | void;
-  status: ChatStatus;
-  submissionError: string | null;
-  clearSubmissionError: () => void;
-}) {
-  const [input, setInput] = useState("");
-
-  const handleSubmit = useCallback(
-    async (message: PromptInputMessage) => {
-      if (!message.text.trim() && message.files.length === 0) return;
-      await onSubmitMessage(message);
-      setInput("");
-    },
-    [onSubmitMessage],
-  );
-
-  return (
-    <div className="mt-4 flex w-full flex-col gap-2">
-      {submissionError && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <span className="min-w-0 flex-1">{submissionError}</span>
-          <button
-            type="button"
-            onClick={clearSubmissionError}
-            aria-label="Dismiss error"
-            className="text-destructive/70 hover:text-destructive"
-          >
-            <XCircleIcon className="size-4" />
-          </button>
-        </div>
-      )}
-      <PromptInput
-        onSubmit={handleSubmit}
-        accept="image/*,application/pdf"
-        globalDrop
-        multiple
-      >
-        <PromptInputBody>
-          <PromptInputAttachmentPreviewList />
-          <PromptInputTextarea
-            value={input}
-            onChange={(e) => setInput(e.currentTarget.value)}
-          />
-        </PromptInputBody>
-        <PromptInputFooter>
-          <PromptInputTools>
-            <PromptInputAttachButton>
-              <PaperclipIcon className="size-4" />
-            </PromptInputAttachButton>
-          </PromptInputTools>
-          <PromptInputSubmitButton input={input} status={status} />
-        </PromptInputFooter>
-      </PromptInput>
-    </div>
-  );
-});
-
+/**
+ * Standalone chat surface.
+ *
+ * Layout contract (single source of truth — no per-route divergence):
+ *
+ *   ┌─ flex column, min-h-0 ─────────────────────────────────────┐
+ *   │  ChatConversation        flex-1, scrollbar at screen edge   │
+ *   │    └─ centered max-w-720 column with messages               │
+ *   │       (or ChatEmptyState when there are no messages yet)    │
+ *   │                                                             │
+ *   │  ChatComposer            shrink-0, max-w-720 dock           │
+ *   └─────────────────────────────────────────────────────────────┘
+ *
+ * Autoscroll is handled by `use-stick-to-bottom` (via ai-elements'
+ * `Conversation`) which is ResizeObserver-backed, so late layout from
+ * charts, web fonts, and image decoding always pins to the true bottom
+ * — no virtualization, no `requestAnimationFrame` chains, no manual
+ * `scrollTop` math.
+ *
+ * Render-locality:
+ * - `ChatComposer` is memoized and owns its own input string; typing never
+ *   re-renders the message list.
+ * - `ChatMessageList` subscribes to the live-spec store via
+ *   `useSyncExternalStore`, so streaming `spec_patch` events only re-render
+ *   the list itself — not the composer or this shell.
+ * - `MessageRow` is memoized per message, so historical rows skip work
+ *   when the streaming row updates.
+ */
 export function Chat({
   threadId,
   initialMessages,
+  initialResumeOffset,
   onThreadCreated,
 }: ChatProps) {
-  const session = useChatSession({
+  const session = useChatRuntime({
     threadId,
     initialMessages,
+    initialResumeOffset,
     onThreadCreated,
     cancelQueriesOnUnmount: true,
   });
 
-  const {
-    activeThreadId,
-    messages,
-    status,
-    liveSpecStore,
-    savedArtifactKeys,
-    resolveInteractive,
-    handleSubmit,
-    handleSaveArtifact,
-    isStreaming,
-    isAwaitingResponse,
-    submissionError,
-    clearSubmissionError,
-  } = session;
+  const hasCommittedUserMessage = session.messages.some(
+    (message) => message.role === "user",
+  );
+  const displayedMessages = !hasCommittedUserMessage && session.optimisticUserMessage
+    ? [...session.messages, session.optimisticUserMessage]
+    : session.messages;
+  const hasMessages = displayedMessages.length > 0;
+  const showConversation =
+    hasMessages || session.isStreaming || session.isBootstrappingThread;
+  const surfaceKey = threadId ?? "__new-chat__";
+  const [surfaceReady, setSurfaceReady] = useState(!showConversation);
+  const [conversationReady, setConversationReady] = useState(false);
+  const [pendingBottomSpecs, setPendingBottomSpecs] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  useEffect(() => {
+    setConversationReady(false);
+    setPendingBottomSpecs(new Set());
+    setSurfaceReady(!showConversation);
+  }, [surfaceKey, showConversation]);
+
+  const handleConversationReady = useCallback(() => {
+    setConversationReady(true);
+  }, []);
+
+  const handleBottomSpecPendingChange = useCallback(
+    (specKey: string, pending: boolean) => {
+      setPendingBottomSpecs((prev) => {
+        const hasKey = prev.has(specKey);
+        if (pending && hasKey) return prev;
+        if (!pending && !hasKey) return prev;
+        const next = new Set(prev);
+        if (pending) {
+          next.add(specKey);
+        } else {
+          next.delete(specKey);
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const bottomSpecsReady = pendingBottomSpecs.size === 0;
+
+  useEffect(() => {
+    if (!showConversation || surfaceReady) return;
+    if (!conversationReady || !bottomSpecsReady) return;
+    setSurfaceReady(true);
+  }, [bottomSpecsReady, conversationReady, showConversation, surfaceReady]);
+
+  useEffect(() => {
+    if (!showConversation || surfaceReady) return;
+    const timeoutId = window.setTimeout(() => {
+      setSurfaceReady(true);
+    }, 2_500);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [showConversation, surfaceReady]);
+
+  useEffect(() => {
+    if (!surfaceReady || !showConversation || !session.hasHashTarget) return;
+    session.scrollToHashTarget();
+  }, [session, showConversation, surfaceReady]);
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col p-6">
-      {messages.length === 0 ? (
-        <div className="min-h-0 flex-1">
-          <VirtualConversationEmptyState
-            icon={<MessageSquare className="size-12" />}
-            title="Start a conversation"
-            description="Type a message below to begin chatting"
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {showConversation ? (
+        <ChatConversation
+          className="min-h-0 flex-1"
+          onSurfaceReady={handleConversationReady}
+        >
+          <ChatMessageList
+            messages={displayedMessages as ChatMessage[]}
+            isStreaming={session.isStreaming}
+            isAwaitingResponse={session.isAwaitingResponse}
+            liveSpecStore={session.liveSpecStore}
+            savedArtifactKeys={session.savedArtifactKeys}
+            onResolveInteractive={session.resolveInteractive}
+            onBottomSpecPendingChange={handleBottomSpecPendingChange}
+            onSaveArtifact={session.handleSaveArtifact}
           />
-        </div>
+        </ChatConversation>
       ) : (
-        <VirtualConversation
-          threadId={activeThreadId}
-          messages={messages as unknown as import("~/components/chat/message-row").ChatMessage[]}
-          isStreaming={isStreaming}
-          isAwaitingResponse={isAwaitingResponse}
-          liveSpecStore={liveSpecStore}
-          savedArtifactKeys={savedArtifactKeys}
-          onResolveInteractive={resolveInteractive}
-          onSaveArtifact={handleSaveArtifact}
-        />
+        <ChatEmptyState />
       )}
 
-      <ChatComposer
-        onSubmitMessage={handleSubmit}
-        status={status as ChatStatus}
-        submissionError={submissionError}
-        clearSubmissionError={clearSubmissionError}
-      />
+      <div className="relative z-30 shrink-0 transition-opacity duration-150">
+        <ChatComposer
+          status={session.status as ChatStatus}
+          onSubmit={session.handleSubmit}
+          onStop={session.stop}
+          submissionError={session.submissionError}
+          clearSubmissionError={session.clearSubmissionError}
+        />
+      </div>
     </div>
   );
 }

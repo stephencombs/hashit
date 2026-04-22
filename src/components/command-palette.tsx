@@ -5,7 +5,6 @@ import {
   CheckIcon,
   GaugeIcon,
   Layers,
-  LayoutDashboardIcon,
   MessageSquareIcon,
   MoonIcon,
   PanelLeftIcon,
@@ -119,18 +118,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             >
               <GaugeIcon />
               <span>Dashboard</span>
-            </CommandItem>
-            <CommandItem
-              value="canvases"
-              keywords={["canvas", "boards"]}
-              onSelect={() =>
-                run(() => {
-                  navigate({ to: "/canvas" })
-                })
-              }
-            >
-              <LayoutDashboardIcon />
-              <span>Canvases</span>
             </CommandItem>
             <CommandItem
               value="artifacts"

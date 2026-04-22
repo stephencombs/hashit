@@ -1,0 +1,15 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY durable-streams-server /usr/local/bin/durable-streams-server
+RUN chmod 0755 /usr/local/bin/durable-streams-server
+
+COPY Caddyfile /etc/durable-streams/Caddyfile
+
+VOLUME ["/var/lib/durable-streams"]
+EXPOSE 4437
+
+CMD ["durable-streams-server", "run", "--config", "/etc/durable-streams/Caddyfile"]

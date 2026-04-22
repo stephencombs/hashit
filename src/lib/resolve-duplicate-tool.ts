@@ -108,7 +108,7 @@ export const resolveDuplicateEntityTool = toolDefinition({
 })
 // NOTE: No .server() execute. This is a client tool. The UI supplies the
 // output via a .client() handler that awaits the user's resolution action
-// (see src/components/chat/use-chat-session.ts). The TanStack AI runtime
+// (see src/components/chat/use-chat-runtime.ts). The TanStack AI runtime
 // handles the pause/persist/resume around the awaited promise.
 
 export type DuplicateField = {

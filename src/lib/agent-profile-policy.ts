@@ -2,12 +2,12 @@ import { uiCatalog } from '~/lib/ui-catalog'
 
 export type AgentRunProfile =
   | 'interactiveChat'
+  | 'interactiveChatV2'
   | 'automation'
   | 'dashboardPlanning'
   | 'dashboardRender'
 
 export interface RunProfileConfig {
-  includePlanTool: boolean
   includeFormTool: boolean
   includeMcpTools: boolean
   lazyMcpTools: boolean
@@ -39,6 +39,12 @@ const DUPLICATE_RESOLUTION_RULE =
   'Do NOT print markdown tables, do NOT ask the user to reply with corrected values in chat. ' +
   'After calling resolve_duplicate_entity, end your turn immediately with no text and wait for the user to pick a resolution.'
 
+const V2_CORE_SYSTEM_PROMPT =
+  'You are Teammate V2. Provide concise, direct answers. Keep wording compact and avoid unnecessary explanation unless the user asks for detail.'
+
+const V2_TOKEN_RULE =
+  'Prefer using existing conversation context and avoid repeating long boilerplate. When context is missing, ask one focused clarifying question.'
+
 export function sanitizeCustomSystemPrompt(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
@@ -48,7 +54,6 @@ export function sanitizeCustomSystemPrompt(value?: string): string | undefined {
 
 export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
   interactiveChat: {
-    includePlanTool: true,
     includeFormTool: true,
     includeMcpTools: true,
     lazyMcpTools: true,
@@ -68,8 +73,21 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
       return prompts
     },
   },
+  interactiveChatV2: {
+    includeFormTool: false,
+    includeMcpTools: false,
+    lazyMcpTools: false,
+    allowCustomSystemPrompt: false,
+    allowModelOverride: true,
+    allowTemperatureOverride: false,
+    defaultMaxIterations: 2,
+    buildSystemPrompts: ({ extraSystemPrompts }) => {
+      const prompts = [V2_CORE_SYSTEM_PROMPT, V2_TOKEN_RULE]
+      if (extraSystemPrompts?.length) prompts.push(...extraSystemPrompts)
+      return prompts
+    },
+  },
   automation: {
-    includePlanTool: false,
     includeFormTool: false,
     includeMcpTools: true,
     lazyMcpTools: true,
@@ -89,7 +107,6 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
     },
   },
   dashboardPlanning: {
-    includePlanTool: false,
     includeFormTool: false,
     includeMcpTools: false,
     lazyMcpTools: false,
@@ -100,7 +117,6 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
     buildSystemPrompts: ({ extraSystemPrompts }) => extraSystemPrompts ?? [],
   },
   dashboardRender: {
-    includePlanTool: false,
     includeFormTool: false,
     includeMcpTools: false,
     lazyMcpTools: false,

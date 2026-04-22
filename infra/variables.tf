@@ -82,3 +82,59 @@ variable "blob_container_name" {
   default     = "prompt-attachments"
 }
 
+# --- Durable Streams ---
+
+variable "durable_streams_image_name" {
+  description = "Repository name in ACR for the Durable Streams container image"
+  type        = string
+  default     = "durable-streams"
+}
+
+variable "durable_streams_image_tag" {
+  description = "Container image tag for the Durable Streams container"
+  type        = string
+  default     = "latest"
+}
+
+variable "durable_streams_route_prefix" {
+  description = "Route prefix exposed by the Durable Streams server"
+  type        = string
+  default     = "/v1/stream"
+}
+
+variable "durable_streams_min_replicas" {
+  description = "Minimum replicas for Durable Streams Container App"
+  type        = number
+  default     = 1
+}
+
+variable "durable_streams_max_replicas" {
+  description = "Maximum replicas for Durable Streams Container App"
+  type        = number
+  default     = 1
+}
+
+variable "durable_streams_cpu" {
+  description = "CPU cores allocated to the Durable Streams container"
+  type        = number
+  default     = 0.5
+}
+
+variable "durable_streams_memory" {
+  description = "Memory allocated to the Durable Streams container"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "durable_streams_file_share_name" {
+  description = "Azure File Share name used for durable stream state"
+  type        = string
+  default     = "durable-streams-data"
+}
+
+variable "durable_streams_file_share_quota_gb" {
+  description = "Quota in GB for the Durable Streams Azure File Share"
+  type        = number
+  default     = 100
+}
+

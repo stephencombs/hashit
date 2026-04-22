@@ -70,7 +70,7 @@ export const collectFormDataTool = toolDefinition({
 })
 // NOTE: No .server() execute. This is a client tool. The UI supplies the
 // output via a .client() handler registered on the client side (see
-// src/components/chat/use-chat-session.ts and
+// src/components/chat/use-chat-runtime.ts and
 // src/lib/interactive-tool-registry.ts). The TanStack AI runtime pauses the
 // agent loop until that handler resolves, persists the tool-call part with
 // state: "result" and the submitted output, then resumes automatically.

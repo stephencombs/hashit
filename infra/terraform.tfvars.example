@@ -15,3 +15,14 @@ mcp_client_id        = "..."
 mcp_client_secret    = "..."
 
 # blob_container_name = "prompt-attachments" # optional – default matches app expectation
+
+# Durable Streams (separate Container App)
+durable_streams_image_name         = "durable-streams"
+durable_streams_image_tag          = "latest"
+# durable_streams_route_prefix      = "/v1/stream"
+# durable_streams_min_replicas      = 1
+# durable_streams_max_replicas      = 1
+# durable_streams_cpu               = 0.5
+# durable_streams_memory            = "1Gi"
+# durable_streams_file_share_name   = "durable-streams-data"
+# durable_streams_file_share_quota_gb = 100

@@ -16,7 +16,7 @@ export const threadDetailQuery = (threadId: string) =>
   queryOptions({
     queryKey: ['threads', threadId],
     queryFn: async ({ signal }) => {
-      const { getThread } = await import('~/routes/_app.chat.$threadId')
+      const { getThread } = await import('~/features/routes/chat-thread-server')
       return getThread({ data: threadId, signal })
     },
     staleTime: 60_000,

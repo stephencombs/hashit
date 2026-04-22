@@ -1,11 +1,12 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
-import type { MessagePart } from '@tanstack/ai'
+import { pgTable, text, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
+import type { AppMessagePart } from '~/components/chat/message-row.types'
 import type { PersistedRecipe, PersistedWidget } from '~/lib/dashboard-schemas'
 
 export const threads = pgTable('threads', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   source: text('source'),
+  resumeOffset: text('resume_offset'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
@@ -19,7 +20,30 @@ export const messages = pgTable('messages', {
     .references(() => threads.id),
   role: text('role').notNull(),
   content: text('content').notNull(),
-  parts: jsonb('parts').$type<Array<MessagePart>>(),
+  parts: jsonb('parts').$type<Array<AppMessagePart>>(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
+})
+
+export const v2Threads = pgTable('v2_threads', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  source: text('source'),
+  resumeOffset: text('resume_offset'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+  pinnedAt: timestamp('pinned_at', { withTimezone: true, mode: 'date' }),
+})
+
+export const v2Messages = pgTable('v2_messages', {
+  id: text('id').primaryKey(),
+  threadId: text('thread_id')
+    .notNull()
+    .references(() => v2Threads.id),
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  parts: jsonb('parts').$type<Array<AppMessagePart>>(),
   metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
 })
@@ -30,65 +54,6 @@ export const artifacts = pgTable('artifacts', {
   spec: jsonb('spec').$type<Record<string, unknown>>(),
   threadId: text('thread_id').references(() => threads.id),
   messageId: text('message_id'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
-})
-
-export type CanvasNodeType =
-  | 'prd'
-  | 'user_stories'
-  | 'uiux_spec'
-  | 'tech_architecture'
-  | 'task_breakdown'
-
-export type CanvasNodeStatus = 'idle' | 'generating' | 'stale' | 'error'
-
-export const canvases = pgTable('canvases', {
-  id: text('id').primaryKey(),
-  title: text('title').notNull(),
-  description: text('description'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
-  pinnedAt: timestamp('pinned_at', { withTimezone: true, mode: 'date' }),
-})
-
-export const canvasNodes = pgTable('canvas_nodes', {
-  id: text('id').primaryKey(),
-  canvasId: text('canvas_id')
-    .notNull()
-    .references(() => canvases.id),
-  type: text('type').$type<CanvasNodeType>().notNull(),
-  label: text('label').notNull(),
-  content: jsonb('content').$type<Record<string, unknown>>(),
-  positionX: doublePrecision('position_x').notNull().default(0),
-  positionY: doublePrecision('position_y').notNull().default(0),
-  status: text('status').$type<CanvasNodeStatus>().notNull().default('idle'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
-})
-
-export const canvasEdges = pgTable('canvas_edges', {
-  id: text('id').primaryKey(),
-  canvasId: text('canvas_id')
-    .notNull()
-    .references(() => canvases.id),
-  sourceNodeId: text('source_node_id')
-    .notNull()
-    .references(() => canvasNodes.id),
-  targetNodeId: text('target_node_id')
-    .notNull()
-    .references(() => canvasNodes.id),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
-})
-
-export const nodeVersions = pgTable('node_versions', {
-  id: text('id').primaryKey(),
-  nodeId: text('node_id')
-    .notNull()
-    .references(() => canvasNodes.id),
-  versionNumber: integer('version_number').notNull(),
-  content: jsonb('content').$type<Record<string, unknown>>(),
-  source: text('source').$type<'user' | 'ai'>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull(),
 })
 
