@@ -114,4 +114,46 @@ describe("normalizeV2MessageForRuntime", () => {
     ]);
     expect(normalized.renderText).toBe("fallback content");
   });
+
+  it("keeps ui-spec parts for chart-only assistant responses", () => {
+    const normalized = normalizeV2MessageForRuntime(
+      buildMessage({
+        content: "",
+        parts: [
+          {
+            type: "ui-spec",
+            spec: {
+              root: "chart-1",
+              elements: {
+                "chart-1": {
+                  type: "BarChart",
+                  props: { data: [{ label: "A", value: 1 }] },
+                  children: [],
+                },
+              },
+            },
+            specIndex: 0,
+          },
+        ],
+      }),
+    );
+
+    expect(normalized.parts).toEqual([
+      {
+        type: "ui-spec",
+        spec: {
+          root: "chart-1",
+          elements: {
+            "chart-1": {
+              type: "BarChart",
+              props: { data: [{ label: "A", value: 1 }] },
+              children: [],
+            },
+          },
+        },
+        specIndex: 0,
+      },
+    ]);
+    expect(normalized.renderText).toBe("");
+  });
 });

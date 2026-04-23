@@ -93,6 +93,22 @@ const THREAD_TOOLTIP_DELAY_MS = 500;
 const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5";
 const EMPTY_STREAMING_IDS: ReadonlySet<string> = new Set<string>();
 
+function sortThreadsByActivity(conversations: Thread[]): Thread[] {
+  return [...conversations].sort((left, right) => {
+    const leftPinned = Boolean(left.pinnedAt);
+    const rightPinned = Boolean(right.pinnedAt);
+    if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
+
+    const updatedAtDelta = right.updatedAt.getTime() - left.updatedAt.getTime();
+    if (updatedAtDelta !== 0) return updatedAtDelta;
+
+    const createdAtDelta = right.createdAt.getTime() - left.createdAt.getTime();
+    if (createdAtDelta !== 0) return createdAtDelta;
+
+    return right.id.localeCompare(left.id);
+  });
+}
+
 const ItemTitle = memo(function ItemTitle({ title }: { title: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const isOverflowing = useIsOverflowing(title, ref);
@@ -717,9 +733,10 @@ function ChatSidebarContent() {
     useState(false);
 
   const { pinned, recents } = useMemo(() => {
+    const sortedConversations = sortThreadsByActivity(conversations);
     const pinned: Thread[] = [];
     const recents: Thread[] = [];
-    for (const c of conversations) {
+    for (const c of sortedConversations) {
       if (c.pinnedAt) pinned.push(c);
       else recents.push(c);
     }

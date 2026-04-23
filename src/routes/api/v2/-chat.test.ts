@@ -56,6 +56,9 @@ const mocks = vi.hoisted(() => {
   const mockCreateV2PersistenceMiddleware = vi.fn(() => ({
     name: "v2-persistence",
   }));
+  const mockWithV2JsonRenderEvents = vi.fn(
+    (stream: AsyncIterable<unknown>) => stream,
+  );
   const mockQueueV2ThreadTitleGeneration = vi.fn(() => {
     callOrder.push("queue-title");
   });
@@ -75,6 +78,7 @@ const mocks = vi.hoisted(() => {
     mockHasV2MessageByIdServer,
     mockToDurableChatSessionResponse,
     mockUseRequest,
+    mockWithV2JsonRenderEvents,
   };
 });
 
@@ -105,6 +109,10 @@ vi.mock("~/lib/server/thread-run-state", () => ({
 
 vi.mock("~/features/chat-v2/server/agent-runner", () => ({
   createV2AgentRun: mocks.mockCreateV2AgentRun,
+}));
+
+vi.mock("~/features/chat-v2/server/json-render-events", () => ({
+  withV2JsonRenderEvents: mocks.mockWithV2JsonRenderEvents,
 }));
 
 vi.mock("~/features/chat-v2/server/stream-projection", () => ({
@@ -211,6 +219,7 @@ describe("/api/v2/chat", () => {
     expect(mocks.mockProjectV2StreamSnapshotToDb).toHaveBeenCalledTimes(1);
     expect(mocks.mockAppendV2CustomEvents).toHaveBeenCalledTimes(1);
     expect(mocks.mockQueueV2ThreadTitleGeneration).toHaveBeenCalledTimes(1);
+    expect(mocks.mockWithV2JsonRenderEvents).toHaveBeenCalledTimes(1);
     expect(mocks.mockBeginThreadRun).toHaveBeenCalledWith("v2:thread-1");
     expect(mocks.mockEndThreadRun).not.toHaveBeenCalled();
   });

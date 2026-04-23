@@ -32,6 +32,8 @@ export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
     .orderBy(
       sql`CASE WHEN ${v2Threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
       desc(v2Threads.updatedAt),
+      desc(v2Threads.createdAt),
+      desc(v2Threads.id),
     );
 
   return v2ThreadArraySchema.parse(

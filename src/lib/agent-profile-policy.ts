@@ -86,7 +86,14 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
     allowTemperatureOverride: false,
     defaultMaxIterations: 2,
     buildSystemPrompts: ({ extraSystemPrompts }) => {
-      const prompts = [V2_CORE_SYSTEM_PROMPT, V2_TOKEN_RULE];
+      const prompts = [
+        V2_CORE_SYSTEM_PROMPT,
+        V2_TOKEN_RULE,
+        uiCatalog.prompt({
+          mode: "inline",
+          customRules: CHAT_CATALOG_RULES,
+        }),
+      ];
       if (extraSystemPrompts?.length) prompts.push(...extraSystemPrompts);
       return prompts;
     },

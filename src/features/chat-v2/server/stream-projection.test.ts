@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => {
     Authorization: "Bearer test",
   }));
   const mockReadDurableStreamHeadOffset = vi.fn(async () => undefined);
+  const mockReadV2UiSpecEventsByMessageId = vi.fn(
+    async () => new Map<string, Array<unknown>>(),
+  );
   const mockSelect = vi.fn();
   const mockInsertOnConflictDoNothing = vi.fn(async () => undefined);
   const mockInsertValues = vi.fn(() => ({
@@ -33,6 +36,7 @@ const mocks = vi.hoisted(() => {
     mockLogSet,
     mockMaterializeSnapshotFromDurableStream,
     mockReadDurableStreamHeadOffset,
+    mockReadV2UiSpecEventsByMessageId,
     mockSelect,
     mockUpdate,
     mockUpdateSet,
@@ -49,6 +53,10 @@ vi.mock("~/lib/durable-streams", () => ({
   buildReadStreamUrl: mocks.mockBuildReadStreamUrl,
   getDurableReadHeaders: mocks.mockGetDurableReadHeaders,
   readDurableStreamHeadOffset: mocks.mockReadDurableStreamHeadOffset,
+}));
+
+vi.mock("./durable-spec-events", () => ({
+  readV2UiSpecEventsByMessageId: mocks.mockReadV2UiSpecEventsByMessageId,
 }));
 
 vi.mock("~/db", () => ({
@@ -237,6 +245,67 @@ describe("projectV2StreamSnapshotToDb", () => {
     expect(insertedRows[0]?.id).toBe("a-3");
     expect(insertedRows[0]?.parts).toEqual([
       { type: "text", content: "Fallback assistant text" },
+    ]);
+  });
+
+  it("attaches recovered spec_complete events as ui-spec parts", async () => {
+    mocks.mockMaterializeSnapshotFromDurableStream.mockResolvedValueOnce({
+      messages: [
+        {
+          id: "a-chart",
+          role: "assistant",
+          content: "",
+          parts: [],
+        },
+      ],
+      offset: "off-chart",
+    });
+    mocks.mockReadV2UiSpecEventsByMessageId.mockResolvedValueOnce(
+      new Map([
+        [
+          "a-chart",
+          [
+            {
+              type: "ui-spec",
+              spec: {
+                root: "chart-1",
+                elements: {
+                  "chart-1": {
+                    type: "BarChart",
+                    props: { data: [{ label: "A", value: 1 }] },
+                    children: [],
+                  },
+                },
+              },
+              specIndex: 0,
+            },
+          ],
+        ],
+      ]),
+    );
+    mockSelectResults({
+      thread: { resumeOffset: null },
+      existingRows: [],
+    });
+
+    const result = await projectV2StreamSnapshotToDb({
+      threadId: "thread-chart",
+      telemetry: createTelemetry(),
+      persistUserTurn: false,
+      log: { set: mocks.mockLogSet } as never,
+    });
+
+    expect(result.persistedMessageCount).toBe(1);
+    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
+      id: string;
+      parts: Array<{ type: string; specIndex?: number }>;
+    }>;
+    expect(insertedRows[0]?.id).toBe("a-chart");
+    expect(insertedRows[0]?.parts).toEqual([
+      expect.objectContaining({
+        type: "ui-spec",
+        specIndex: 0,
+      }),
     ]);
   });
 

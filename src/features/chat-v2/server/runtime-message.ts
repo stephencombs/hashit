@@ -1,4 +1,5 @@
 import type { UIMessage } from "@tanstack/ai-react";
+import type { Spec } from "@json-render/core";
 import { z } from "zod";
 import type { V2Message } from "../types";
 
@@ -50,15 +51,28 @@ const toolResultPartSchema = z
   })
   .passthrough();
 
+const uiSpecPartSchema = z
+  .object({
+    type: z.literal("ui-spec"),
+    spec: z.custom<Spec>(
+      (value) => value != null && typeof value === "object",
+      "Expected a json-render Spec object",
+    ),
+    specIndex: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
 const runtimePartSchema = z.union([
   textPartSchema,
   thinkingPartSchema,
   toolCallPartSchema,
   toolResultPartSchema,
+  uiSpecPartSchema,
 ]);
 
-export type V2RuntimePart = UIMessage["parts"][number];
-export type V2RuntimeMessage = UIMessage & {
+export type V2RuntimePart = z.infer<typeof runtimePartSchema>;
+export type V2RuntimeMessage = Omit<UIMessage, "parts"> & {
+  parts: Array<V2RuntimePart>;
   renderText: string;
 };
 

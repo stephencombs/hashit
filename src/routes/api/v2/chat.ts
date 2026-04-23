@@ -22,6 +22,7 @@ import {
 } from "~/features/chat-v2/server/persistence-runtime";
 import { hasV2MessageByIdServer } from "~/features/chat-v2/server/messages.server";
 import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
+import { withV2JsonRenderEvents } from "~/features/chat-v2/server/json-render-events";
 import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
 import { queueV2ThreadTitleGeneration } from "~/features/chat-v2/server/thread-title";
 import { extractV2UserMessage } from "~/features/chat-v2/server/user-message";
@@ -155,6 +156,17 @@ export const Route = createFileRoute("/api/v2/chat")({
             createV2RunLifecycleMiddleware({ runKey, log }),
           ],
         });
+        const renderedResponseStream = withV2JsonRenderEvents(
+          responseStream,
+          (metrics) => {
+            log.set({
+              v2UiGenPatchLinesReceived: metrics.patchLinesReceived,
+              v2UiGenPatchesEmitted: metrics.patchesEmitted,
+              v2UiGenSpecsCompleted: metrics.specsCompleted,
+              v2UiGenTotalMs: metrics.totalMs,
+            });
+          },
+        );
 
         const newUserMessage = shouldPersistUserTurn
           ? extractLatestUserMessage(messages)
@@ -183,7 +195,7 @@ export const Route = createFileRoute("/api/v2/chat")({
           const response = await toDurableChatSessionResponse({
             stream: streamTarget,
             newMessages,
-            responseStream,
+            responseStream: renderedResponseStream,
             mode: "await",
           });
 

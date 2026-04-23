@@ -53,12 +53,22 @@ function toTimestamp(value: Date | string | number): number {
   return new Date(value).getTime();
 }
 
+function sortByActivity(left: V2Thread, right: V2Thread): number {
+  const updatedAtDelta = toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+  if (updatedAtDelta !== 0) return updatedAtDelta;
+
+  const createdAtDelta = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
+  if (createdAtDelta !== 0) return createdAtDelta;
+
+  return right.id.localeCompare(left.id);
+}
+
 function sortThreads(rows: Array<V2Thread>): Array<V2Thread> {
   return [...rows].sort((left, right) => {
     const leftPinned = Boolean(left.pinnedAt);
     const rightPinned = Boolean(right.pinnedAt);
     if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
-    return toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+    return sortByActivity(left, right);
   });
 }
 

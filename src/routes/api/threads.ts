@@ -22,6 +22,8 @@ export const Route = createFileRoute("/api/threads")({
           .orderBy(
             sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
             desc(threads.updatedAt),
+            desc(threads.createdAt),
+            desc(threads.id),
           );
 
         return Response.json(allThreads);

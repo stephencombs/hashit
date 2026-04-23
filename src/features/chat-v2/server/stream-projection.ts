@@ -9,6 +9,7 @@ import {
   readDurableStreamHeadOffset,
 } from "~/lib/durable-streams";
 import type { V2AgentRunTelemetry } from "./agent-runner";
+import { readV2UiSpecEventsByMessageId } from "./durable-spec-events";
 import { buildV2ChatStreamPath } from "./keys";
 import { createV2RunMetadata } from "./persistence-runtime";
 import { normalizeRuntimeParts, type V2RuntimePart } from "./runtime-message";
@@ -102,6 +103,7 @@ function normalizeParts(
 function toProjectedMessages(
   threadId: string,
   snapshotMessages: Array<unknown>,
+  specPartsByMessageId: Map<string, Array<unknown>>,
 ): Array<ProjectedMessage> {
   const projected: Array<ProjectedMessage> = [];
 
@@ -110,7 +112,13 @@ function toProjectedMessages(
     const role = asMessageRole(message.role);
     if (!role) return;
 
-    const parts = Array.isArray(message.parts) ? message.parts : [];
+    const parts = Array.isArray(message.parts) ? [...message.parts] : [];
+    const eventSpecParts = specPartsByMessageId.get(
+      toMessageId(message.id, threadId, index),
+    );
+    if (eventSpecParts && eventSpecParts.length > 0) {
+      parts.push(...eventSpecParts);
+    }
     const content = deriveSnapshotContent(message.content, parts);
     projected.push({
       id: toMessageId(message.id, threadId, index),
@@ -184,14 +192,19 @@ export async function projectV2StreamSnapshotToDb({
   log,
 }: ProjectV2StreamSnapshotOptions): Promise<ProjectV2StreamSnapshotResult> {
   const streamPath = buildV2ChatStreamPath(threadId);
-  const { messages, offset } = await materializeSnapshotFromDurableStream({
-    readUrl: buildReadStreamUrl(streamPath),
-    headers: getDurableReadHeaders(),
-  });
+  const [snapshotResult, specPartsByMessageId] = await Promise.all([
+    materializeSnapshotFromDurableStream({
+      readUrl: buildReadStreamUrl(streamPath),
+      headers: getDurableReadHeaders(),
+    }),
+    readV2UiSpecEventsByMessageId(threadId),
+  ]);
+  const { messages, offset } = snapshotResult;
 
   const projectedMessages = toProjectedMessages(
     threadId,
     toUnknownArray(messages),
+    specPartsByMessageId,
   );
   const [thread, existingRows] = await Promise.all([
     db
@@ -265,7 +278,8 @@ export async function projectV2StreamSnapshotToDb({
     });
 
   if (newRows.length > 0) {
-    await db.insert(v2Messages).values(newRows).onConflictDoNothing();
+    // V2 runtime parts include custom ui-spec payloads that are narrowed at read time.
+    await db.insert(v2Messages).values(newRows as never).onConflictDoNothing();
   }
 
   let resumeOffset = offset;

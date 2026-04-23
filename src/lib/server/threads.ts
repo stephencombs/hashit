@@ -13,6 +13,8 @@ export const listThreads = createServerFn({ method: "GET" }).handler(
       .orderBy(
         sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
         desc(threads.updatedAt),
+        desc(threads.createdAt),
+        desc(threads.id),
       );
     return rows.map((row) => ({
       ...row,
