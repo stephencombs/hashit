@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Spec } from "@json-render/core";
 import { CopyIcon, RotateCcwIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChatConversation } from "~/components/chat/chat-conversation";
 import {
   MessageAction,
   MessageActions,
@@ -14,10 +15,13 @@ import {
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { LiveSpecStore, useLiveSpecsSnapshot } from "~/lib/live-spec-store";
 import {
+  v2ThreadMessagesQueryOptions,
+  v2ThreadSessionQueryOptions,
+} from "../data/query-options";
+import {
   confirmPendingV2Thread,
   discardPendingV2Thread,
   insertPendingV2Thread,
-  refetchV2ThreadCollections,
   setV2ThreadStreamingState,
   setV2ThreadTitle,
 } from "../data/mutations";
@@ -30,7 +34,6 @@ const JsonRenderDisplay = lazy(() =>
   })),
 );
 
-type RuntimeTextPart = Extract<V2RuntimeMessage["parts"][number], { type: "text" }>;
 type RuntimeUiSpecPart = Extract<
   V2RuntimeMessage["parts"][number],
   { type: "ui-spec" }
@@ -102,7 +105,14 @@ export function V2ChatSurface({
       }
 
       if (eventType === "persistence_complete") {
-        void refetchV2ThreadCollections(queryClient);
+        void queryClient.invalidateQueries({
+          queryKey: v2ThreadSessionQueryOptions(threadId).queryKey,
+          exact: true,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: v2ThreadMessagesQueryOptions(threadId).queryKey,
+          exact: true,
+        });
       }
       if (eventType === "spec_patch" || eventType === "spec_complete") {
         const payload = data as { spec?: unknown; specIndex?: unknown };
@@ -169,9 +179,31 @@ export function V2ChatSurface({
   const displayMessages = runtimeMessages as Array<V2RuntimeMessage>;
   const isStreaming = status === "submitted" || status === "streaming";
   const submissionError = creationError ?? error?.message ?? null;
-  const lastAssistantMessageId = [...displayMessages]
-    .reverse()
-    .find((message) => message.role === "assistant")?.id;
+  const renderedMessages = useMemo(() => {
+    let lastAssistantMessageId: string | undefined;
+    for (let i = displayMessages.length - 1; i >= 0; i--) {
+      const message = displayMessages[i];
+      if (message.role === "assistant") {
+        lastAssistantMessageId = message.id;
+        break;
+      }
+    }
+
+    return displayMessages.map((message) => {
+      const persistedSpecs = message.parts
+        .filter((part): part is RuntimeUiSpecPart => part.type === "ui-spec")
+        .sort((left, right) => left.specIndex - right.specIndex);
+      const liveSpecs = liveSpecsByMessageId.get(message.id);
+      return {
+        isLatestAssistant: message.id === lastAssistantMessageId,
+        liveSpecs,
+        message,
+        persistedSpecs,
+        renderText: message.renderText.trim(),
+        shouldShowLiveSpecs: persistedSpecs.length === 0 && Boolean(liveSpecs),
+      };
+    });
+  }, [displayMessages, liveSpecsByMessageId]);
 
   async function ensureDraftThreadReady(): Promise<void> {
     if (!isDraftThread) return;
@@ -181,7 +213,6 @@ export function V2ChatSurface({
 
     try {
       await confirmPendingV2Thread(queryClient, threadId);
-      await refetchV2ThreadCollections(queryClient);
       await onThreadReady?.(threadId);
     } catch (error) {
       discardPendingV2Thread(queryClient, threadId);
@@ -200,94 +231,78 @@ export function V2ChatSurface({
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-        <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-3">
-          {runtimeMessages.length === 0 ? (
-            <div className="text-muted-foreground text-sm">
-              Start the conversation by sending a message.
-            </div>
-          ) : null}
+      <ChatConversation className="min-h-0 flex-1">
+        {renderedMessages.length === 0 ? (
+          <div className="text-muted-foreground text-sm">
+            Start the conversation by sending a message.
+          </div>
+        ) : null}
 
-          {displayMessages.map((message) => {
-            const renderText =
-              message.renderText ??
-              message.parts
-                .filter((part): part is RuntimeTextPart => part.type === "text")
-                .map((part) => part.content)
-                .join("\n")
-                .trim();
-            const persistedSpecs = message.parts
-              .filter((part): part is RuntimeUiSpecPart => part.type === "ui-spec")
-              .sort((left, right) => left.specIndex - right.specIndex);
-            const liveSpecs = liveSpecsByMessageId.get(message.id);
-            const shouldShowLiveSpecs = persistedSpecs.length === 0 && !!liveSpecs;
-
-            return (
-              <Message
-                key={message.id}
-                from={getMessageFromRole(message.role)}
-                id={`msg-${message.id}`}
-              >
-                <MessageContent>
-                  {renderText.length > 0 ? (
-                    <MessageResponse>{renderText}</MessageResponse>
-                  ) : null}
-                  {persistedSpecs.map((part) => (
-                    <Suspense key={`${message.id}:persisted:${part.specIndex}`} fallback={null}>
-                      <JsonRenderDisplay
-                        spec={part.spec as Spec}
-                        isStreaming={false}
-                        messageId={message.id}
-                        specIndex={part.specIndex}
-                      />
-                    </Suspense>
-                  ))}
-                  {shouldShowLiveSpecs
-                    ? liveSpecs.map((spec, index) => (
-                        <Suspense
-                          key={`${message.id}:live:${index}`}
-                          fallback={null}
-                        >
-                          <JsonRenderDisplay
-                            spec={spec}
-                            isStreaming={
-                              isStreaming && message.id === lastAssistantMessageId
-                            }
-                            messageId={message.id}
-                            specIndex={index}
-                          />
-                        </Suspense>
-                      ))
-                    : null}
-                </MessageContent>
-                <MessageActions>
+        {renderedMessages.map(
+          ({
+            isLatestAssistant,
+            liveSpecs,
+            message,
+            persistedSpecs,
+            renderText,
+            shouldShowLiveSpecs,
+          }) => (
+            <Message
+              key={message.id}
+              from={getMessageFromRole(message.role)}
+              id={`msg-${message.id}`}
+            >
+              <MessageContent>
+                {renderText.length > 0 ? <MessageResponse>{renderText}</MessageResponse> : null}
+                {persistedSpecs.map((part) => (
+                  <Suspense key={`${message.id}:persisted:${part.specIndex}`} fallback={null}>
+                    <JsonRenderDisplay
+                      spec={part.spec as Spec}
+                      isStreaming={false}
+                      messageId={message.id}
+                      specIndex={part.specIndex}
+                    />
+                  </Suspense>
+                ))}
+                {shouldShowLiveSpecs
+                  ? liveSpecs?.map((spec, index) => (
+                      <Suspense key={`${message.id}:live:${index}`} fallback={null}>
+                        <JsonRenderDisplay
+                          spec={spec}
+                          isStreaming={isStreaming && isLatestAssistant}
+                          messageId={message.id}
+                          specIndex={index}
+                        />
+                      </Suspense>
+                    ))
+                  : null}
+              </MessageContent>
+              <MessageActions>
+                <MessageAction
+                  label="Copy message"
+                  onClick={() => copyMessageText(renderText)}
+                  tooltip="Copy message"
+                >
+                  <CopyIcon />
+                </MessageAction>
+                {message.role === "assistant" && isLatestAssistant ? (
                   <MessageAction
-                    label="Copy message"
-                    onClick={() => copyMessageText(renderText)}
-                    tooltip="Copy message"
+                    disabled={isStreaming}
+                    label="Regenerate response"
+                    onClick={() => {
+                      shouldPromoteOnStreamStartRef.current = true;
+                      void reload().catch(() => {});
+                    }}
+                    tooltip="Regenerate response"
                   >
-                    <CopyIcon />
+                    <RotateCcwIcon />
                   </MessageAction>
-                  {message.role === "assistant" &&
-                  message.id === lastAssistantMessageId ? (
-                    <MessageAction
-                      disabled={isStreaming}
-                      label="Regenerate response"
-                      onClick={() => {
-                        shouldPromoteOnStreamStartRef.current = true;
-                        void reload().catch(() => {});
-                      }}
-                      tooltip="Regenerate response"
-                    >
-                      <RotateCcwIcon />
-                    </MessageAction>
-                  ) : null}
-                </MessageActions>
-              </Message>
-            );
-          })}
-        </div>
-      </div>
+                ) : null}
+              </MessageActions>
+            </Message>
+          ),
+        )}
+      </ChatConversation>
 
       <V2Composer
         isStreaming={isStreaming}

@@ -33,8 +33,8 @@ export function V2Composer({
   };
 
   return (
-    <div className="bg-background border-t p-3">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+    <div className="shrink-0 pt-3 pb-6">
+      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 px-6">
         <Textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}

@@ -41,19 +41,21 @@ export function V2ChatThreadPage({
   return (
     <>
       <AppPageHeader title={<h1 className="text-sm font-medium">{title}</h1>} />
-      {isThreadLoading ? (
-        <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center p-6 text-sm">
-          Loading thread...
-        </div>
-      ) : (
-        <V2ChatSurface
-          threadId={surfaceThreadId}
-          initialResumeOffset={initialResumeOffset}
-          initialMessages={initialMessages}
-          isDraftThread={!threadId}
-          onThreadReady={onThreadReady}
-        />
-      )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {isThreadLoading ? (
+          <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center p-6 text-sm">
+            Loading thread...
+          </div>
+        ) : (
+          <V2ChatSurface
+            threadId={surfaceThreadId}
+            initialResumeOffset={initialResumeOffset}
+            initialMessages={initialMessages}
+            isDraftThread={!threadId}
+            onThreadReady={onThreadReady}
+          />
+        )}
+      </div>
     </>
   );
 }
