@@ -767,7 +767,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 to="/"
                 draggable={false}
                 state={(prev) => ({
-                  ...(prev ?? {}),
+                  ...prev,
                   __newChatNavNonce: Date.now(),
                 })}
               >

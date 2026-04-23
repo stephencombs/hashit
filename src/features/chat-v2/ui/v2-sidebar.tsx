@@ -55,7 +55,7 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
                 activeOptions={{ exact: true }}
                 draggable={false}
                 state={(prev) => ({
-                  ...(prev ?? {}),
+                  ...prev,
                   __newV2ChatNavNonce: Date.now(),
                 })}
               >

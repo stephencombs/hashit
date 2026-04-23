@@ -21,7 +21,7 @@ export function AppHotkeys({ onOpenCommandPalette }: AppHotkeysProps) {
     navigate({
       to: "/",
       state: (prev) => ({
-        ...(prev ?? {}),
+        ...prev,
         __newChatNavNonce: Date.now(),
       }),
     })

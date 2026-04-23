@@ -63,7 +63,7 @@ export function isLocalOrPrivateAttachmentUrl(url: string): boolean {
   const hostname = parsed.hostname.toLowerCase();
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true;
   if (hostname === "127.0.0.1" || hostname === "::1") return true;
-  if (/^10\./.test(hostname) || /^192\.168\./.test(hostname)) return true;
+  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) return true;
 
   const match172 = hostname.match(/^172\.(\d{1,3})\./);
   if (!match172) return false;

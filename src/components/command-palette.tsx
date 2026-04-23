@@ -96,7 +96,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   navigate({
                     to: "/",
                     state: (prev) => ({
-                      ...(prev ?? {}),
+                      ...prev,
                       __newChatNavNonce: Date.now(),
                     }),
                   })

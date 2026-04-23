@@ -309,7 +309,7 @@ export function V2ThreadList() {
   async function handleTogglePin(thread: V2Thread) {
     if (pendingDeleteId === thread.id) return;
 
-    const nextPinned = !Boolean(thread.pinnedAt);
+    const nextPinned = !thread.pinnedAt;
     const previousPinnedAt = thread.pinnedAt ? new Date(thread.pinnedAt) : null;
 
     setActionError(null);
@@ -361,7 +361,7 @@ export function V2ThreadList() {
           to: "/v2/chat",
           replace: true,
           state: (previous) => ({
-            ...(previous ?? {}),
+            ...previous,
             __newV2ChatNavNonce: Date.now(),
           }),
         });

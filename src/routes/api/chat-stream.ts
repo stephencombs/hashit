@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/chat-stream")({
             method: "GET",
             headers: {
               ...(accept ? { Accept: accept } : {}),
-              ...(readHeaders ?? {}),
+              ...readHeaders,
             },
           });
 
