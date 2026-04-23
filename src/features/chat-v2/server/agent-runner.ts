@@ -82,56 +82,42 @@ type CreateV2AgentRunOptions = {
 
 const V2_PROFILE: AgentRunProfile = "interactiveChatV2";
 const V2_SOURCE: AgentTraceSource = "interactive-chat-v2";
-
-function createV2RunTelemetry(messageCount: number): V2AgentRunTelemetry {
-  return {
-    profile: V2_PROFILE,
-    source: V2_SOURCE,
-    status: "running",
-    requestMessageCount: messageCount,
-    iterationCount: 0,
-    toolCallCount: 0,
-    toolCalls: [],
-    startedAt: Date.now(),
-  };
-}
+const REASONING_MODEL_NAME_PATTERN = /gpt-5|o[1-9]/;
 
 function asErrorMessage(value: unknown): string {
   if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value !== null && "message" in value) {
+    const message = (value as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
   return String(value);
 }
 
 function getRunErrorFromChunk(chunk: StreamChunk): string | undefined {
-  const candidate = chunk as {
-    error?: {
-      message?: unknown;
-    } | unknown;
-  };
+  const errorValue = (chunk as { error?: unknown }).error;
+  return errorValue ? asErrorMessage(errorValue) : undefined;
+}
 
-  const errorValue = candidate.error;
-  if (!errorValue) return undefined;
-  if (errorValue instanceof Error) return errorValue.message;
-  if (typeof errorValue === "string") return errorValue;
-  if (
-    typeof errorValue === "object" &&
-    errorValue !== null &&
-    "message" in errorValue
-  ) {
-    const message = (errorValue as { message?: unknown }).message;
-    if (typeof message === "string") return message;
+function getResolvedModelName(resolvedModel?: string): string {
+  if (resolvedModel) return resolvedModel;
+  const fallbackModel = process.env.AZURE_OPENAI_DEPLOYMENT;
+  if (!fallbackModel) {
+    throw new Error("AZURE_OPENAI_DEPLOYMENT is required");
   }
-  return String(errorValue);
+  return fallbackModel;
 }
 
 function createTelemetryMiddleware(
   telemetry: V2AgentRunTelemetry,
   log?: RequestLogger,
 ): ChatMiddleware {
-  const safely = (fn: () => void): void => {
+  const safely = (hook: string, fn: () => void): void => {
     try {
       fn();
     } catch (error) {
       log?.set({
+        telemetryHook: hook,
         telemetryHookError: asErrorMessage(error),
       });
     }
@@ -140,13 +126,13 @@ function createTelemetryMiddleware(
   return {
     name: "v2-runtime-telemetry",
     onStart(ctx) {
-      safely(() => {
-        telemetry.requestId = ctx.requestId;
-        telemetry.streamId = ctx.streamId;
-        telemetry.conversationId = ctx.conversationId;
-        telemetry.provider = ctx.provider;
-        telemetry.model = ctx.model;
+      telemetry.requestId = ctx.requestId;
+      telemetry.streamId = ctx.streamId;
+      telemetry.conversationId = ctx.conversationId;
+      telemetry.provider = ctx.provider;
+      telemetry.model = ctx.model;
 
+      safely("onStart", () => {
         setTraceAttributes(telemetry.traceState?.rootSpan, {
           "agent.request_id": ctx.requestId,
           "agent.stream_id": ctx.streamId,
@@ -166,11 +152,11 @@ function createTelemetryMiddleware(
       });
     },
     onIteration(_ctx, info) {
-      safely(() => {
-        telemetry.iterationCount = Math.max(
-          telemetry.iterationCount,
-          info.iteration + 1,
-        );
+      telemetry.iterationCount = Math.max(
+        telemetry.iterationCount,
+        info.iteration + 1,
+      );
+      safely("onIteration", () => {
         startIterationSpan(telemetry.traceState, {
           "agent.iteration": info.iteration + 1,
           "agent.message_id": info.messageId,
@@ -182,20 +168,18 @@ function createTelemetryMiddleware(
       });
     },
     onAfterToolCall(_ctx, info) {
-      safely(() => {
-        telemetry.toolCallCount += 1;
-        telemetry.toolCalls.push({
-          toolName: info.toolName,
-          toolCallId: info.toolCallId,
-          ok: info.ok,
-          durationMs: info.duration,
-          error: info.ok ? undefined : asErrorMessage(info.error),
-        });
+      telemetry.toolCallCount += 1;
+      telemetry.toolCalls.push({
+        toolName: info.toolName,
+        toolCallId: info.toolCallId,
+        ok: info.ok,
+        durationMs: info.duration,
+        error: info.ok ? undefined : asErrorMessage(info.error),
       });
     },
     onUsage(_ctx, usage) {
-      safely(() => {
-        telemetry.usage = usage;
+      telemetry.usage = usage;
+      safely("onUsage", () => {
         setTraceAttributes(telemetry.traceState?.rootSpan, {
           "llm.prompt_tokens": usage.promptTokens,
           "llm.completion_tokens": usage.completionTokens,
@@ -210,23 +194,21 @@ function createTelemetryMiddleware(
     },
     onChunk(_ctx, chunk) {
       if ((chunk as { type?: unknown }).type !== "RUN_ERROR") return;
-      safely(() => {
-        if (telemetry.status !== "running") return;
-        telemetry.status = "failed";
-        telemetry.error = getRunErrorFromChunk(chunk) ?? "Run failed";
-        telemetry.completedAt = Date.now();
-        telemetry.durationMs = telemetry.completedAt - telemetry.startedAt;
-      });
+      if (telemetry.status !== "running") return;
+      telemetry.status = "failed";
+      telemetry.error = getRunErrorFromChunk(chunk) ?? "Run failed";
+      telemetry.completedAt = Date.now();
+      telemetry.durationMs = telemetry.completedAt - telemetry.startedAt;
     },
     onFinish(_ctx, info: FinishInfo) {
-      safely(() => {
-        telemetry.finishReason = info.finishReason;
-        telemetry.durationMs = info.duration;
-        telemetry.completedAt = telemetry.startedAt + info.duration;
-        if (telemetry.status === "running") {
-          telemetry.status = "completed";
-        }
+      telemetry.finishReason = info.finishReason;
+      telemetry.durationMs = info.duration;
+      telemetry.completedAt = telemetry.startedAt + info.duration;
+      if (telemetry.status === "running") {
+        telemetry.status = "completed";
+      }
 
+      safely("onFinish", () => {
         endIterationSpan(telemetry.traceState, {
           attributes: {
             "agent.finish_reason": info.finishReason,
@@ -263,11 +245,11 @@ function createTelemetryMiddleware(
       });
     },
     onAbort(_ctx, info) {
-      safely(() => {
-        telemetry.status = "aborted";
-        telemetry.error = info.reason;
-        telemetry.durationMs = info.duration;
-        telemetry.completedAt = telemetry.startedAt + info.duration;
+      telemetry.status = "aborted";
+      telemetry.error = info.reason;
+      telemetry.durationMs = info.duration;
+      telemetry.completedAt = telemetry.startedAt + info.duration;
+      safely("onAbort", () => {
         endIterationSpan(telemetry.traceState, {
           error: info.reason,
           attributes: {
@@ -286,11 +268,11 @@ function createTelemetryMiddleware(
       });
     },
     onError(_ctx, info: ErrorInfo) {
-      safely(() => {
-        telemetry.status = "failed";
-        telemetry.error = asErrorMessage(info.error);
-        telemetry.durationMs = info.duration;
-        telemetry.completedAt = telemetry.startedAt + info.duration;
+      telemetry.status = "failed";
+      telemetry.error = asErrorMessage(info.error);
+      telemetry.durationMs = info.duration;
+      telemetry.completedAt = telemetry.startedAt + info.duration;
+      safely("onError", () => {
         endIterationSpan(telemetry.traceState, {
           error: info.error,
         });
@@ -328,13 +310,22 @@ export async function createV2AgentRun({
   const profileConfig = PROFILE_CONFIGS[V2_PROFILE];
   const resolvedModel = resolveAgentModel(V2_PROFILE, model);
   const adapter = getAzureAdapter(resolvedModel);
-  const modelName = resolvedModel || process.env.AZURE_OPENAI_DEPLOYMENT!;
-  const supportsReasoning = /gpt-5|o[1-9]/.test(modelName);
+  const modelName = getResolvedModelName(resolvedModel);
+  const supportsReasoning = REASONING_MODEL_NAME_PATTERN.test(modelName);
   const systemPrompts = profileConfig.buildSystemPrompts({
     extraSystemPrompts,
   });
 
-  const telemetry = createV2RunTelemetry(messages.length);
+  const telemetry: V2AgentRunTelemetry = {
+    profile: V2_PROFILE,
+    source: V2_SOURCE,
+    status: "running",
+    requestMessageCount: messages.length,
+    iterationCount: 0,
+    toolCallCount: 0,
+    toolCalls: [],
+    startedAt: Date.now(),
+  };
   const traceState = startAgentRunTrace({
     profile: V2_PROFILE,
     source: V2_SOURCE,

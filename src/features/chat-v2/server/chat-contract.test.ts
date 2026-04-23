@@ -1,36 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { optimizeV2MessagesForTokenEfficiency } from "./chat-contract";
+import { v2ChatRequestSchema } from "./chat-contract";
 
-describe("optimizeV2MessagesForTokenEfficiency", () => {
-  it("drops non-text parts, truncates long content, and caps message count", () => {
-    const messages = Array.from({ length: 22 }, (_, index) => ({
-      id: `m-${index + 1}`,
-      role: index % 2 === 0 ? "user" : "assistant",
-      content: `message-${index + 1}`,
-      parts: [
-        { type: "thinking", content: "internal chain of thought" },
-        { type: "text", content: "x".repeat(3000) },
-      ],
-    }));
-
-    const result = optimizeV2MessagesForTokenEfficiency(messages, {
-      maxInputMessages: 10,
-      maxPartChars: 200,
+describe("v2ChatRequestSchema", () => {
+  it("accepts core V2 request fields", () => {
+    const parsed = v2ChatRequestSchema.parse({
+      messages: [{ role: "user", content: "Hello" }],
+      data: {
+        threadId: "thread-1",
+        model: "gpt-4.1",
+        source: "v2-chat",
+      },
     });
 
-    expect(result.messages).toHaveLength(10);
-    expect(result.stats.droppedMessages).toBeGreaterThanOrEqual(12);
-    expect(result.stats.droppedParts).toBeGreaterThan(0);
-    expect(result.stats.truncatedFields).toBeGreaterThan(0);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.data?.threadId).toBe("thread-1");
+    expect(parsed.data?.source).toBe("v2-chat");
+  });
 
-    for (const message of result.messages) {
-      for (const part of message.parts ?? []) {
-        expect(part.type).not.toBe("thinking");
-        if (part.type === "text") {
-          const text = typeof part.content === "string" ? part.content : "";
-          expect(text.length).toBeLessThanOrEqual(200);
-        }
-      }
-    }
+  it("strips deprecated token optimization fields from data", () => {
+    const parsed = v2ChatRequestSchema.parse({
+      messages: [{ role: "user", content: "Hello" }],
+      data: {
+        threadId: "thread-1",
+        maxInputMessages: 18,
+        maxPartChars: 1400,
+      },
+    });
+
+    expect(parsed.data?.threadId).toBe("thread-1");
+    expect(parsed.data).not.toHaveProperty("maxInputMessages");
+    expect(parsed.data).not.toHaveProperty("maxPartChars");
   });
 });

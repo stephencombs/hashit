@@ -1,5 +1,5 @@
 import { ensureDurableChatSessionStream } from "@durable-streams/tanstack-ai-transport";
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db } from "~/db";
@@ -17,6 +17,11 @@ const v2ThreadArraySchema = z.array(v2ThreadSchema);
 type CreateV2ThreadInput = {
   id?: string;
   title?: string;
+};
+
+type SetV2ThreadPinnedInput = {
+  threadId: string;
+  pinned: boolean;
 };
 
 export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
@@ -86,4 +91,43 @@ export async function createV2ThreadServer(input: CreateV2ThreadInput): Promise<
     ...row,
     isStreaming: false,
   });
+}
+
+export async function setV2ThreadPinnedServer(
+  input: SetV2ThreadPinnedInput,
+): Promise<V2Thread> {
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      pinnedAt: input.pinned ? new Date() : null,
+    })
+    .where(
+      and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)),
+    )
+    .returning();
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
+
+  return v2ThreadSchema.parse({
+    ...row,
+    isStreaming: isThreadRunActive(toV2RunStateKey(row.id)),
+  });
+}
+
+export async function deleteV2ThreadServer(threadId: string): Promise<void> {
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      deletedAt: new Date(),
+    })
+    .where(
+      and(eq(v2Threads.id, threadId), isNull(v2Threads.deletedAt)),
+    )
+    .returning({ id: v2Threads.id });
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
 }

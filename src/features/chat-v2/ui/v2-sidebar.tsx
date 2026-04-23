@@ -1,5 +1,8 @@
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { ArrowLeftIcon, FlaskConicalIcon } from "lucide-react";
+import { SquarePenIcon } from "lucide-animated";
+import { HoverIcon } from "~/components/animated-icon";
+import { NavUser } from "~/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -11,8 +14,17 @@ import {
 } from "~/components/ui/sidebar";
 import { V2ThreadList } from "./v2-thread-list";
 
+const user = {
+  name: "User",
+  email: "user@example.com",
+  avatar: "",
+};
+
 export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute();
+  const isNewChatActive =
+    Boolean(matchRoute({ to: "/v2", fuzzy: false })) ||
+    Boolean(matchRoute({ to: "/v2/chat", fuzzy: false }));
 
   return (
     <Sidebar collapsible="icon" className="select-none" {...props}>
@@ -30,11 +42,20 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              isActive={Boolean(matchRoute({ to: "/v2", fuzzy: false }))}
+              isActive={isNewChatActive}
               asChild
+              tooltip="New Chat"
             >
-              <Link to="/v2" activeOptions={{ exact: true }}>
-                <span className="group-data-[collapsible=icon]:hidden">Overview</span>
+              <Link
+                to="/v2/chat"
+                draggable={false}
+                state={(prev) => ({
+                  ...(prev ?? {}),
+                  __newV2ChatNavNonce: Date.now(),
+                })}
+              >
+                <HoverIcon as={SquarePenIcon} />
+                <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -49,13 +70,14 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Back to current chat">
-              <Link to="/">
+              <Link to="/" draggable={false}>
                 <ArrowLeftIcon className="size-4" />
                 <span className="group-data-[collapsible=icon]:hidden">Back to V1</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

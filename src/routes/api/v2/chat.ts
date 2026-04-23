@@ -12,7 +12,6 @@ import {
 import { beginThreadRun, endThreadRun } from "~/lib/server/thread-run-state";
 import { createV2AgentRun } from "~/features/chat-v2/server/agent-runner";
 import {
-  optimizeV2MessagesForTokenEfficiency,
   v2ChatRequestSchema,
 } from "~/features/chat-v2/server/chat-contract";
 import { buildV2ChatStreamPath, toV2RunStateKey } from "~/features/chat-v2/server/keys";
@@ -37,6 +36,12 @@ function extractLatestUserMessage(
     }
   }
   return undefined;
+}
+
+function hasUsablePayload(message: MinimalMessage): boolean {
+  const hasContent = typeof message.content === "string" && message.content.trim().length > 0;
+  const hasParts = Array.isArray(message.parts) && message.parts.length > 0;
+  return hasContent || hasParts;
 }
 
 export const Route = createFileRoute("/api/v2/chat")({
@@ -82,15 +87,11 @@ export const Route = createFileRoute("/api/v2/chat")({
           });
         }
 
-        const optimization = optimizeV2MessagesForTokenEfficiency(messages, {
-          maxInputMessages: data?.maxInputMessages,
-          maxPartChars: data?.maxPartChars,
-        });
-        if (optimization.messages.length === 0) {
+        if (!messages.some((message) => hasUsablePayload(message))) {
           throw createError({
-            message: "V2 request has no usable message content after optimization",
+            message: "V2 request has no usable message content",
             status: 400,
-            why: "All input messages were empty or filtered by token budget safeguards.",
+            why: "All input messages are empty.",
             fix: "Send at least one message with text content.",
           });
         }
@@ -98,10 +99,6 @@ export const Route = createFileRoute("/api/v2/chat")({
         log.set({
           route: "/api/v2/chat",
           requestMessageCount: messages.length,
-          optimizedMessageCount: optimization.messages.length,
-          droppedMessages: optimization.stats.droppedMessages,
-          droppedParts: optimization.stats.droppedParts,
-          truncatedFields: optimization.stats.truncatedFields,
         });
 
         const runKey = toV2RunStateKey(threadId);
@@ -121,7 +118,7 @@ export const Route = createFileRoute("/api/v2/chat")({
         const conversationId = data?.conversationId ?? threadId;
 
         const { stream: responseStream } = await createV2AgentRun({
-          messages: optimization.messages as Array<Record<string, unknown>>,
+          messages: messages as Array<Record<string, unknown>>,
           conversationId,
           model: data?.model,
           log,

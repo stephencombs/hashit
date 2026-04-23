@@ -111,8 +111,6 @@ export function V2ChatSurface({
     body: {
       threadId,
       source: "v2-chat",
-      maxInputMessages: 18,
-      maxPartChars: 1400,
     },
     onCustomEvent: (eventType: string, data: unknown) => {
       if (eventType === "thread_title_updated") {

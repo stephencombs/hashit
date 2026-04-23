@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { nanoid } from "nanoid";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
@@ -12,6 +12,12 @@ function getThreadIdFromPathname(pathname: string): string | undefined {
   const threadMatch = /^\/v2\/chat\/([^/]+)$/.exec(pathname);
   if (!threadMatch) return undefined;
   return decodeURIComponent(threadMatch[1]);
+}
+
+function getNewChatNavNonce(state: unknown): number | undefined {
+  if (!state || typeof state !== "object") return undefined;
+  const value = (state as { __newV2ChatNavNonce?: unknown }).__newV2ChatNavNonce;
+  return typeof value === "number" ? value : undefined;
 }
 
 export const Route = createFileRoute("/v2/chat")({
@@ -28,6 +34,16 @@ function V2ChatRoute() {
     () => getThreadIdFromPathname(location.pathname),
     [location.pathname],
   );
+  const newChatNavNonce = useMemo(
+    () => getNewChatNavNonce(location.state),
+    [location.state],
+  );
+
+  useEffect(() => {
+    if (threadId) return;
+    if (newChatNavNonce === undefined) return;
+    setDraftThreadId(`v2_${nanoid(12)}`);
+  }, [newChatNavNonce, threadId]);
 
   const handleThreadReady = useCallback(
     async (nextThreadId: string) => {
