@@ -1,34 +1,34 @@
 import type { ChatMiddleware } from "@tanstack/ai";
 import type { RequestLogger } from "evlog";
-import { endThreadRun } from "~/lib/server/thread-run-state";
+import { endV2ThreadRun } from "./thread-run-state.server";
 
 type CreateV2RunLifecycleMiddlewareOptions = {
-  runKey: string;
+  threadId: string;
   log?: RequestLogger;
 };
 
 export function createV2RunLifecycleMiddleware({
-  runKey,
+  threadId,
   log,
 }: CreateV2RunLifecycleMiddlewareOptions): ChatMiddleware {
   let ended = false;
-  const endRun = (): void => {
+  const endRun = async (): Promise<void> => {
     if (ended) return;
     ended = true;
-    endThreadRun(runKey);
+    await endV2ThreadRun(threadId);
     log?.set({ runLifecycleEnded: true });
   };
 
   return {
     name: "v2-run-lifecycle",
-    onFinish() {
-      endRun();
+    async onFinish() {
+      await endRun();
     },
-    onAbort() {
-      endRun();
+    async onAbort() {
+      await endRun();
     },
-    onError() {
-      endRun();
+    async onError() {
+      await endRun();
     },
   };
 }

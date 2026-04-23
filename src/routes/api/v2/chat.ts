@@ -7,13 +7,9 @@ import {
 } from "@durable-streams/tanstack-ai-transport";
 import type { RequestLogger } from "evlog";
 import { getDurableChatSessionTarget } from "~/lib/durable-streams";
-import { beginThreadRun, endThreadRun } from "~/lib/server/thread-run-state";
 import { createV2AgentRun } from "~/features/chat-v2/server/agent-runner";
 import { v2ChatRequestSchema } from "~/features/chat-v2/server/chat-contract";
-import {
-  buildV2ChatStreamPath,
-  toV2RunStateKey,
-} from "~/features/chat-v2/server/keys";
+import { buildV2ChatStreamPath } from "~/features/chat-v2/server/keys";
 import {
   appendV2CustomEvents,
   buildV2TerminalEvents,
@@ -24,6 +20,10 @@ import { hasV2MessageByIdServer } from "~/features/chat-v2/server/messages.serve
 import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
 import { withV2JsonRenderEvents } from "~/features/chat-v2/server/json-render-events";
 import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
+import {
+  beginV2ThreadRun,
+  endV2ThreadRun,
+} from "~/features/chat-v2/server/thread-run-state.server";
 import { queueV2ThreadTitleGeneration } from "~/features/chat-v2/server/thread-title";
 import { extractV2UserMessage } from "~/features/chat-v2/server/user-message";
 
@@ -116,7 +116,6 @@ export const Route = createFileRoute("/api/v2/chat")({
           requestMessageCount: messages.length,
         });
 
-        const runKey = toV2RunStateKey(threadId);
         const {
           id: userMessageId,
           content: userContent,
@@ -153,7 +152,7 @@ export const Route = createFileRoute("/api/v2/chat")({
               telemetry,
               log,
             }),
-            createV2RunLifecycleMiddleware({ runKey, log }),
+            createV2RunLifecycleMiddleware({ threadId, log }),
           ],
         });
         const renderedResponseStream = withV2JsonRenderEvents(
@@ -175,7 +174,7 @@ export const Route = createFileRoute("/api/v2/chat")({
           ? [newUserMessage]
           : [];
 
-        beginThreadRun(runKey);
+        await beginV2ThreadRun(threadId);
         let persistenceError: string | undefined;
         let eventError: string | undefined;
         let persistenceFinalized = false;
@@ -241,7 +240,7 @@ export const Route = createFileRoute("/api/v2/chat")({
           finalizePersistence();
           return response;
         } catch (error) {
-          endThreadRun(runKey);
+          await endV2ThreadRun(threadId);
           if (!persistenceError) {
             persistenceError = toErrorMessage(error);
           }

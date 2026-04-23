@@ -99,12 +99,11 @@ vi.mock("~/lib/durable-streams", () => ({
 
 vi.mock("~/features/chat-v2/server/keys", () => ({
   buildV2ChatStreamPath: (threadId: string) => `v2-chat/${threadId}`,
-  toV2RunStateKey: (threadId: string) => `v2:${threadId}`,
 }));
 
-vi.mock("~/lib/server/thread-run-state", () => ({
-  beginThreadRun: mocks.mockBeginThreadRun,
-  endThreadRun: mocks.mockEndThreadRun,
+vi.mock("~/features/chat-v2/server/thread-run-state.server", () => ({
+  beginV2ThreadRun: mocks.mockBeginThreadRun,
+  endV2ThreadRun: mocks.mockEndThreadRun,
 }));
 
 vi.mock("~/features/chat-v2/server/agent-runner", () => ({
@@ -220,7 +219,7 @@ describe("/api/v2/chat", () => {
     expect(mocks.mockAppendV2CustomEvents).toHaveBeenCalledTimes(1);
     expect(mocks.mockQueueV2ThreadTitleGeneration).toHaveBeenCalledTimes(1);
     expect(mocks.mockWithV2JsonRenderEvents).toHaveBeenCalledTimes(1);
-    expect(mocks.mockBeginThreadRun).toHaveBeenCalledWith("v2:thread-1");
+    expect(mocks.mockBeginThreadRun).toHaveBeenCalledWith("thread-1");
     expect(mocks.mockEndThreadRun).not.toHaveBeenCalled();
   });
 

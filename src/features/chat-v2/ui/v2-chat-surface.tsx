@@ -52,6 +52,25 @@ function getMessageFromRole(role: V2RuntimeMessage["role"]): "user" | "assistant
   return role === "user" ? "user" : "assistant";
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+  return "Chat request failed";
+}
+
+function isAbortLikeError(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.includes("aborted") ||
+    normalized.includes("aborterror") ||
+    normalized.includes("request was aborted")
+  );
+}
+
 function copyMessageText(text: string): void {
   if (!text.trim()) return;
   void navigator.clipboard.writeText(text).catch(() => {});
@@ -87,7 +106,12 @@ export function V2ChatSurface({
 }: V2ChatSurfaceProps) {
   const queryClient = useQueryClient();
   const [creationError, setCreationError] = useState<string | null>(null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const shouldPromoteOnStreamStartRef = useRef(false);
+  const suppressAbortErrorRef = useRef(false);
+  const suppressAbortResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [liveSpecStore] = useState(() => new LiveSpecStore());
   const liveSpecsByMessageId = useLiveSpecsSnapshot(liveSpecStore);
 
@@ -106,7 +130,6 @@ export function V2ChatSurface({
     reload,
     status,
     stop,
-    error,
     setMessages,
   } = useChat({
     id: threadId,
@@ -156,10 +179,19 @@ export function V2ChatSurface({
         );
       }
     },
-    onError: () => {
+    onError: (chatError: unknown) => {
       shouldPromoteOnStreamStartRef.current = false;
       // Reset optimistic streaming indicator immediately on transport/model failures.
       void setV2ThreadStreamingState(queryClient, threadId, false);
+      const message = toErrorMessage(chatError);
+      if (isAbortLikeError(message)) {
+        if (suppressAbortErrorRef.current) {
+          suppressAbortErrorRef.current = false;
+        }
+        return;
+      }
+      suppressAbortErrorRef.current = false;
+      setRuntimeError(message);
     },
   });
   const previousThreadIdRef = useRef(threadId);
@@ -174,12 +206,29 @@ export function V2ChatSurface({
     previousThreadIdRef.current = threadId;
 
     // Keep the runtime aligned with Router thread identity changes.
+    suppressAbortErrorRef.current = true;
+    if (suppressAbortResetTimeoutRef.current) {
+      clearTimeout(suppressAbortResetTimeoutRef.current);
+    }
+    suppressAbortResetTimeoutRef.current = setTimeout(() => {
+      suppressAbortErrorRef.current = false;
+      suppressAbortResetTimeoutRef.current = null;
+    }, 2_000);
     shouldPromoteOnStreamStartRef.current = false;
     stop();
     setMessages(initialMessages as never);
     liveSpecStore.clear();
     setCreationError(null);
+    setRuntimeError(null);
   }, [initialMessages, liveSpecStore, setMessages, stop, threadId]);
+
+  useEffect(() => {
+    return () => {
+      if (suppressAbortResetTimeoutRef.current) {
+        clearTimeout(suppressAbortResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isDraftThread && status === "ready") {
@@ -200,7 +249,7 @@ export function V2ChatSurface({
 
   const displayMessages = runtimeMessages as Array<V2RuntimeMessage>;
   const isStreaming = status === "submitted" || status === "streaming";
-  const submissionError = creationError ?? error?.message ?? null;
+  const submissionError = creationError ?? runtimeError;
   const renderedMessages = useMemo(() => {
     let lastAssistantMessageId: string | undefined;
     for (let i = displayMessages.length - 1; i >= 0; i--) {
@@ -253,6 +302,7 @@ export function V2ChatSurface({
       }
 
       setCreationError(null);
+      setRuntimeError(null);
       shouldPromoteOnStreamStartRef.current = true;
       await sendMessage(text);
     },
@@ -328,6 +378,7 @@ export function V2ChatSurface({
                     disabled={isStreaming}
                     label="Regenerate response"
                     onClick={() => {
+                      setRuntimeError(null);
                       shouldPromoteOnStreamStartRef.current = true;
                       void reload().catch(() => {});
                     }}

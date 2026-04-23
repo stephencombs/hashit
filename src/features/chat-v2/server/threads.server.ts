@@ -8,9 +8,12 @@ import {
   getDurableChatSessionTarget,
   isDurableStreamsConfigured,
 } from "~/lib/durable-streams";
-import { isThreadRunActive } from "~/lib/server/thread-run-state";
 import { v2ThreadSchema, type V2Thread } from "../types";
-import { buildV2ChatStreamPath, toV2RunStateKey } from "./keys";
+import { buildV2ChatStreamPath } from "./keys";
+import {
+  isV2ThreadRunActive,
+  listActiveV2ThreadRunIds,
+} from "./thread-run-state.server";
 
 const v2ThreadArraySchema = z.array(v2ThreadSchema);
 
@@ -35,11 +38,12 @@ export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
       desc(v2Threads.createdAt),
       desc(v2Threads.id),
     );
+  const activeThreadIds = await listActiveV2ThreadRunIds();
 
   return v2ThreadArraySchema.parse(
     rows.map((row) => ({
       ...row,
-      isStreaming: isThreadRunActive(toV2RunStateKey(row.id)),
+      isStreaming: activeThreadIds.has(row.id),
     })),
   );
 }
@@ -59,7 +63,7 @@ export async function getV2ThreadByIdServer(
 
   return v2ThreadSchema.parse({
     ...row,
-    isStreaming: isThreadRunActive(toV2RunStateKey(row.id)),
+    isStreaming: await isV2ThreadRunActive(row.id),
   });
 }
 
@@ -116,7 +120,7 @@ export async function setV2ThreadPinnedServer(
 
   return v2ThreadSchema.parse({
     ...row,
-    isStreaming: isThreadRunActive(toV2RunStateKey(row.id)),
+    isStreaming: await isV2ThreadRunActive(row.id),
   });
 }
 

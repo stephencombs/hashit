@@ -2,6 +2,8 @@ import {
   pgTable,
   text,
   boolean,
+  integer,
+  serial,
   timestamp,
   jsonb,
   index,
@@ -57,6 +59,33 @@ export const v2Threads = pgTable("v2_threads", {
   deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   pinnedAt: timestamp("pinned_at", { withTimezone: true, mode: "date" }),
 });
+
+export const v2ThreadRuns = pgTable("v2_thread_runs", {
+  threadId: text("thread_id")
+    .primaryKey()
+    .references(() => v2Threads.id),
+  runCount: integer("run_count").notNull().default(1),
+  updatedAt: timestamp("updated_at", {
+    withTimezone: true,
+    mode: "date",
+  }).notNull(),
+});
+
+export const v2ThreadActivityEvents = pgTable(
+  "v2_thread_activity_events",
+  {
+    id: serial("id").primaryKey(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => v2Threads.id),
+    eventType: text("event_type").notNull(),
+    occurredAt: timestamp("occurred_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+  },
+  (t) => [index("v2_thread_activity_events_id_idx").on(t.id)],
+);
 
 export const v2Messages = pgTable("v2_messages", {
   id: text("id").primaryKey(),

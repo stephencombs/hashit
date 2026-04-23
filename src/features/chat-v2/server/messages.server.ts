@@ -6,9 +6,8 @@ import {
   isDurableStreamsConfigured,
   readDurableStreamHeadOffset,
 } from "~/lib/durable-streams";
-import { isThreadRunActive } from "~/lib/server/thread-run-state";
 import { v2MessageSchema, type V2ThreadSession } from "../types";
-import { buildV2ChatStreamPath, toV2RunStateKey } from "./keys";
+import { buildV2ChatStreamPath } from "./keys";
 import {
   normalizeV2MessagesForRuntime,
   type V2RuntimeMessage,
@@ -55,7 +54,7 @@ export async function getV2ThreadSessionServer(
   let initialResumeOffset: string | undefined =
     thread.resumeOffset ?? undefined;
   if (!initialResumeOffset && isDurableStreamsConfigured()) {
-    if (isThreadRunActive(toV2RunStateKey(threadId))) {
+    if (thread.isStreaming) {
       initialResumeOffset = "-1";
     } else {
       try {

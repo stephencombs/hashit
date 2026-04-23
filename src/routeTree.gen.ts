@@ -29,6 +29,7 @@ import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppArtifactsRouteImport } from './routes/_app.artifacts'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/index'
 import { Route as V2ChatThreadIdRouteImport } from './routes/v2.chat.$threadId'
+import { Route as ApiV2ThreadEventsRouteImport } from './routes/api/v2/thread-events'
 import { Route as ApiV2ChatStreamRouteImport } from './routes/api/v2/chat-stream'
 import { Route as ApiV2ChatRouteImport } from './routes/api/v2/chat'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
@@ -145,6 +146,11 @@ const V2ChatThreadIdRoute = V2ChatThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
   getParentRoute: () => V2ChatRoute,
+} as any)
+const ApiV2ThreadEventsRoute = ApiV2ThreadEventsRouteImport.update({
+  id: '/api/v2/thread-events',
+  path: '/api/v2/thread-events',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV2ChatStreamRoute = ApiV2ChatStreamRouteImport.update({
   id: '/api/v2/chat-stream',
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/settings/'
     | '/api/automations/$automationId/runs'
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/settings'
     | '/api/automations/$automationId/runs'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/_app/settings/'
     | '/api/automations/$automationId/runs'
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
   ApiV2ChatRoute: typeof ApiV2ChatRoute
   ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute
+  ApiV2ThreadEventsRoute: typeof ApiV2ThreadEventsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -626,6 +639,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/v2/chat/$threadId'
       preLoaderRoute: typeof V2ChatThreadIdRouteImport
       parentRoute: typeof V2ChatRoute
+    }
+    '/api/v2/thread-events': {
+      id: '/api/v2/thread-events'
+      path: '/api/v2/thread-events'
+      fullPath: '/api/v2/thread-events'
+      preLoaderRoute: typeof ApiV2ThreadEventsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/v2/chat-stream': {
       id: '/api/v2/chat-stream'
@@ -904,6 +924,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
   ApiV2ChatRoute: ApiV2ChatRoute,
   ApiV2ChatStreamRoute: ApiV2ChatStreamRoute,
+  ApiV2ThreadEventsRoute: ApiV2ThreadEventsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
