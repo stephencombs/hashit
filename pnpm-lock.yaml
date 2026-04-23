@@ -78,14 +78,14 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
       '@tanstack/ai':
-        specifier: ^0.10.1
-        version: 0.10.1
+        specifier: ^0.13.0
+        version: 0.13.0
       '@tanstack/ai-openai':
-        specifier: ^0.7.4
-        version: 0.7.4(@tanstack/ai-client@0.7.8)(@tanstack/ai@0.10.1)(ws@8.20.0)(zod@4.3.6)
+        specifier: ^0.8.1
+        version: 0.8.1(@tanstack/ai-client@0.7.14)(@tanstack/ai@0.13.0)(ws@8.20.0)(zod@4.3.6)
       '@tanstack/ai-react':
-        specifier: ^0.7.9
-        version: 0.7.9(@tanstack/ai@0.10.1)(@types/react@19.2.14)(react@19.2.5)
+        specifier: ^0.7.15
+        version: 0.7.15(@tanstack/ai@0.13.0)(@types/react@19.2.14)(react@19.2.5)
       '@tanstack/db':
         specifier: ^0.6.5
         version: 0.6.5(typescript@6.0.2)
@@ -329,6 +329,9 @@ importers:
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(msw@2.13.2(@types/node@25.6.0)(typescript@6.0.2))(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
 
 packages:
+
+  '@ag-ui/core@0.0.49':
+    resolution: {integrity: sha512-9ywypwjUGtIvTxJ2eKQjhPZgLnSFAfNK7vZUcT7Bz4ur4yAIB+lAFtzvu7VDYe6jsUx/6N/71Dh4R0zX5woNVw==}
 
   '@ai-sdk/gateway@3.0.95':
     resolution: {integrity: sha512-ZmUNNbZl3V42xwQzPaNUi+s8eqR2lnrxf0bvB6YbLXpLjHYv0k2Y78t12cNOfY0bxGeuVVTLyk856uLuQIuXEQ==}
@@ -2663,30 +2666,30 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/ai-client@0.7.8':
-    resolution: {integrity: sha512-va69Dhl5WPc+cJgiI/Bq9TaxBTPy9BEc/ArcFBhQPtpkv7MX3wldxn4Z6lDvYH32xAc4OjEBF9Ebq3KBP78oAA==}
+  '@tanstack/ai-client@0.7.14':
+    resolution: {integrity: sha512-/MzRKILuZRK/3LVX6PP1gJcTyEpP0k6+9NdhYSEQk/ReA5Ol4+H3sRHsuTRBbYPFCztEkvVSCIBSLO+xq/0vSA==}
 
-  '@tanstack/ai-event-client@0.2.1':
-    resolution: {integrity: sha512-uq3fCZlmQmkrDeGTX1Nt1i4DrXqmF9SPeR598sWo5+FU7+hWaevRLOoWAl/Vkxuh+3+vQofoLCztJSa7QwBEAg==}
+  '@tanstack/ai-event-client@0.2.7':
+    resolution: {integrity: sha512-DcdDNrt1T2ng8CVo0pTx1172CEdGzFg4w/azLFFc/z5WHGAAMkw2ZD/ucSc1VlYlCWCNxwSO6otUqxmJDi9gJQ==}
     peerDependencies:
-      '@tanstack/ai': 0.10.1
+      '@tanstack/ai': 0.13.0
 
-  '@tanstack/ai-openai@0.7.4':
-    resolution: {integrity: sha512-AYPLvrnWbtqj185MtTT9Mo5GWbZQOwQwtfgZCxAslctxv0nL0lQInPEQAkwcMFle+qbadJB8BhJqTnRBAsW+Tg==}
+  '@tanstack/ai-openai@0.8.1':
+    resolution: {integrity: sha512-NercLl++O7OhxaXOOrpcFcgs58oofi8QkDec1NDcs3iuH7XPGE4utsIFqr4d20VkJAd/pxnTB8L623Km/OKZSw==}
     peerDependencies:
-      '@tanstack/ai': ^0.10.1
-      '@tanstack/ai-client': ^0.7.8
+      '@tanstack/ai': ^0.13.0
+      '@tanstack/ai-client': ^0.7.14
       zod: ^4.0.0
 
-  '@tanstack/ai-react@0.7.9':
-    resolution: {integrity: sha512-0UfIStN+0JrB1YsXM5PWJ2PGqiudQPWZZnkfxztfhOhhNJAKvxrmqZhe4PN9DDdbRRViUkNWt6F/916d9Y1KZw==}
+  '@tanstack/ai-react@0.7.15':
+    resolution: {integrity: sha512-uvi0XgIYMKi75cr8Gsq//Y0ay5Bw5sPogv0/UnjCo6bqgwewc7vDGOuBfCFPgnbIaLWlfJnEB6NlUBqnn74nmg==}
     peerDependencies:
-      '@tanstack/ai': ^0.10.1
+      '@tanstack/ai': ^0.13.0
       '@types/react': '>=18.0.0'
       react: '>=18.0.0'
 
-  '@tanstack/ai@0.10.1':
-    resolution: {integrity: sha512-hPjwgVpsazcvJqPyaXkQxJY13ExKL2sftlUrWM7tk92gBd7+gbKkpBVDVkLmvfRClhDNpweDk1Anu/ezflk1TQ==}
+  '@tanstack/ai@0.13.0':
+    resolution: {integrity: sha512-4M0wBvi4Mhc50mpQmmJuT31C5ROGfh8FOQIAzHzc8qQs14ziHDh9Wx1hjDeezGnlqjCTJVGTExFpPGOFOLRz1A==}
     engines: {node: '>=18'}
 
   '@tanstack/db-ivm@0.1.18':
@@ -6877,6 +6880,10 @@ packages:
 
 snapshots:
 
+  '@ag-ui/core@0.0.49':
+    dependencies:
+      zod: 3.25.76
+
   '@ai-sdk/gateway@3.0.95(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
@@ -9128,35 +9135,36 @@ snapshots:
       tailwindcss: 4.2.2
       vite: 8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)
 
-  '@tanstack/ai-client@0.7.8':
+  '@tanstack/ai-client@0.7.14':
     dependencies:
-      '@tanstack/ai': 0.10.1
-      '@tanstack/ai-event-client': 0.2.1(@tanstack/ai@0.10.1)
+      '@tanstack/ai': 0.13.0
+      '@tanstack/ai-event-client': 0.2.7(@tanstack/ai@0.13.0)
 
-  '@tanstack/ai-event-client@0.2.1(@tanstack/ai@0.10.1)':
+  '@tanstack/ai-event-client@0.2.7(@tanstack/ai@0.13.0)':
     dependencies:
-      '@tanstack/ai': 0.10.1
+      '@tanstack/ai': 0.13.0
       '@tanstack/devtools-event-client': 0.4.3
 
-  '@tanstack/ai-openai@0.7.4(@tanstack/ai-client@0.7.8)(@tanstack/ai@0.10.1)(ws@8.20.0)(zod@4.3.6)':
+  '@tanstack/ai-openai@0.8.1(@tanstack/ai-client@0.7.14)(@tanstack/ai@0.13.0)(ws@8.20.0)(zod@4.3.6)':
     dependencies:
-      '@tanstack/ai': 0.10.1
-      '@tanstack/ai-client': 0.7.8
+      '@tanstack/ai': 0.13.0
+      '@tanstack/ai-client': 0.7.14
       openai: 6.34.0(ws@8.20.0)(zod@4.3.6)
       zod: 4.3.6
     transitivePeerDependencies:
       - ws
 
-  '@tanstack/ai-react@0.7.9(@tanstack/ai@0.10.1)(@types/react@19.2.14)(react@19.2.5)':
+  '@tanstack/ai-react@0.7.15(@tanstack/ai@0.13.0)(@types/react@19.2.14)(react@19.2.5)':
     dependencies:
-      '@tanstack/ai': 0.10.1
-      '@tanstack/ai-client': 0.7.8
+      '@tanstack/ai': 0.13.0
+      '@tanstack/ai-client': 0.7.14
       '@types/react': 19.2.14
       react: 19.2.5
 
-  '@tanstack/ai@0.10.1':
+  '@tanstack/ai@0.13.0':
     dependencies:
-      '@tanstack/ai-event-client': 0.2.1(@tanstack/ai@0.10.1)
+      '@ag-ui/core': 0.0.49
+      '@tanstack/ai-event-client': 0.2.7(@tanstack/ai@0.13.0)
       partial-json: 0.1.7
 
   '@tanstack/db-ivm@0.1.18(typescript@6.0.2)':

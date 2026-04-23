@@ -93,8 +93,25 @@ function asErrorMessage(value: unknown): string {
 }
 
 function getRunErrorFromChunk(chunk: StreamChunk): string | undefined {
-  const errorValue = (chunk as { error?: unknown }).error;
-  return errorValue ? asErrorMessage(errorValue) : undefined;
+  const message = (chunk as { message?: unknown }).message;
+  const code = (chunk as { code?: unknown }).code;
+  const errorMessage =
+    typeof message === "string" && message.trim().length > 0
+      ? message
+      : undefined;
+  const errorCode =
+    typeof code === "string" && code.trim().length > 0 ? code : undefined;
+
+  if (errorMessage && errorCode) {
+    return `${errorCode}: ${errorMessage}`;
+  }
+  if (errorMessage) {
+    return errorMessage;
+  }
+  if (errorCode) {
+    return errorCode;
+  }
+  return undefined;
 }
 
 function getResolvedModelName(resolvedModel?: string): string {

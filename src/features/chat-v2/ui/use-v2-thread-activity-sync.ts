@@ -22,7 +22,9 @@ export function useV2ThreadActivitySync(): void {
       queryClient.refetchQueries({
         queryKey: v2ThreadListQueryOptions.queryKey,
         exact: true,
-        type: "active",
+        // V2 thread list runs through react-db on-demand sync; the backing query can
+        // be inactive even while the sidebar is visible.
+        type: "all",
       });
     let errorReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
     let unknownThreadReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -44,9 +46,9 @@ export function useV2ThreadActivitySync(): void {
     const applyThreadStreamingState = (threadId: string, isStreaming: boolean) => {
       const knownThread = threadsCollection.has(threadId);
       setV2ThreadStreamingState(queryClient, threadId, isStreaming);
-      // Unknown "started" events usually mean a newly created thread from another tab/session.
-      // Reconcile once so the sidebar can hydrate canonical thread metadata.
-      if (!knownThread && isStreaming) {
+      // Unknown events usually mean a thread was created/updated outside this client.
+      // Reconcile once so the sidebar hydrates canonical thread metadata.
+      if (!knownThread) {
         scheduleUnknownThreadReconcile();
       }
     };
@@ -77,12 +79,13 @@ export function useV2ThreadActivitySync(): void {
         clearTimeout(errorReconcileTimeout);
         errorReconcileTimeout = null;
       }
-      // Avoid mount-time loading flashes when route loaders already hydrated this query.
-      if (
-        queryClient.getQueryData(v2ThreadListQueryOptions.queryKey) === undefined
-      ) {
-        void reconcile();
+      if (unknownThreadReconcileTimeout) {
+        clearTimeout(unknownThreadReconcileTimeout);
+        unknownThreadReconcileTimeout = null;
       }
+      // Always reconcile on (re)connect so stale local streaming flags self-heal after
+      // missed events or prolonged disconnects.
+      void reconcile();
     };
     connection.onerror = () => {
       // EventSource auto-reconnects. Debounce fallback reconciliation to avoid churn.

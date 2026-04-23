@@ -2,7 +2,8 @@ import { durableStreamConnection } from "@durable-streams/tanstack-ai-transport"
 import { useChat } from "@tanstack/ai-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Spec } from "@json-render/core";
-import { CopyIcon, RotateCcwIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, RotateCcwIcon } from "lucide-react";
+import { motion } from "motion/react";
 import {
   lazy,
   Suspense,
@@ -71,11 +72,6 @@ function isAbortLikeError(message: string): boolean {
   );
 }
 
-function copyMessageText(text: string): void {
-  if (!text.trim()) return;
-  void navigator.clipboard.writeText(text).catch(() => {});
-}
-
 function resolveRenderText(message: V2RuntimeMessage): string {
   if (typeof message.renderText === "string") {
     return message.renderText.trim();
@@ -106,12 +102,14 @@ export function V2ChatSurface({
 }: V2ChatSurfaceProps) {
   const queryClient = useQueryClient();
   const [creationError, setCreationError] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const shouldPromoteOnStreamStartRef = useRef(false);
   const suppressAbortErrorRef = useRef(false);
   const suppressAbortResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const copiedResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [liveSpecStore] = useState(() => new LiveSpecStore());
   const liveSpecsByMessageId = useLiveSpecsSnapshot(liveSpecStore);
 
@@ -218,6 +216,7 @@ export function V2ChatSurface({
     stop();
     setMessages(initialMessages as never);
     liveSpecStore.clear();
+    setCopiedMessageId(null);
     setCreationError(null);
     setRuntimeError(null);
   }, [initialMessages, liveSpecStore, setMessages, stop, threadId]);
@@ -226,6 +225,9 @@ export function V2ChatSurface({
     return () => {
       if (suppressAbortResetTimeoutRef.current) {
         clearTimeout(suppressAbortResetTimeoutRef.current);
+      }
+      if (copiedResetTimeoutRef.current) {
+        clearTimeout(copiedResetTimeoutRef.current);
       }
     };
   }, []);
@@ -309,6 +311,23 @@ export function V2ChatSurface({
     [ensureDraftThreadReady, sendMessage],
   );
 
+  const handleCopyMessage = useCallback((messageId: string, text: string) => {
+    if (!text.trim()) return;
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopiedMessageId(messageId);
+        if (copiedResetTimeoutRef.current) {
+          clearTimeout(copiedResetTimeoutRef.current);
+        }
+        copiedResetTimeoutRef.current = setTimeout(() => {
+          setCopiedMessageId((current) => (current === messageId ? null : current));
+          copiedResetTimeoutRef.current = null;
+        }, 1_400);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {submissionError ? (
@@ -367,11 +386,36 @@ export function V2ChatSurface({
               </MessageContent>
               <MessageActions>
                 <MessageAction
-                  label="Copy message"
-                  onClick={() => copyMessageText(renderText)}
-                  tooltip="Copy message"
+                  label={copiedMessageId === message.id ? "Copied" : "Copy message"}
+                  onClick={() => handleCopyMessage(message.id, renderText)}
+                  tooltip={copiedMessageId === message.id ? "Copied" : "Copy message"}
                 >
-                  <CopyIcon />
+                  <span className="relative block size-4">
+                    <motion.span
+                      animate={{
+                        filter:
+                          copiedMessageId === message.id ? "blur(4px)" : "blur(0px)",
+                        opacity: copiedMessageId === message.id ? 0 : 1,
+                        scale: copiedMessageId === message.id ? 0.25 : 1,
+                      }}
+                      className="absolute inset-0 flex items-center justify-center"
+                      transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                    >
+                      <CopyIcon />
+                    </motion.span>
+                    <motion.span
+                      animate={{
+                        filter:
+                          copiedMessageId === message.id ? "blur(0px)" : "blur(4px)",
+                        opacity: copiedMessageId === message.id ? 1 : 0,
+                        scale: copiedMessageId === message.id ? 1 : 0.25,
+                      }}
+                      className="absolute inset-0 flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                      transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                    >
+                      <CheckIcon />
+                    </motion.span>
+                  </span>
                 </MessageAction>
                 {message.role === "assistant" && isLatestAssistant ? (
                   <MessageAction

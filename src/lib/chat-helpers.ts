@@ -480,31 +480,66 @@ export async function* withPersistence(
     let accumulated = "";
     let accumulatedThinking = "";
     const assistantParts: Array<AppMessagePart> = [];
-    const toolCalls = new Map<string, { name: string; args: string }>();
+    const toolCalls = new Map<
+      string,
+      { name: string; args: string; partIndex?: number }
+    >();
+    const pendingToolResults = new Map<string, unknown>();
     let summaryEmitted = false;
     let streamError: string | null = null;
     let persistenceError: string | null = null;
 
+    const getToolCallName = (chunk: StreamChunk): string => {
+      const modernName = (chunk as { toolCallName?: unknown }).toolCallName;
+      if (typeof modernName === "string" && modernName.length > 0) {
+        return modernName;
+      }
+      return "unknown_tool";
+    };
+
+    const parseToolResultValue = (value: unknown): unknown => {
+      if (value === undefined) return undefined;
+      if (typeof value === "string") return tryParseJSON(value);
+      return value;
+    };
+
+    const getToolResultFromChunk = (chunk: StreamChunk): unknown => {
+      const contentValue = (chunk as { content?: unknown }).content;
+      if (contentValue !== undefined) {
+        return parseToolResultValue(contentValue);
+      }
+      return undefined;
+    };
+
+    const appendReasoningDelta = (chunk: StreamChunk): void => {
+      const delta = (chunk as { delta?: unknown }).delta;
+      if (typeof delta === "string" && delta.length > 0) {
+        accumulatedThinking += delta;
+        return;
+      }
+
+      const content = (chunk as { content?: unknown }).content;
+      if (typeof content === "string" && content.length > 0) {
+        accumulatedThinking = content;
+        return;
+      }
+    };
+
+    const emitTitleIfReady = () => {
+      if (titleEventEmitted || !generatedTitle) return;
+      titleEventEmitted = true;
+      return {
+        type: "CUSTOM" as const,
+        name: "thread_title_updated",
+        value: { threadId, title: generatedTitle },
+        timestamp: Date.now(),
+      } as StreamChunk;
+    };
+
     try {
       for await (const chunk of stream) {
-        if (chunk.type === "STEP_FINISHED") {
-          const delta = (chunk as { delta?: string }).delta || "";
-          if (delta) accumulatedThinking += delta;
-          yield {
-            ...chunk,
-            delta,
-            content: accumulatedThinking,
-          } as StreamChunk;
-          if (!titleEventEmitted && generatedTitle) {
-            titleEventEmitted = true;
-            yield {
-              type: "CUSTOM" as const,
-              name: "thread_title_updated",
-              value: { threadId, title: generatedTitle },
-              timestamp: Date.now(),
-            };
-          }
-          continue;
+        if (chunk.type === "REASONING_MESSAGE_CONTENT") {
+          appendReasoningDelta(chunk);
         }
 
         if (chunk.type === "TEXT_MESSAGE_CONTENT") {
@@ -514,10 +549,11 @@ export async function* withPersistence(
             accumulated += chunk.delta;
           }
         } else if (chunk.type === "TOOL_CALL_START") {
-          toolCalls.set(chunk.toolCallId, { name: chunk.toolName, args: "" });
+          const toolName = getToolCallName(chunk);
+          toolCalls.set(chunk.toolCallId, { name: toolName, args: "" });
           if (!summaryEmitted) {
             summaryEmitted = true;
-            const summary = await generateToolSummary(chunk.toolName);
+            const summary = await generateToolSummary(toolName);
             assistantParts.push({
               type: "tool-summary",
               content: summary,
@@ -533,17 +569,41 @@ export async function* withPersistence(
           const tc = toolCalls.get(chunk.toolCallId);
           if (tc) tc.args += chunk.delta;
         } else if (chunk.type === "TOOL_CALL_END") {
-          const tc = toolCalls.get(chunk.toolCallId);
-          if (tc) {
+          const existing = toolCalls.get(chunk.toolCallId);
+          const toolName = existing?.name ?? getToolCallName(chunk);
+          const toolCall = existing ?? { name: toolName, args: "" };
+          const pendingResult = pendingToolResults.get(chunk.toolCallId);
+          if (toolCall) {
             assistantParts.push({
               type: "tool-call",
               id: chunk.toolCallId,
-              name: tc.name,
-              arguments: tc.args,
-              argsPreview: buildArgsPreview(tc.args),
-              state: chunk.result ? "result" : "input-complete",
-              output: chunk.result ? tryParseJSON(chunk.result) : undefined,
+              name: toolName,
+              arguments: toolCall.args,
+              argsPreview: buildArgsPreview(toolCall.args),
+              state: pendingResult !== undefined ? "result" : "input-complete",
+              output: pendingResult,
             });
+            toolCall.partIndex = assistantParts.length - 1;
+            toolCall.name = toolName;
+            toolCalls.set(chunk.toolCallId, toolCall);
+            pendingToolResults.delete(chunk.toolCallId);
+          }
+        } else if (chunk.type === "TOOL_CALL_RESULT") {
+          const toolResult = getToolResultFromChunk(chunk);
+          if (toolResult !== undefined) {
+            const toolCall = toolCalls.get(chunk.toolCallId);
+            const partIndex = toolCall?.partIndex;
+            const part =
+              partIndex !== undefined ? assistantParts[partIndex] : undefined;
+            if (part && part.type === "tool-call" && part.id === chunk.toolCallId) {
+              assistantParts[partIndex] = {
+                ...part,
+                state: "result",
+                output: toolResult,
+              };
+            } else {
+              pendingToolResults.set(chunk.toolCallId, toolResult);
+            }
           }
         } else if (chunk.type === "CUSTOM" && chunk.name === "spec_complete") {
           const { spec, specIndex } = chunk.value as {
@@ -559,15 +619,8 @@ export async function* withPersistence(
         yield {
           ...chunk,
         };
-        if (!titleEventEmitted && generatedTitle) {
-          titleEventEmitted = true;
-          yield {
-            type: "CUSTOM" as const,
-            name: "thread_title_updated",
-            value: { threadId, title: generatedTitle },
-            timestamp: Date.now(),
-          };
-        }
+        const titleEvent = emitTitleIfReady();
+        if (titleEvent) yield titleEvent;
       }
     } catch (err) {
       streamError = err instanceof Error ? err.message : String(err);
