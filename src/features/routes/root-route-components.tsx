@@ -14,7 +14,7 @@ import { ThemeProvider } from "~/hooks/use-theme";
 
 export function NotFoundPage() {
   return (
-    <div className="p-8 [font-family:system-ui,sans-serif]">
+    <div className="p-8 font-[system-ui,sans-serif]">
       <h1>404 — Page not found</h1>
       <p>The page you&apos;re looking for doesn&apos;t exist.</p>
       <a href="/" className="text-inherit">

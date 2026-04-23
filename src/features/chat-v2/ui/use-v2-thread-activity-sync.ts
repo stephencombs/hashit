@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { getV2Collections } from "~/features/chat-v2/data/collections";
+import { setV2ThreadStreamingState } from "~/features/chat-v2/data/mutations";
 import { v2ThreadListQueryOptions } from "~/features/chat-v2/data/query-options";
 import {
   parseV2ThreadActivityEventPayload,
@@ -9,6 +10,7 @@ import {
 } from "../thread-activity";
 
 const ERROR_RECONCILIATION_DEBOUNCE_MS = 2_000;
+const UNKNOWN_THREAD_RECONCILIATION_DEBOUNCE_MS = 250;
 
 export function useV2ThreadActivitySync(): void {
   const queryClient = useQueryClient();
@@ -17,11 +19,13 @@ export function useV2ThreadActivitySync(): void {
     const { threadsCollection } = getV2Collections(queryClient);
     threadsCollection.startSyncImmediate();
     const reconcile = () =>
-      queryClient.invalidateQueries({
+      queryClient.refetchQueries({
         queryKey: v2ThreadListQueryOptions.queryKey,
         exact: true,
+        type: "active",
       });
     let errorReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
+    let unknownThreadReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
     const scheduleErrorReconcile = () => {
       if (errorReconcileTimeout) return;
       errorReconcileTimeout = setTimeout(() => {
@@ -29,13 +33,22 @@ export function useV2ThreadActivitySync(): void {
         void reconcile();
       }, ERROR_RECONCILIATION_DEBOUNCE_MS);
     };
+    const scheduleUnknownThreadReconcile = () => {
+      if (unknownThreadReconcileTimeout) return;
+      unknownThreadReconcileTimeout = setTimeout(() => {
+        unknownThreadReconcileTimeout = null;
+        void reconcile();
+      }, UNKNOWN_THREAD_RECONCILIATION_DEBOUNCE_MS);
+    };
 
     const applyThreadStreamingState = (threadId: string, isStreaming: boolean) => {
-      threadsCollection.utils.writeUpdate({
-        id: threadId,
-        isStreaming,
-        ...(isStreaming ? { updatedAt: new Date() } : {}),
-      });
+      const knownThread = threadsCollection.has(threadId);
+      setV2ThreadStreamingState(queryClient, threadId, isStreaming);
+      // Unknown "started" events usually mean a newly created thread from another tab/session.
+      // Reconcile once so the sidebar can hydrate canonical thread metadata.
+      if (!knownThread && isStreaming) {
+        scheduleUnknownThreadReconcile();
+      }
     };
     const parsePayload = (raw: string) => {
       try {
@@ -64,18 +77,24 @@ export function useV2ThreadActivitySync(): void {
         clearTimeout(errorReconcileTimeout);
         errorReconcileTimeout = null;
       }
-      void reconcile();
+      // Avoid mount-time loading flashes when route loaders already hydrated this query.
+      if (
+        queryClient.getQueryData(v2ThreadListQueryOptions.queryKey) === undefined
+      ) {
+        void reconcile();
+      }
     };
     connection.onerror = () => {
       // EventSource auto-reconnects. Debounce fallback reconciliation to avoid churn.
       scheduleErrorReconcile();
     };
 
-    void reconcile();
-
     return () => {
       if (errorReconcileTimeout) {
         clearTimeout(errorReconcileTimeout);
+      }
+      if (unknownThreadReconcileTimeout) {
+        clearTimeout(unknownThreadReconcileTimeout);
       }
       connection.removeEventListener(
         v2ThreadRunStartedEvent,

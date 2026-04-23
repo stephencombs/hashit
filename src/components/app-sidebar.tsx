@@ -801,11 +801,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <Sidebar collapsible="icon" className="select-none" {...props}>
         <SidebarHeader>
-          <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <div className="grid h-12 grid-cols-[auto_1fr] items-center gap-2 overflow-hidden px-2 transition-[grid-template-columns,gap,padding] duration-200 ease-linear group-data-[collapsible=icon]:grid-cols-[auto_0fr] group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
             <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
               <HoverIcon as={SparklesIcon} />
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+            <div className="min-w-0 overflow-hidden text-left text-sm leading-tight transition-[opacity,transform] duration-200 ease-linear group-data-[collapsible=icon]:translate-x-1 group-data-[collapsible=icon]:opacity-0">
               <span className="truncate font-semibold">Teammate</span>
               <span className="truncate text-xs">AI Chat</span>
             </div>

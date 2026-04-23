@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "@tanstack/react-db";
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2Icon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
-import { type MouseEvent, useMemo, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -257,7 +257,7 @@ function ThreadGroup({
   );
 }
 
-export function V2ThreadList() {
+function V2ThreadListClient() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
@@ -378,7 +378,7 @@ export function V2ThreadList() {
     }
   }
 
-  if (isLoading) return <SidebarListSkeleton />;
+  if (isLoading && threads.length === 0) return <SidebarListSkeleton />;
 
   if (threads.length === 0) {
     return (
@@ -463,4 +463,18 @@ export function V2ThreadList() {
       </Dialog>
     </>
   );
+}
+
+export function V2ThreadList() {
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  if (!isHydrated) {
+    return <SidebarListSkeleton />;
+  }
+
+  return <V2ThreadListClient />;
 }

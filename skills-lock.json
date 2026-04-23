@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "91782f423f6fad0fe4e2159350f2eb8c3cf66cfa4d2387b2c8d927d443c9a603"
     },
+    "agentation": {
+      "source": "benjitaylor/agentation",
+      "sourceType": "github",
+      "computedHash": "6ba2c955bee6ab3e9c7781b2553e3574b4c9ec35e539437d0831bfe368de8550"
+    },
     "ai-elements": {
       "source": "vercel/ai-elements",
       "sourceType": "github",
