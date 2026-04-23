@@ -59,6 +59,7 @@ const mocks = vi.hoisted(() => {
   const mockQueueV2ThreadTitleGeneration = vi.fn(() => {
     callOrder.push("queue-title");
   });
+  const mockHasV2MessageByIdServer = vi.fn(async () => false);
 
   return {
     callOrder,
@@ -71,6 +72,7 @@ const mocks = vi.hoisted(() => {
     mockLogSet,
     mockProjectV2StreamSnapshotToDb,
     mockQueueV2ThreadTitleGeneration,
+    mockHasV2MessageByIdServer,
     mockToDurableChatSessionResponse,
     mockUseRequest,
   };
@@ -107,6 +109,10 @@ vi.mock("~/features/chat-v2/server/agent-runner", () => ({
 
 vi.mock("~/features/chat-v2/server/stream-projection", () => ({
   projectV2StreamSnapshotToDb: mocks.mockProjectV2StreamSnapshotToDb,
+}));
+
+vi.mock("~/features/chat-v2/server/messages.server", () => ({
+  hasV2MessageByIdServer: mocks.mockHasV2MessageByIdServer,
 }));
 
 vi.mock("~/features/chat-v2/server/thread-title", () => ({
@@ -176,6 +182,7 @@ describe("/api/v2/chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.callOrder.length = 0;
+    mocks.mockHasV2MessageByIdServer.mockResolvedValue(false);
     process.env.AZURE_OPENAI_API_KEY = "test-key";
     process.env.AZURE_OPENAI_ENDPOINT = "https://example.openai.azure.com";
     process.env.AZURE_OPENAI_DEPLOYMENT = "gpt-test";
@@ -232,6 +239,28 @@ describe("/api/v2/chat", () => {
       (event) => event.name === "persistence_complete",
     );
     expect(persistenceComplete?.value.error).toBe("projection failed");
+    expect(mocks.mockQueueV2ThreadTitleGeneration).not.toHaveBeenCalled();
+  });
+
+  it("treats duplicate latest user message as regeneration", async () => {
+    mocks.mockHasV2MessageByIdServer.mockResolvedValueOnce(true);
+
+    const response = await Route.options.server.handlers.POST({
+      request: makeRequest(),
+    });
+
+    expect(response.status).toBe(202);
+    expect(mocks.mockToDurableChatSessionResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        newMessages: [],
+      }),
+    );
+    expect(mocks.mockProjectV2StreamSnapshotToDb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        persistUserTurn: false,
+        replaceLatestAssistant: true,
+      }),
+    );
     expect(mocks.mockQueueV2ThreadTitleGeneration).not.toHaveBeenCalled();
   });
 });

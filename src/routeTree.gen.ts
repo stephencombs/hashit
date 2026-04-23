@@ -8,753 +8,753 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as V2RouteImport } from "./routes/v2";
-import { Route as HealthRouteImport } from "./routes/health";
-import { Route as AppRouteImport } from "./routes/_app";
-import { Route as V2IndexRouteImport } from "./routes/v2.index";
-import { Route as AppIndexRouteImport } from "./routes/_app.index";
-import { Route as V2ChatRouteImport } from "./routes/v2.chat";
-import { Route as ApiThreadsRouteImport } from "./routes/api/threads";
-import { Route as ApiPromptAttachmentsRouteImport } from "./routes/api/prompt-attachments";
-import { Route as ApiDashboardRouteImport } from "./routes/api/dashboard";
-import { Route as ApiChatStreamRouteImport } from "./routes/api/chat-stream";
-import { Route as ApiChatRouteImport } from "./routes/api/chat";
-import { Route as ApiAutomationsRouteImport } from "./routes/api/automations";
-import { Route as ApiArtifactsRouteImport } from "./routes/api/artifacts";
-import { Route as ApiAgentRouteImport } from "./routes/api/agent";
-import { Route as AppSettingsRouteImport } from "./routes/_app.settings";
-import { Route as AppDashboardRouteImport } from "./routes/_app.dashboard";
-import { Route as AppAutomationsRouteImport } from "./routes/_app.automations";
-import { Route as AppArtifactsRouteImport } from "./routes/_app.artifacts";
-import { Route as AppSettingsIndexRouteImport } from "./routes/_app.settings/index";
-import { Route as V2ChatThreadIdRouteImport } from "./routes/v2.chat.$threadId";
-import { Route as ApiV2ChatStreamRouteImport } from "./routes/api/v2/chat-stream";
-import { Route as ApiV2ChatRouteImport } from "./routes/api/v2/chat";
-import { Route as ApiThreadsThreadIdRouteImport } from "./routes/api/threads.$threadId";
-import { Route as ApiSettingsMcpTokenRouteImport } from "./routes/api/settings/mcp-token";
-import { Route as ApiPromptAttachmentsAttachmentIdRouteImport } from "./routes/api/prompt-attachments.$attachmentId";
-import { Route as ApiMcpToolsRouteImport } from "./routes/api/mcp/tools";
-import { Route as ApiMcpServersRouteImport } from "./routes/api/mcp/servers";
-import { Route as ApiDashboardHistoryRouteImport } from "./routes/api/dashboard.history";
-import { Route as ApiAutomationsAutomationIdRouteImport } from "./routes/api/automations.$automationId";
-import { Route as ApiArtifactsArtifactIdRouteImport } from "./routes/api/artifacts.$artifactId";
-import { Route as AppSettingsModelRouteImport } from "./routes/_app.settings/model";
-import { Route as AppSettingsMcpRouteImport } from "./routes/_app.settings/mcp";
-import { Route as AppSettingsDataRouteImport } from "./routes/_app.settings/data";
-import { Route as AppSettingsAppearanceRouteImport } from "./routes/_app.settings/appearance";
-import { Route as AppChatThreadIdRouteImport } from "./routes/_app.chat.$threadId";
-import { Route as ApiDashboardSnapshotsSnapshotIdRouteImport } from "./routes/api/dashboard.snapshots.$snapshotId";
-import { Route as ApiAutomationsAutomationIdRunsRouteImport } from "./routes/api/automations.$automationId.runs";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as V2RouteImport } from './routes/v2'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as V2IndexRouteImport } from './routes/v2.index'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as V2ChatRouteImport } from './routes/v2.chat'
+import { Route as ApiThreadsRouteImport } from './routes/api/threads'
+import { Route as ApiPromptAttachmentsRouteImport } from './routes/api/prompt-attachments'
+import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
+import { Route as ApiChatStreamRouteImport } from './routes/api/chat-stream'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAutomationsRouteImport } from './routes/api/automations'
+import { Route as ApiArtifactsRouteImport } from './routes/api/artifacts'
+import { Route as ApiAgentRouteImport } from './routes/api/agent'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
+import { Route as AppArtifactsRouteImport } from './routes/_app.artifacts'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/index'
+import { Route as V2ChatThreadIdRouteImport } from './routes/v2.chat.$threadId'
+import { Route as ApiV2ChatStreamRouteImport } from './routes/api/v2/chat-stream'
+import { Route as ApiV2ChatRouteImport } from './routes/api/v2/chat'
+import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
+import { Route as ApiSettingsMcpTokenRouteImport } from './routes/api/settings/mcp-token'
+import { Route as ApiPromptAttachmentsAttachmentIdRouteImport } from './routes/api/prompt-attachments.$attachmentId'
+import { Route as ApiMcpToolsRouteImport } from './routes/api/mcp/tools'
+import { Route as ApiMcpServersRouteImport } from './routes/api/mcp/servers'
+import { Route as ApiDashboardHistoryRouteImport } from './routes/api/dashboard.history'
+import { Route as ApiAutomationsAutomationIdRouteImport } from './routes/api/automations.$automationId'
+import { Route as ApiArtifactsArtifactIdRouteImport } from './routes/api/artifacts.$artifactId'
+import { Route as AppSettingsModelRouteImport } from './routes/_app.settings/model'
+import { Route as AppSettingsMcpRouteImport } from './routes/_app.settings/mcp'
+import { Route as AppSettingsDataRouteImport } from './routes/_app.settings/data'
+import { Route as AppSettingsAppearanceRouteImport } from './routes/_app.settings/appearance'
+import { Route as AppChatThreadIdRouteImport } from './routes/_app.chat.$threadId'
+import { Route as ApiDashboardSnapshotsSnapshotIdRouteImport } from './routes/api/dashboard.snapshots.$snapshotId'
+import { Route as ApiAutomationsAutomationIdRunsRouteImport } from './routes/api/automations.$automationId.runs'
 
 const V2Route = V2RouteImport.update({
-  id: "/v2",
-  path: "/v2",
+  id: '/v2',
+  path: '/v2',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const HealthRoute = HealthRouteImport.update({
-  id: "/health",
-  path: "/health",
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AppRoute = AppRouteImport.update({
-  id: "/_app",
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const V2IndexRoute = V2IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => V2Route,
-} as any);
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const V2ChatRoute = V2ChatRouteImport.update({
-  id: "/chat",
-  path: "/chat",
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => V2Route,
-} as any);
+} as any)
 const ApiThreadsRoute = ApiThreadsRouteImport.update({
-  id: "/api/threads",
-  path: "/api/threads",
+  id: '/api/threads',
+  path: '/api/threads',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiPromptAttachmentsRoute = ApiPromptAttachmentsRouteImport.update({
-  id: "/api/prompt-attachments",
-  path: "/api/prompt-attachments",
+  id: '/api/prompt-attachments',
+  path: '/api/prompt-attachments',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiDashboardRoute = ApiDashboardRouteImport.update({
-  id: "/api/dashboard",
-  path: "/api/dashboard",
+  id: '/api/dashboard',
+  path: '/api/dashboard',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiChatStreamRoute = ApiChatStreamRouteImport.update({
-  id: "/api/chat-stream",
-  path: "/api/chat-stream",
+  id: '/api/chat-stream',
+  path: '/api/chat-stream',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
-  id: "/api/chat",
-  path: "/api/chat",
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiAutomationsRoute = ApiAutomationsRouteImport.update({
-  id: "/api/automations",
-  path: "/api/automations",
+  id: '/api/automations',
+  path: '/api/automations',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiArtifactsRoute = ApiArtifactsRouteImport.update({
-  id: "/api/artifacts",
-  path: "/api/artifacts",
+  id: '/api/artifacts',
+  path: '/api/artifacts',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiAgentRoute = ApiAgentRouteImport.update({
-  id: "/api/agent",
-  path: "/api/agent",
+  id: '/api/agent',
+  path: '/api/agent',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: "/settings",
-  path: "/settings",
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
-  id: "/dashboard",
-  path: "/dashboard",
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppAutomationsRoute = AppAutomationsRouteImport.update({
-  id: "/automations",
-  path: "/automations",
+  id: '/automations',
+  path: '/automations',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppArtifactsRoute = AppArtifactsRouteImport.update({
-  id: "/artifacts",
-  path: "/artifacts",
+  id: '/artifacts',
+  path: '/artifacts',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => AppSettingsRoute,
-} as any);
+} as any)
 const V2ChatThreadIdRoute = V2ChatThreadIdRouteImport.update({
-  id: "/$threadId",
-  path: "/$threadId",
+  id: '/$threadId',
+  path: '/$threadId',
   getParentRoute: () => V2ChatRoute,
-} as any);
+} as any)
 const ApiV2ChatStreamRoute = ApiV2ChatStreamRouteImport.update({
-  id: "/api/v2/chat-stream",
-  path: "/api/v2/chat-stream",
+  id: '/api/v2/chat-stream',
+  path: '/api/v2/chat-stream',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiV2ChatRoute = ApiV2ChatRouteImport.update({
-  id: "/api/v2/chat",
-  path: "/api/v2/chat",
+  id: '/api/v2/chat',
+  path: '/api/v2/chat',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiThreadsThreadIdRoute = ApiThreadsThreadIdRouteImport.update({
-  id: "/$threadId",
-  path: "/$threadId",
+  id: '/$threadId',
+  path: '/$threadId',
   getParentRoute: () => ApiThreadsRoute,
-} as any);
+} as any)
 const ApiSettingsMcpTokenRoute = ApiSettingsMcpTokenRouteImport.update({
-  id: "/api/settings/mcp-token",
-  path: "/api/settings/mcp-token",
+  id: '/api/settings/mcp-token',
+  path: '/api/settings/mcp-token',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiPromptAttachmentsAttachmentIdRoute =
   ApiPromptAttachmentsAttachmentIdRouteImport.update({
-    id: "/$attachmentId",
-    path: "/$attachmentId",
+    id: '/$attachmentId',
+    path: '/$attachmentId',
     getParentRoute: () => ApiPromptAttachmentsRoute,
-  } as any);
+  } as any)
 const ApiMcpToolsRoute = ApiMcpToolsRouteImport.update({
-  id: "/api/mcp/tools",
-  path: "/api/mcp/tools",
+  id: '/api/mcp/tools',
+  path: '/api/mcp/tools',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiMcpServersRoute = ApiMcpServersRouteImport.update({
-  id: "/api/mcp/servers",
-  path: "/api/mcp/servers",
+  id: '/api/mcp/servers',
+  path: '/api/mcp/servers',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiDashboardHistoryRoute = ApiDashboardHistoryRouteImport.update({
-  id: "/history",
-  path: "/history",
+  id: '/history',
+  path: '/history',
   getParentRoute: () => ApiDashboardRoute,
-} as any);
+} as any)
 const ApiAutomationsAutomationIdRoute =
   ApiAutomationsAutomationIdRouteImport.update({
-    id: "/$automationId",
-    path: "/$automationId",
+    id: '/$automationId',
+    path: '/$automationId',
     getParentRoute: () => ApiAutomationsRoute,
-  } as any);
+  } as any)
 const ApiArtifactsArtifactIdRoute = ApiArtifactsArtifactIdRouteImport.update({
-  id: "/$artifactId",
-  path: "/$artifactId",
+  id: '/$artifactId',
+  path: '/$artifactId',
   getParentRoute: () => ApiArtifactsRoute,
-} as any);
+} as any)
 const AppSettingsModelRoute = AppSettingsModelRouteImport.update({
-  id: "/model",
-  path: "/model",
+  id: '/model',
+  path: '/model',
   getParentRoute: () => AppSettingsRoute,
-} as any);
+} as any)
 const AppSettingsMcpRoute = AppSettingsMcpRouteImport.update({
-  id: "/mcp",
-  path: "/mcp",
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => AppSettingsRoute,
-} as any);
+} as any)
 const AppSettingsDataRoute = AppSettingsDataRouteImport.update({
-  id: "/data",
-  path: "/data",
+  id: '/data',
+  path: '/data',
   getParentRoute: () => AppSettingsRoute,
-} as any);
+} as any)
 const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
-  id: "/appearance",
-  path: "/appearance",
+  id: '/appearance',
+  path: '/appearance',
   getParentRoute: () => AppSettingsRoute,
-} as any);
+} as any)
 const AppChatThreadIdRoute = AppChatThreadIdRouteImport.update({
-  id: "/chat/$threadId",
-  path: "/chat/$threadId",
+  id: '/chat/$threadId',
+  path: '/chat/$threadId',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const ApiDashboardSnapshotsSnapshotIdRoute =
   ApiDashboardSnapshotsSnapshotIdRouteImport.update({
-    id: "/snapshots/$snapshotId",
-    path: "/snapshots/$snapshotId",
+    id: '/snapshots/$snapshotId',
+    path: '/snapshots/$snapshotId',
     getParentRoute: () => ApiDashboardRoute,
-  } as any);
+  } as any)
 const ApiAutomationsAutomationIdRunsRoute =
   ApiAutomationsAutomationIdRunsRouteImport.update({
-    id: "/runs",
-    path: "/runs",
+    id: '/runs',
+    path: '/runs',
     getParentRoute: () => ApiAutomationsAutomationIdRoute,
-  } as any);
+  } as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof AppIndexRoute;
-  "/health": typeof HealthRoute;
-  "/v2": typeof V2RouteWithChildren;
-  "/artifacts": typeof AppArtifactsRoute;
-  "/automations": typeof AppAutomationsRoute;
-  "/dashboard": typeof AppDashboardRoute;
-  "/settings": typeof AppSettingsRouteWithChildren;
-  "/api/agent": typeof ApiAgentRoute;
-  "/api/artifacts": typeof ApiArtifactsRouteWithChildren;
-  "/api/automations": typeof ApiAutomationsRouteWithChildren;
-  "/api/chat": typeof ApiChatRoute;
-  "/api/chat-stream": typeof ApiChatStreamRoute;
-  "/api/dashboard": typeof ApiDashboardRouteWithChildren;
-  "/api/prompt-attachments": typeof ApiPromptAttachmentsRouteWithChildren;
-  "/api/threads": typeof ApiThreadsRouteWithChildren;
-  "/v2/chat": typeof V2ChatRouteWithChildren;
-  "/v2/": typeof V2IndexRoute;
-  "/chat/$threadId": typeof AppChatThreadIdRoute;
-  "/settings/appearance": typeof AppSettingsAppearanceRoute;
-  "/settings/data": typeof AppSettingsDataRoute;
-  "/settings/mcp": typeof AppSettingsMcpRoute;
-  "/settings/model": typeof AppSettingsModelRoute;
-  "/api/artifacts/$artifactId": typeof ApiArtifactsArtifactIdRoute;
-  "/api/automations/$automationId": typeof ApiAutomationsAutomationIdRouteWithChildren;
-  "/api/dashboard/history": typeof ApiDashboardHistoryRoute;
-  "/api/mcp/servers": typeof ApiMcpServersRoute;
-  "/api/mcp/tools": typeof ApiMcpToolsRoute;
-  "/api/prompt-attachments/$attachmentId": typeof ApiPromptAttachmentsAttachmentIdRoute;
-  "/api/settings/mcp-token": typeof ApiSettingsMcpTokenRoute;
-  "/api/threads/$threadId": typeof ApiThreadsThreadIdRoute;
-  "/api/v2/chat": typeof ApiV2ChatRoute;
-  "/api/v2/chat-stream": typeof ApiV2ChatStreamRoute;
-  "/v2/chat/$threadId": typeof V2ChatThreadIdRoute;
-  "/settings/": typeof AppSettingsIndexRoute;
-  "/api/automations/$automationId/runs": typeof ApiAutomationsAutomationIdRunsRoute;
-  "/api/dashboard/snapshots/$snapshotId": typeof ApiDashboardSnapshotsSnapshotIdRoute;
+  '/': typeof AppIndexRoute
+  '/health': typeof HealthRoute
+  '/v2': typeof V2RouteWithChildren
+  '/artifacts': typeof AppArtifactsRoute
+  '/automations': typeof AppAutomationsRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/settings': typeof AppSettingsRouteWithChildren
+  '/api/agent': typeof ApiAgentRoute
+  '/api/artifacts': typeof ApiArtifactsRouteWithChildren
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
+  '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/v2/chat': typeof V2ChatRouteWithChildren
+  '/v2/': typeof V2IndexRoute
+  '/chat/$threadId': typeof AppChatThreadIdRoute
+  '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/data': typeof AppSettingsDataRoute
+  '/settings/mcp': typeof AppSettingsMcpRoute
+  '/settings/model': typeof AppSettingsModelRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/dashboard/history': typeof ApiDashboardHistoryRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/settings/': typeof AppSettingsIndexRoute
+  '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
+  '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
 }
 export interface FileRoutesByTo {
-  "/health": typeof HealthRoute;
-  "/artifacts": typeof AppArtifactsRoute;
-  "/automations": typeof AppAutomationsRoute;
-  "/dashboard": typeof AppDashboardRoute;
-  "/api/agent": typeof ApiAgentRoute;
-  "/api/artifacts": typeof ApiArtifactsRouteWithChildren;
-  "/api/automations": typeof ApiAutomationsRouteWithChildren;
-  "/api/chat": typeof ApiChatRoute;
-  "/api/chat-stream": typeof ApiChatStreamRoute;
-  "/api/dashboard": typeof ApiDashboardRouteWithChildren;
-  "/api/prompt-attachments": typeof ApiPromptAttachmentsRouteWithChildren;
-  "/api/threads": typeof ApiThreadsRouteWithChildren;
-  "/v2/chat": typeof V2ChatRouteWithChildren;
-  "/": typeof AppIndexRoute;
-  "/v2": typeof V2IndexRoute;
-  "/chat/$threadId": typeof AppChatThreadIdRoute;
-  "/settings/appearance": typeof AppSettingsAppearanceRoute;
-  "/settings/data": typeof AppSettingsDataRoute;
-  "/settings/mcp": typeof AppSettingsMcpRoute;
-  "/settings/model": typeof AppSettingsModelRoute;
-  "/api/artifacts/$artifactId": typeof ApiArtifactsArtifactIdRoute;
-  "/api/automations/$automationId": typeof ApiAutomationsAutomationIdRouteWithChildren;
-  "/api/dashboard/history": typeof ApiDashboardHistoryRoute;
-  "/api/mcp/servers": typeof ApiMcpServersRoute;
-  "/api/mcp/tools": typeof ApiMcpToolsRoute;
-  "/api/prompt-attachments/$attachmentId": typeof ApiPromptAttachmentsAttachmentIdRoute;
-  "/api/settings/mcp-token": typeof ApiSettingsMcpTokenRoute;
-  "/api/threads/$threadId": typeof ApiThreadsThreadIdRoute;
-  "/api/v2/chat": typeof ApiV2ChatRoute;
-  "/api/v2/chat-stream": typeof ApiV2ChatStreamRoute;
-  "/v2/chat/$threadId": typeof V2ChatThreadIdRoute;
-  "/settings": typeof AppSettingsIndexRoute;
-  "/api/automations/$automationId/runs": typeof ApiAutomationsAutomationIdRunsRoute;
-  "/api/dashboard/snapshots/$snapshotId": typeof ApiDashboardSnapshotsSnapshotIdRoute;
+  '/health': typeof HealthRoute
+  '/artifacts': typeof AppArtifactsRoute
+  '/automations': typeof AppAutomationsRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/api/agent': typeof ApiAgentRoute
+  '/api/artifacts': typeof ApiArtifactsRouteWithChildren
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
+  '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/v2/chat': typeof V2ChatRouteWithChildren
+  '/': typeof AppIndexRoute
+  '/v2': typeof V2IndexRoute
+  '/chat/$threadId': typeof AppChatThreadIdRoute
+  '/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/settings/data': typeof AppSettingsDataRoute
+  '/settings/mcp': typeof AppSettingsMcpRoute
+  '/settings/model': typeof AppSettingsModelRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/dashboard/history': typeof ApiDashboardHistoryRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/settings': typeof AppSettingsIndexRoute
+  '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
+  '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/_app": typeof AppRouteWithChildren;
-  "/health": typeof HealthRoute;
-  "/v2": typeof V2RouteWithChildren;
-  "/_app/artifacts": typeof AppArtifactsRoute;
-  "/_app/automations": typeof AppAutomationsRoute;
-  "/_app/dashboard": typeof AppDashboardRoute;
-  "/_app/settings": typeof AppSettingsRouteWithChildren;
-  "/api/agent": typeof ApiAgentRoute;
-  "/api/artifacts": typeof ApiArtifactsRouteWithChildren;
-  "/api/automations": typeof ApiAutomationsRouteWithChildren;
-  "/api/chat": typeof ApiChatRoute;
-  "/api/chat-stream": typeof ApiChatStreamRoute;
-  "/api/dashboard": typeof ApiDashboardRouteWithChildren;
-  "/api/prompt-attachments": typeof ApiPromptAttachmentsRouteWithChildren;
-  "/api/threads": typeof ApiThreadsRouteWithChildren;
-  "/v2/chat": typeof V2ChatRouteWithChildren;
-  "/_app/": typeof AppIndexRoute;
-  "/v2/": typeof V2IndexRoute;
-  "/_app/chat/$threadId": typeof AppChatThreadIdRoute;
-  "/_app/settings/appearance": typeof AppSettingsAppearanceRoute;
-  "/_app/settings/data": typeof AppSettingsDataRoute;
-  "/_app/settings/mcp": typeof AppSettingsMcpRoute;
-  "/_app/settings/model": typeof AppSettingsModelRoute;
-  "/api/artifacts/$artifactId": typeof ApiArtifactsArtifactIdRoute;
-  "/api/automations/$automationId": typeof ApiAutomationsAutomationIdRouteWithChildren;
-  "/api/dashboard/history": typeof ApiDashboardHistoryRoute;
-  "/api/mcp/servers": typeof ApiMcpServersRoute;
-  "/api/mcp/tools": typeof ApiMcpToolsRoute;
-  "/api/prompt-attachments/$attachmentId": typeof ApiPromptAttachmentsAttachmentIdRoute;
-  "/api/settings/mcp-token": typeof ApiSettingsMcpTokenRoute;
-  "/api/threads/$threadId": typeof ApiThreadsThreadIdRoute;
-  "/api/v2/chat": typeof ApiV2ChatRoute;
-  "/api/v2/chat-stream": typeof ApiV2ChatStreamRoute;
-  "/v2/chat/$threadId": typeof V2ChatThreadIdRoute;
-  "/_app/settings/": typeof AppSettingsIndexRoute;
-  "/api/automations/$automationId/runs": typeof ApiAutomationsAutomationIdRunsRoute;
-  "/api/dashboard/snapshots/$snapshotId": typeof ApiDashboardSnapshotsSnapshotIdRoute;
+  __root__: typeof rootRouteImport
+  '/_app': typeof AppRouteWithChildren
+  '/health': typeof HealthRoute
+  '/v2': typeof V2RouteWithChildren
+  '/_app/artifacts': typeof AppArtifactsRoute
+  '/_app/automations': typeof AppAutomationsRoute
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/settings': typeof AppSettingsRouteWithChildren
+  '/api/agent': typeof ApiAgentRoute
+  '/api/artifacts': typeof ApiArtifactsRouteWithChildren
+  '/api/automations': typeof ApiAutomationsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-stream': typeof ApiChatStreamRoute
+  '/api/dashboard': typeof ApiDashboardRouteWithChildren
+  '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
+  '/api/threads': typeof ApiThreadsRouteWithChildren
+  '/v2/chat': typeof V2ChatRouteWithChildren
+  '/_app/': typeof AppIndexRoute
+  '/v2/': typeof V2IndexRoute
+  '/_app/chat/$threadId': typeof AppChatThreadIdRoute
+  '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
+  '/_app/settings/data': typeof AppSettingsDataRoute
+  '/_app/settings/mcp': typeof AppSettingsMcpRoute
+  '/_app/settings/model': typeof AppSettingsModelRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/automations/$automationId': typeof ApiAutomationsAutomationIdRouteWithChildren
+  '/api/dashboard/history': typeof ApiDashboardHistoryRoute
+  '/api/mcp/servers': typeof ApiMcpServersRoute
+  '/api/mcp/tools': typeof ApiMcpToolsRoute
+  '/api/prompt-attachments/$attachmentId': typeof ApiPromptAttachmentsAttachmentIdRoute
+  '/api/settings/mcp-token': typeof ApiSettingsMcpTokenRoute
+  '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
+  '/api/v2/chat': typeof ApiV2ChatRoute
+  '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/_app/settings/': typeof AppSettingsIndexRoute
+  '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
+  '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/health"
-    | "/v2"
-    | "/artifacts"
-    | "/automations"
-    | "/dashboard"
-    | "/settings"
-    | "/api/agent"
-    | "/api/artifacts"
-    | "/api/automations"
-    | "/api/chat"
-    | "/api/chat-stream"
-    | "/api/dashboard"
-    | "/api/prompt-attachments"
-    | "/api/threads"
-    | "/v2/chat"
-    | "/v2/"
-    | "/chat/$threadId"
-    | "/settings/appearance"
-    | "/settings/data"
-    | "/settings/mcp"
-    | "/settings/model"
-    | "/api/artifacts/$artifactId"
-    | "/api/automations/$automationId"
-    | "/api/dashboard/history"
-    | "/api/mcp/servers"
-    | "/api/mcp/tools"
-    | "/api/prompt-attachments/$attachmentId"
-    | "/api/settings/mcp-token"
-    | "/api/threads/$threadId"
-    | "/api/v2/chat"
-    | "/api/v2/chat-stream"
-    | "/v2/chat/$threadId"
-    | "/settings/"
-    | "/api/automations/$automationId/runs"
-    | "/api/dashboard/snapshots/$snapshotId";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/health'
+    | '/v2'
+    | '/artifacts'
+    | '/automations'
+    | '/dashboard'
+    | '/settings'
+    | '/api/agent'
+    | '/api/artifacts'
+    | '/api/automations'
+    | '/api/chat'
+    | '/api/chat-stream'
+    | '/api/dashboard'
+    | '/api/prompt-attachments'
+    | '/api/threads'
+    | '/v2/chat'
+    | '/v2/'
+    | '/chat/$threadId'
+    | '/settings/appearance'
+    | '/settings/data'
+    | '/settings/mcp'
+    | '/settings/model'
+    | '/api/artifacts/$artifactId'
+    | '/api/automations/$automationId'
+    | '/api/dashboard/history'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
+    | '/api/settings/mcp-token'
+    | '/api/threads/$threadId'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
+    | '/settings/'
+    | '/api/automations/$automationId/runs'
+    | '/api/dashboard/snapshots/$snapshotId'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/health"
-    | "/artifacts"
-    | "/automations"
-    | "/dashboard"
-    | "/api/agent"
-    | "/api/artifacts"
-    | "/api/automations"
-    | "/api/chat"
-    | "/api/chat-stream"
-    | "/api/dashboard"
-    | "/api/prompt-attachments"
-    | "/api/threads"
-    | "/v2/chat"
-    | "/"
-    | "/v2"
-    | "/chat/$threadId"
-    | "/settings/appearance"
-    | "/settings/data"
-    | "/settings/mcp"
-    | "/settings/model"
-    | "/api/artifacts/$artifactId"
-    | "/api/automations/$automationId"
-    | "/api/dashboard/history"
-    | "/api/mcp/servers"
-    | "/api/mcp/tools"
-    | "/api/prompt-attachments/$attachmentId"
-    | "/api/settings/mcp-token"
-    | "/api/threads/$threadId"
-    | "/api/v2/chat"
-    | "/api/v2/chat-stream"
-    | "/v2/chat/$threadId"
-    | "/settings"
-    | "/api/automations/$automationId/runs"
-    | "/api/dashboard/snapshots/$snapshotId";
+    | '/health'
+    | '/artifacts'
+    | '/automations'
+    | '/dashboard'
+    | '/api/agent'
+    | '/api/artifacts'
+    | '/api/automations'
+    | '/api/chat'
+    | '/api/chat-stream'
+    | '/api/dashboard'
+    | '/api/prompt-attachments'
+    | '/api/threads'
+    | '/v2/chat'
+    | '/'
+    | '/v2'
+    | '/chat/$threadId'
+    | '/settings/appearance'
+    | '/settings/data'
+    | '/settings/mcp'
+    | '/settings/model'
+    | '/api/artifacts/$artifactId'
+    | '/api/automations/$automationId'
+    | '/api/dashboard/history'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
+    | '/api/settings/mcp-token'
+    | '/api/threads/$threadId'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
+    | '/settings'
+    | '/api/automations/$automationId/runs'
+    | '/api/dashboard/snapshots/$snapshotId'
   id:
-    | "__root__"
-    | "/_app"
-    | "/health"
-    | "/v2"
-    | "/_app/artifacts"
-    | "/_app/automations"
-    | "/_app/dashboard"
-    | "/_app/settings"
-    | "/api/agent"
-    | "/api/artifacts"
-    | "/api/automations"
-    | "/api/chat"
-    | "/api/chat-stream"
-    | "/api/dashboard"
-    | "/api/prompt-attachments"
-    | "/api/threads"
-    | "/v2/chat"
-    | "/_app/"
-    | "/v2/"
-    | "/_app/chat/$threadId"
-    | "/_app/settings/appearance"
-    | "/_app/settings/data"
-    | "/_app/settings/mcp"
-    | "/_app/settings/model"
-    | "/api/artifacts/$artifactId"
-    | "/api/automations/$automationId"
-    | "/api/dashboard/history"
-    | "/api/mcp/servers"
-    | "/api/mcp/tools"
-    | "/api/prompt-attachments/$attachmentId"
-    | "/api/settings/mcp-token"
-    | "/api/threads/$threadId"
-    | "/api/v2/chat"
-    | "/api/v2/chat-stream"
-    | "/v2/chat/$threadId"
-    | "/_app/settings/"
-    | "/api/automations/$automationId/runs"
-    | "/api/dashboard/snapshots/$snapshotId";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/_app'
+    | '/health'
+    | '/v2'
+    | '/_app/artifacts'
+    | '/_app/automations'
+    | '/_app/dashboard'
+    | '/_app/settings'
+    | '/api/agent'
+    | '/api/artifacts'
+    | '/api/automations'
+    | '/api/chat'
+    | '/api/chat-stream'
+    | '/api/dashboard'
+    | '/api/prompt-attachments'
+    | '/api/threads'
+    | '/v2/chat'
+    | '/_app/'
+    | '/v2/'
+    | '/_app/chat/$threadId'
+    | '/_app/settings/appearance'
+    | '/_app/settings/data'
+    | '/_app/settings/mcp'
+    | '/_app/settings/model'
+    | '/api/artifacts/$artifactId'
+    | '/api/automations/$automationId'
+    | '/api/dashboard/history'
+    | '/api/mcp/servers'
+    | '/api/mcp/tools'
+    | '/api/prompt-attachments/$attachmentId'
+    | '/api/settings/mcp-token'
+    | '/api/threads/$threadId'
+    | '/api/v2/chat'
+    | '/api/v2/chat-stream'
+    | '/v2/chat/$threadId'
+    | '/_app/settings/'
+    | '/api/automations/$automationId/runs'
+    | '/api/dashboard/snapshots/$snapshotId'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AppRoute: typeof AppRouteWithChildren;
-  HealthRoute: typeof HealthRoute;
-  V2Route: typeof V2RouteWithChildren;
-  ApiAgentRoute: typeof ApiAgentRoute;
-  ApiArtifactsRoute: typeof ApiArtifactsRouteWithChildren;
-  ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren;
-  ApiChatRoute: typeof ApiChatRoute;
-  ApiChatStreamRoute: typeof ApiChatStreamRoute;
-  ApiDashboardRoute: typeof ApiDashboardRouteWithChildren;
-  ApiPromptAttachmentsRoute: typeof ApiPromptAttachmentsRouteWithChildren;
-  ApiThreadsRoute: typeof ApiThreadsRouteWithChildren;
-  ApiMcpServersRoute: typeof ApiMcpServersRoute;
-  ApiMcpToolsRoute: typeof ApiMcpToolsRoute;
-  ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute;
-  ApiV2ChatRoute: typeof ApiV2ChatRoute;
-  ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute;
+  AppRoute: typeof AppRouteWithChildren
+  HealthRoute: typeof HealthRoute
+  V2Route: typeof V2RouteWithChildren
+  ApiAgentRoute: typeof ApiAgentRoute
+  ApiArtifactsRoute: typeof ApiArtifactsRouteWithChildren
+  ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
+  ApiChatRoute: typeof ApiChatRoute
+  ApiChatStreamRoute: typeof ApiChatStreamRoute
+  ApiDashboardRoute: typeof ApiDashboardRouteWithChildren
+  ApiPromptAttachmentsRoute: typeof ApiPromptAttachmentsRouteWithChildren
+  ApiThreadsRoute: typeof ApiThreadsRouteWithChildren
+  ApiMcpServersRoute: typeof ApiMcpServersRoute
+  ApiMcpToolsRoute: typeof ApiMcpToolsRoute
+  ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
+  ApiV2ChatRoute: typeof ApiV2ChatRoute
+  ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/v2": {
-      id: "/v2";
-      path: "/v2";
-      fullPath: "/v2";
-      preLoaderRoute: typeof V2RouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/health": {
-      id: "/health";
-      path: "/health";
-      fullPath: "/health";
-      preLoaderRoute: typeof HealthRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app": {
-      id: "/_app";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof AppRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/v2/": {
-      id: "/v2/";
-      path: "/";
-      fullPath: "/v2/";
-      preLoaderRoute: typeof V2IndexRouteImport;
-      parentRoute: typeof V2Route;
-    };
-    "/_app/": {
-      id: "/_app/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof AppIndexRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/v2/chat": {
-      id: "/v2/chat";
-      path: "/chat";
-      fullPath: "/v2/chat";
-      preLoaderRoute: typeof V2ChatRouteImport;
-      parentRoute: typeof V2Route;
-    };
-    "/api/threads": {
-      id: "/api/threads";
-      path: "/api/threads";
-      fullPath: "/api/threads";
-      preLoaderRoute: typeof ApiThreadsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/prompt-attachments": {
-      id: "/api/prompt-attachments";
-      path: "/api/prompt-attachments";
-      fullPath: "/api/prompt-attachments";
-      preLoaderRoute: typeof ApiPromptAttachmentsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/dashboard": {
-      id: "/api/dashboard";
-      path: "/api/dashboard";
-      fullPath: "/api/dashboard";
-      preLoaderRoute: typeof ApiDashboardRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/chat-stream": {
-      id: "/api/chat-stream";
-      path: "/api/chat-stream";
-      fullPath: "/api/chat-stream";
-      preLoaderRoute: typeof ApiChatStreamRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/chat": {
-      id: "/api/chat";
-      path: "/api/chat";
-      fullPath: "/api/chat";
-      preLoaderRoute: typeof ApiChatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/automations": {
-      id: "/api/automations";
-      path: "/api/automations";
-      fullPath: "/api/automations";
-      preLoaderRoute: typeof ApiAutomationsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/artifacts": {
-      id: "/api/artifacts";
-      path: "/api/artifacts";
-      fullPath: "/api/artifacts";
-      preLoaderRoute: typeof ApiArtifactsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/agent": {
-      id: "/api/agent";
-      path: "/api/agent";
-      fullPath: "/api/agent";
-      preLoaderRoute: typeof ApiAgentRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app/settings": {
-      id: "/_app/settings";
-      path: "/settings";
-      fullPath: "/settings";
-      preLoaderRoute: typeof AppSettingsRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/dashboard": {
-      id: "/_app/dashboard";
-      path: "/dashboard";
-      fullPath: "/dashboard";
-      preLoaderRoute: typeof AppDashboardRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/automations": {
-      id: "/_app/automations";
-      path: "/automations";
-      fullPath: "/automations";
-      preLoaderRoute: typeof AppAutomationsRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/artifacts": {
-      id: "/_app/artifacts";
-      path: "/artifacts";
-      fullPath: "/artifacts";
-      preLoaderRoute: typeof AppArtifactsRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/settings/": {
-      id: "/_app/settings/";
-      path: "/";
-      fullPath: "/settings/";
-      preLoaderRoute: typeof AppSettingsIndexRouteImport;
-      parentRoute: typeof AppSettingsRoute;
-    };
-    "/v2/chat/$threadId": {
-      id: "/v2/chat/$threadId";
-      path: "/$threadId";
-      fullPath: "/v2/chat/$threadId";
-      preLoaderRoute: typeof V2ChatThreadIdRouteImport;
-      parentRoute: typeof V2ChatRoute;
-    };
-    "/api/v2/chat-stream": {
-      id: "/api/v2/chat-stream";
-      path: "/api/v2/chat-stream";
-      fullPath: "/api/v2/chat-stream";
-      preLoaderRoute: typeof ApiV2ChatStreamRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/v2/chat": {
-      id: "/api/v2/chat";
-      path: "/api/v2/chat";
-      fullPath: "/api/v2/chat";
-      preLoaderRoute: typeof ApiV2ChatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/threads/$threadId": {
-      id: "/api/threads/$threadId";
-      path: "/$threadId";
-      fullPath: "/api/threads/$threadId";
-      preLoaderRoute: typeof ApiThreadsThreadIdRouteImport;
-      parentRoute: typeof ApiThreadsRoute;
-    };
-    "/api/settings/mcp-token": {
-      id: "/api/settings/mcp-token";
-      path: "/api/settings/mcp-token";
-      fullPath: "/api/settings/mcp-token";
-      preLoaderRoute: typeof ApiSettingsMcpTokenRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/prompt-attachments/$attachmentId": {
-      id: "/api/prompt-attachments/$attachmentId";
-      path: "/$attachmentId";
-      fullPath: "/api/prompt-attachments/$attachmentId";
-      preLoaderRoute: typeof ApiPromptAttachmentsAttachmentIdRouteImport;
-      parentRoute: typeof ApiPromptAttachmentsRoute;
-    };
-    "/api/mcp/tools": {
-      id: "/api/mcp/tools";
-      path: "/api/mcp/tools";
-      fullPath: "/api/mcp/tools";
-      preLoaderRoute: typeof ApiMcpToolsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/mcp/servers": {
-      id: "/api/mcp/servers";
-      path: "/api/mcp/servers";
-      fullPath: "/api/mcp/servers";
-      preLoaderRoute: typeof ApiMcpServersRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/dashboard/history": {
-      id: "/api/dashboard/history";
-      path: "/history";
-      fullPath: "/api/dashboard/history";
-      preLoaderRoute: typeof ApiDashboardHistoryRouteImport;
-      parentRoute: typeof ApiDashboardRoute;
-    };
-    "/api/automations/$automationId": {
-      id: "/api/automations/$automationId";
-      path: "/$automationId";
-      fullPath: "/api/automations/$automationId";
-      preLoaderRoute: typeof ApiAutomationsAutomationIdRouteImport;
-      parentRoute: typeof ApiAutomationsRoute;
-    };
-    "/api/artifacts/$artifactId": {
-      id: "/api/artifacts/$artifactId";
-      path: "/$artifactId";
-      fullPath: "/api/artifacts/$artifactId";
-      preLoaderRoute: typeof ApiArtifactsArtifactIdRouteImport;
-      parentRoute: typeof ApiArtifactsRoute;
-    };
-    "/_app/settings/model": {
-      id: "/_app/settings/model";
-      path: "/model";
-      fullPath: "/settings/model";
-      preLoaderRoute: typeof AppSettingsModelRouteImport;
-      parentRoute: typeof AppSettingsRoute;
-    };
-    "/_app/settings/mcp": {
-      id: "/_app/settings/mcp";
-      path: "/mcp";
-      fullPath: "/settings/mcp";
-      preLoaderRoute: typeof AppSettingsMcpRouteImport;
-      parentRoute: typeof AppSettingsRoute;
-    };
-    "/_app/settings/data": {
-      id: "/_app/settings/data";
-      path: "/data";
-      fullPath: "/settings/data";
-      preLoaderRoute: typeof AppSettingsDataRouteImport;
-      parentRoute: typeof AppSettingsRoute;
-    };
-    "/_app/settings/appearance": {
-      id: "/_app/settings/appearance";
-      path: "/appearance";
-      fullPath: "/settings/appearance";
-      preLoaderRoute: typeof AppSettingsAppearanceRouteImport;
-      parentRoute: typeof AppSettingsRoute;
-    };
-    "/_app/chat/$threadId": {
-      id: "/_app/chat/$threadId";
-      path: "/chat/$threadId";
-      fullPath: "/chat/$threadId";
-      preLoaderRoute: typeof AppChatThreadIdRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/api/dashboard/snapshots/$snapshotId": {
-      id: "/api/dashboard/snapshots/$snapshotId";
-      path: "/snapshots/$snapshotId";
-      fullPath: "/api/dashboard/snapshots/$snapshotId";
-      preLoaderRoute: typeof ApiDashboardSnapshotsSnapshotIdRouteImport;
-      parentRoute: typeof ApiDashboardRoute;
-    };
-    "/api/automations/$automationId/runs": {
-      id: "/api/automations/$automationId/runs";
-      path: "/runs";
-      fullPath: "/api/automations/$automationId/runs";
-      preLoaderRoute: typeof ApiAutomationsAutomationIdRunsRouteImport;
-      parentRoute: typeof ApiAutomationsAutomationIdRoute;
-    };
+    '/v2': {
+      id: '/v2'
+      path: '/v2'
+      fullPath: '/v2'
+      preLoaderRoute: typeof V2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v2/': {
+      id: '/v2/'
+      path: '/'
+      fullPath: '/v2/'
+      preLoaderRoute: typeof V2IndexRouteImport
+      parentRoute: typeof V2Route
+    }
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/v2/chat': {
+      id: '/v2/chat'
+      path: '/chat'
+      fullPath: '/v2/chat'
+      preLoaderRoute: typeof V2ChatRouteImport
+      parentRoute: typeof V2Route
+    }
+    '/api/threads': {
+      id: '/api/threads'
+      path: '/api/threads'
+      fullPath: '/api/threads'
+      preLoaderRoute: typeof ApiThreadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prompt-attachments': {
+      id: '/api/prompt-attachments'
+      path: '/api/prompt-attachments'
+      fullPath: '/api/prompt-attachments'
+      preLoaderRoute: typeof ApiPromptAttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard': {
+      id: '/api/dashboard'
+      path: '/api/dashboard'
+      fullPath: '/api/dashboard'
+      preLoaderRoute: typeof ApiDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat-stream': {
+      id: '/api/chat-stream'
+      path: '/api/chat-stream'
+      fullPath: '/api/chat-stream'
+      preLoaderRoute: typeof ApiChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/automations': {
+      id: '/api/automations'
+      path: '/api/automations'
+      fullPath: '/api/automations'
+      preLoaderRoute: typeof ApiAutomationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/artifacts': {
+      id: '/api/artifacts'
+      path: '/api/artifacts'
+      fullPath: '/api/artifacts'
+      preLoaderRoute: typeof ApiArtifactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent': {
+      id: '/api/agent'
+      path: '/api/agent'
+      fullPath: '/api/agent'
+      preLoaderRoute: typeof ApiAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/automations': {
+      id: '/_app/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AppAutomationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/artifacts': {
+      id: '/_app/artifacts'
+      path: '/artifacts'
+      fullPath: '/artifacts'
+      preLoaderRoute: typeof AppArtifactsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/v2/chat/$threadId': {
+      id: '/v2/chat/$threadId'
+      path: '/$threadId'
+      fullPath: '/v2/chat/$threadId'
+      preLoaderRoute: typeof V2ChatThreadIdRouteImport
+      parentRoute: typeof V2ChatRoute
+    }
+    '/api/v2/chat-stream': {
+      id: '/api/v2/chat-stream'
+      path: '/api/v2/chat-stream'
+      fullPath: '/api/v2/chat-stream'
+      preLoaderRoute: typeof ApiV2ChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/chat': {
+      id: '/api/v2/chat'
+      path: '/api/v2/chat'
+      fullPath: '/api/v2/chat'
+      preLoaderRoute: typeof ApiV2ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/threads/$threadId': {
+      id: '/api/threads/$threadId'
+      path: '/$threadId'
+      fullPath: '/api/threads/$threadId'
+      preLoaderRoute: typeof ApiThreadsThreadIdRouteImport
+      parentRoute: typeof ApiThreadsRoute
+    }
+    '/api/settings/mcp-token': {
+      id: '/api/settings/mcp-token'
+      path: '/api/settings/mcp-token'
+      fullPath: '/api/settings/mcp-token'
+      preLoaderRoute: typeof ApiSettingsMcpTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prompt-attachments/$attachmentId': {
+      id: '/api/prompt-attachments/$attachmentId'
+      path: '/$attachmentId'
+      fullPath: '/api/prompt-attachments/$attachmentId'
+      preLoaderRoute: typeof ApiPromptAttachmentsAttachmentIdRouteImport
+      parentRoute: typeof ApiPromptAttachmentsRoute
+    }
+    '/api/mcp/tools': {
+      id: '/api/mcp/tools'
+      path: '/api/mcp/tools'
+      fullPath: '/api/mcp/tools'
+      preLoaderRoute: typeof ApiMcpToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp/servers': {
+      id: '/api/mcp/servers'
+      path: '/api/mcp/servers'
+      fullPath: '/api/mcp/servers'
+      preLoaderRoute: typeof ApiMcpServersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard/history': {
+      id: '/api/dashboard/history'
+      path: '/history'
+      fullPath: '/api/dashboard/history'
+      preLoaderRoute: typeof ApiDashboardHistoryRouteImport
+      parentRoute: typeof ApiDashboardRoute
+    }
+    '/api/automations/$automationId': {
+      id: '/api/automations/$automationId'
+      path: '/$automationId'
+      fullPath: '/api/automations/$automationId'
+      preLoaderRoute: typeof ApiAutomationsAutomationIdRouteImport
+      parentRoute: typeof ApiAutomationsRoute
+    }
+    '/api/artifacts/$artifactId': {
+      id: '/api/artifacts/$artifactId'
+      path: '/$artifactId'
+      fullPath: '/api/artifacts/$artifactId'
+      preLoaderRoute: typeof ApiArtifactsArtifactIdRouteImport
+      parentRoute: typeof ApiArtifactsRoute
+    }
+    '/_app/settings/model': {
+      id: '/_app/settings/model'
+      path: '/model'
+      fullPath: '/settings/model'
+      preLoaderRoute: typeof AppSettingsModelRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/mcp': {
+      id: '/_app/settings/mcp'
+      path: '/mcp'
+      fullPath: '/settings/mcp'
+      preLoaderRoute: typeof AppSettingsMcpRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/data': {
+      id: '/_app/settings/data'
+      path: '/data'
+      fullPath: '/settings/data'
+      preLoaderRoute: typeof AppSettingsDataRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/appearance': {
+      id: '/_app/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof AppSettingsAppearanceRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/chat/$threadId': {
+      id: '/_app/chat/$threadId'
+      path: '/chat/$threadId'
+      fullPath: '/chat/$threadId'
+      preLoaderRoute: typeof AppChatThreadIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/api/dashboard/snapshots/$snapshotId': {
+      id: '/api/dashboard/snapshots/$snapshotId'
+      path: '/snapshots/$snapshotId'
+      fullPath: '/api/dashboard/snapshots/$snapshotId'
+      preLoaderRoute: typeof ApiDashboardSnapshotsSnapshotIdRouteImport
+      parentRoute: typeof ApiDashboardRoute
+    }
+    '/api/automations/$automationId/runs': {
+      id: '/api/automations/$automationId/runs'
+      path: '/runs'
+      fullPath: '/api/automations/$automationId/runs'
+      preLoaderRoute: typeof ApiAutomationsAutomationIdRunsRouteImport
+      parentRoute: typeof ApiAutomationsAutomationIdRoute
+    }
   }
 }
 
 interface AppSettingsRouteChildren {
-  AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute;
-  AppSettingsDataRoute: typeof AppSettingsDataRoute;
-  AppSettingsMcpRoute: typeof AppSettingsMcpRoute;
-  AppSettingsModelRoute: typeof AppSettingsModelRoute;
-  AppSettingsIndexRoute: typeof AppSettingsIndexRoute;
+  AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
+  AppSettingsDataRoute: typeof AppSettingsDataRoute
+  AppSettingsMcpRoute: typeof AppSettingsMcpRoute
+  AppSettingsModelRoute: typeof AppSettingsModelRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
@@ -763,19 +763,19 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsMcpRoute: AppSettingsMcpRoute,
   AppSettingsModelRoute: AppSettingsModelRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
-};
+}
 
 const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
   AppSettingsRouteChildren,
-);
+)
 
 interface AppRouteChildren {
-  AppArtifactsRoute: typeof AppArtifactsRoute;
-  AppAutomationsRoute: typeof AppAutomationsRoute;
-  AppDashboardRoute: typeof AppDashboardRoute;
-  AppSettingsRoute: typeof AppSettingsRouteWithChildren;
-  AppIndexRoute: typeof AppIndexRoute;
-  AppChatThreadIdRoute: typeof AppChatThreadIdRoute;
+  AppArtifactsRoute: typeof AppArtifactsRoute
+  AppAutomationsRoute: typeof AppAutomationsRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+  AppChatThreadIdRoute: typeof AppChatThreadIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -785,107 +785,107 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppChatThreadIdRoute: AppChatThreadIdRoute,
-};
+}
 
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface V2ChatRouteChildren {
-  V2ChatThreadIdRoute: typeof V2ChatThreadIdRoute;
+  V2ChatThreadIdRoute: typeof V2ChatThreadIdRoute
 }
 
 const V2ChatRouteChildren: V2ChatRouteChildren = {
   V2ChatThreadIdRoute: V2ChatThreadIdRoute,
-};
+}
 
 const V2ChatRouteWithChildren =
-  V2ChatRoute._addFileChildren(V2ChatRouteChildren);
+  V2ChatRoute._addFileChildren(V2ChatRouteChildren)
 
 interface V2RouteChildren {
-  V2ChatRoute: typeof V2ChatRouteWithChildren;
-  V2IndexRoute: typeof V2IndexRoute;
+  V2ChatRoute: typeof V2ChatRouteWithChildren
+  V2IndexRoute: typeof V2IndexRoute
 }
 
 const V2RouteChildren: V2RouteChildren = {
   V2ChatRoute: V2ChatRouteWithChildren,
   V2IndexRoute: V2IndexRoute,
-};
+}
 
-const V2RouteWithChildren = V2Route._addFileChildren(V2RouteChildren);
+const V2RouteWithChildren = V2Route._addFileChildren(V2RouteChildren)
 
 interface ApiArtifactsRouteChildren {
-  ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute;
+  ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute
 }
 
 const ApiArtifactsRouteChildren: ApiArtifactsRouteChildren = {
   ApiArtifactsArtifactIdRoute: ApiArtifactsArtifactIdRoute,
-};
+}
 
 const ApiArtifactsRouteWithChildren = ApiArtifactsRoute._addFileChildren(
   ApiArtifactsRouteChildren,
-);
+)
 
 interface ApiAutomationsAutomationIdRouteChildren {
-  ApiAutomationsAutomationIdRunsRoute: typeof ApiAutomationsAutomationIdRunsRoute;
+  ApiAutomationsAutomationIdRunsRoute: typeof ApiAutomationsAutomationIdRunsRoute
 }
 
 const ApiAutomationsAutomationIdRouteChildren: ApiAutomationsAutomationIdRouteChildren =
   {
     ApiAutomationsAutomationIdRunsRoute: ApiAutomationsAutomationIdRunsRoute,
-  };
+  }
 
 const ApiAutomationsAutomationIdRouteWithChildren =
   ApiAutomationsAutomationIdRoute._addFileChildren(
     ApiAutomationsAutomationIdRouteChildren,
-  );
+  )
 
 interface ApiAutomationsRouteChildren {
-  ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren;
+  ApiAutomationsAutomationIdRoute: typeof ApiAutomationsAutomationIdRouteWithChildren
 }
 
 const ApiAutomationsRouteChildren: ApiAutomationsRouteChildren = {
   ApiAutomationsAutomationIdRoute: ApiAutomationsAutomationIdRouteWithChildren,
-};
+}
 
 const ApiAutomationsRouteWithChildren = ApiAutomationsRoute._addFileChildren(
   ApiAutomationsRouteChildren,
-);
+)
 
 interface ApiDashboardRouteChildren {
-  ApiDashboardHistoryRoute: typeof ApiDashboardHistoryRoute;
-  ApiDashboardSnapshotsSnapshotIdRoute: typeof ApiDashboardSnapshotsSnapshotIdRoute;
+  ApiDashboardHistoryRoute: typeof ApiDashboardHistoryRoute
+  ApiDashboardSnapshotsSnapshotIdRoute: typeof ApiDashboardSnapshotsSnapshotIdRoute
 }
 
 const ApiDashboardRouteChildren: ApiDashboardRouteChildren = {
   ApiDashboardHistoryRoute: ApiDashboardHistoryRoute,
   ApiDashboardSnapshotsSnapshotIdRoute: ApiDashboardSnapshotsSnapshotIdRoute,
-};
+}
 
 const ApiDashboardRouteWithChildren = ApiDashboardRoute._addFileChildren(
   ApiDashboardRouteChildren,
-);
+)
 
 interface ApiPromptAttachmentsRouteChildren {
-  ApiPromptAttachmentsAttachmentIdRoute: typeof ApiPromptAttachmentsAttachmentIdRoute;
+  ApiPromptAttachmentsAttachmentIdRoute: typeof ApiPromptAttachmentsAttachmentIdRoute
 }
 
 const ApiPromptAttachmentsRouteChildren: ApiPromptAttachmentsRouteChildren = {
   ApiPromptAttachmentsAttachmentIdRoute: ApiPromptAttachmentsAttachmentIdRoute,
-};
+}
 
 const ApiPromptAttachmentsRouteWithChildren =
-  ApiPromptAttachmentsRoute._addFileChildren(ApiPromptAttachmentsRouteChildren);
+  ApiPromptAttachmentsRoute._addFileChildren(ApiPromptAttachmentsRouteChildren)
 
 interface ApiThreadsRouteChildren {
-  ApiThreadsThreadIdRoute: typeof ApiThreadsThreadIdRoute;
+  ApiThreadsThreadIdRoute: typeof ApiThreadsThreadIdRoute
 }
 
 const ApiThreadsRouteChildren: ApiThreadsRouteChildren = {
   ApiThreadsThreadIdRoute: ApiThreadsThreadIdRoute,
-};
+}
 
 const ApiThreadsRouteWithChildren = ApiThreadsRoute._addFileChildren(
   ApiThreadsRouteChildren,
-);
+)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
@@ -904,16 +904,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
   ApiV2ChatRoute: ApiV2ChatRoute,
   ApiV2ChatStreamRoute: ApiV2ChatStreamRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

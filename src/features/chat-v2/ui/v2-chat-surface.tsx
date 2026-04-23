@@ -1,7 +1,15 @@
 import { durableStreamConnection } from "@durable-streams/tanstack-ai-transport";
 import { useChat } from "@tanstack/ai-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { CopyIcon, RotateCcwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  MessageAction,
+  MessageActions,
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "~/components/ai-elements/message";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import {
   confirmPendingV2Thread,
@@ -18,6 +26,15 @@ type RuntimeTextPart = Extract<
   V2RuntimeMessage["parts"][number],
   { type: "text" }
 >;
+
+function getMessageFromRole(role: V2RuntimeMessage["role"]): "user" | "assistant" {
+  return role === "user" ? "user" : "assistant";
+}
+
+function copyMessageText(text: string): void {
+  if (!text.trim()) return;
+  void navigator.clipboard.writeText(text).catch(() => {});
+}
 
 type V2ChatSurfaceProps = {
   threadId: string;
@@ -49,6 +66,7 @@ export function V2ChatSurface({
   const {
     messages: runtimeMessages,
     sendMessage,
+    reload,
     status,
     stop,
     error,
@@ -102,6 +120,9 @@ export function V2ChatSurface({
   const displayMessages = runtimeMessages as Array<V2RuntimeMessage>;
   const isStreaming = status === "submitted" || status === "streaming";
   const submissionError = creationError ?? error?.message ?? null;
+  const lastAssistantMessageId = [...displayMessages]
+    .reverse()
+    .find((message) => message.role === "assistant")?.id;
 
   async function ensureDraftThreadReady(): Promise<void> {
     if (!isDraftThread) return;
@@ -148,22 +169,37 @@ export function V2ChatSurface({
                 .trim();
 
             return (
-              <div
+              <Message
                 key={message.id}
-                className={[
-                  "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                  message.role === "user"
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground",
-                ].join(" ")}
+                from={getMessageFromRole(message.role)}
+                id={`msg-${message.id}`}
               >
-                <div className="mb-1 text-[10px] tracking-wide uppercase opacity-70">
-                  {message.role}
-                </div>
-                <div className="break-words whitespace-pre-wrap">
-                  {renderText}
-                </div>
-              </div>
+                <MessageContent>
+                  <MessageResponse>{renderText}</MessageResponse>
+                </MessageContent>
+                <MessageActions>
+                  <MessageAction
+                    label="Copy message"
+                    onClick={() => copyMessageText(renderText)}
+                    tooltip="Copy message"
+                  >
+                    <CopyIcon />
+                  </MessageAction>
+                  {message.role === "assistant" &&
+                  message.id === lastAssistantMessageId ? (
+                    <MessageAction
+                      disabled={isStreaming}
+                      label="Regenerate response"
+                      onClick={() => {
+                        void reload().catch(() => {});
+                      }}
+                      tooltip="Regenerate response"
+                    >
+                      <RotateCcwIcon />
+                    </MessageAction>
+                  ) : null}
+                </MessageActions>
+              </Message>
             );
           })}
         </div>

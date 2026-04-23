@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/db";
 import { v2Messages } from "~/db/schema";
@@ -27,6 +27,24 @@ export async function listV2ThreadMessagesServer(
     .orderBy(asc(v2Messages.createdAt));
 
   return normalizeV2MessagesForRuntime(v2MessageArraySchema.parse(rows));
+}
+
+export async function hasV2MessageByIdServer(params: {
+  threadId: string;
+  messageId: string;
+}): Promise<boolean> {
+  const rows = await db
+    .select({ id: v2Messages.id })
+    .from(v2Messages)
+    .where(
+      and(
+        eq(v2Messages.threadId, params.threadId),
+        eq(v2Messages.id, params.messageId),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
 }
 
 export async function getV2ThreadSessionServer(

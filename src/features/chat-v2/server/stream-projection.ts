@@ -1,5 +1,5 @@
 import { materializeSnapshotFromDurableStream } from "@durable-streams/tanstack-ai-transport";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { RequestLogger } from "evlog";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
@@ -26,6 +26,7 @@ type ProjectV2StreamSnapshotOptions = {
   threadId: string;
   telemetry: V2AgentRunTelemetry;
   persistUserTurn: boolean;
+  replaceLatestAssistant?: boolean;
   userMessageId?: string;
   log?: RequestLogger;
 };
@@ -133,6 +134,36 @@ function findLastMessageIdByRole(
   return undefined;
 }
 
+function findSupersededAssistantIds(
+  messages: Array<ProjectedMessage>,
+): Array<string> {
+  const superseded: Array<string> = [];
+  let assistantIdsSinceLastUser: Array<string> = [];
+  let hasSeenUser = false;
+
+  const flushTurnAssistants = (): void => {
+    if (assistantIdsSinceLastUser.length > 1) {
+      superseded.push(...assistantIdsSinceLastUser.slice(0, -1));
+    }
+    assistantIdsSinceLastUser = [];
+  };
+
+  for (const message of messages) {
+    if (message.role === "user") {
+      flushTurnAssistants();
+      hasSeenUser = true;
+      continue;
+    }
+
+    if (message.role === "assistant" && hasSeenUser) {
+      assistantIdsSinceLastUser.push(message.id);
+    }
+  }
+
+  flushTurnAssistants();
+  return superseded;
+}
+
 function createAssistantMetadata(
   telemetry: V2AgentRunTelemetry,
 ): Record<string, unknown> {
@@ -148,6 +179,7 @@ export async function projectV2StreamSnapshotToDb({
   threadId,
   telemetry,
   persistUserTurn,
+  replaceLatestAssistant = false,
   userMessageId,
   log,
 }: ProjectV2StreamSnapshotOptions): Promise<ProjectV2StreamSnapshotResult> {
@@ -181,6 +213,22 @@ export async function projectV2StreamSnapshotToDb({
   }
 
   const existingIds = new Set(existingRows.map((row) => row.id));
+  const supersededAssistantIds = new Set(
+    findSupersededAssistantIds(projectedMessages),
+  );
+  if (replaceLatestAssistant && supersededAssistantIds.size > 0) {
+    const supersededIds = [...supersededAssistantIds];
+    await db
+      .delete(v2Messages)
+      .where(
+        and(
+          eq(v2Messages.threadId, threadId),
+          inArray(v2Messages.id, supersededIds),
+        ),
+      );
+    supersededIds.forEach((id) => existingIds.delete(id));
+  }
+
   const latestUserId = persistUserTurn
     ? (userMessageId ?? findLastMessageIdByRole(projectedMessages, "user"))
     : undefined;
@@ -193,6 +241,7 @@ export async function projectV2StreamSnapshotToDb({
 
   const nowMs = Date.now();
   const newRows = projectedMessages
+    .filter((message) => !supersededAssistantIds.has(message.id))
     .filter((message) => !existingIds.has(message.id))
     .map((message, index) => {
       const metadata =
@@ -250,6 +299,7 @@ export async function projectV2StreamSnapshotToDb({
   log?.set({
     v2ProjectionMessageCount: projectedMessages.length,
     v2ProjectionInsertedCount: newRows.length,
+    v2ProjectionSupersededAssistantCount: supersededAssistantIds.size,
     v2ProjectionResumeOffset: resumeOffset,
   });
 

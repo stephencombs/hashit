@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => {
     onConflictDoNothing: mockInsertOnConflictDoNothing,
   }));
   const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
+  const mockDeleteWhere = vi.fn(async () => undefined);
+  const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }));
   const mockUpdateWhere = vi.fn(async () => undefined);
   const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
@@ -22,6 +24,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     mockBuildReadStreamUrl,
+    mockDelete,
+    mockDeleteWhere,
     mockGetDurableReadHeaders,
     mockInsert,
     mockInsertOnConflictDoNothing,
@@ -49,6 +53,7 @@ vi.mock("~/lib/durable-streams", () => ({
 
 vi.mock("~/db", () => ({
   db: {
+    delete: mocks.mockDelete,
     select: mocks.mockSelect,
     insert: mocks.mockInsert,
     update: mocks.mockUpdate,
@@ -233,5 +238,110 @@ describe("projectV2StreamSnapshotToDb", () => {
     expect(insertedRows[0]?.parts).toEqual([
       { type: "text", content: "Fallback assistant text" },
     ]);
+  });
+
+  it("replaces superseded assistant rows during regeneration projection", async () => {
+    mocks.mockMaterializeSnapshotFromDurableStream.mockResolvedValueOnce({
+      messages: [
+        {
+          id: "u-regen",
+          role: "user",
+          content: "What else?",
+          parts: [{ type: "text", content: "What else?" }],
+        },
+        {
+          id: "a-old",
+          role: "assistant",
+          content: "Old answer",
+          parts: [{ type: "text", content: "Old answer" }],
+        },
+        {
+          id: "a-new",
+          role: "assistant",
+          content: "Regenerated answer",
+          parts: [{ type: "text", content: "Regenerated answer" }],
+        },
+      ],
+      offset: "off-regen",
+    });
+    mockSelectResults({
+      thread: { resumeOffset: "off-prev" },
+      existingRows: [{ id: "u-regen" }, { id: "a-old" }],
+    });
+
+    const result = await projectV2StreamSnapshotToDb({
+      threadId: "thread-regen",
+      telemetry: createTelemetry(),
+      persistUserTurn: false,
+      replaceLatestAssistant: true,
+      userMessageId: "u-regen",
+      log: { set: mocks.mockLogSet } as never,
+    });
+
+    expect(result.persistedMessageCount).toBe(1);
+    expect(mocks.mockDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.mockDeleteWhere).toHaveBeenCalledTimes(1);
+    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
+      id: string;
+    }>;
+    expect(insertedRows.map((row) => row.id)).toEqual(["a-new"]);
+  });
+
+  it("does not reinsert superseded assistants on later projections", async () => {
+    mocks.mockMaterializeSnapshotFromDurableStream.mockResolvedValueOnce({
+      messages: [
+        {
+          id: "u-old",
+          role: "user",
+          content: "Old prompt",
+          parts: [{ type: "text", content: "Old prompt" }],
+        },
+        {
+          id: "a-superseded",
+          role: "assistant",
+          content: "Superseded answer",
+          parts: [{ type: "text", content: "Superseded answer" }],
+        },
+        {
+          id: "a-kept",
+          role: "assistant",
+          content: "Kept regenerated answer",
+          parts: [{ type: "text", content: "Kept regenerated answer" }],
+        },
+        {
+          id: "u-new",
+          role: "user",
+          content: "Latest prompt",
+          parts: [{ type: "text", content: "Latest prompt" }],
+        },
+        {
+          id: "a-new",
+          role: "assistant",
+          content: "Latest answer",
+          parts: [{ type: "text", content: "Latest answer" }],
+        },
+      ],
+      offset: "off-later",
+    });
+    mockSelectResults({
+      thread: { resumeOffset: "off-prev" },
+      existingRows: [{ id: "u-old" }, { id: "a-kept" }, { id: "u-new" }],
+    });
+
+    const result = await projectV2StreamSnapshotToDb({
+      threadId: "thread-later",
+      telemetry: createTelemetry(),
+      persistUserTurn: true,
+      replaceLatestAssistant: false,
+      userMessageId: "u-new",
+      log: { set: mocks.mockLogSet } as never,
+    });
+
+    expect(result.persistedMessageCount).toBe(1);
+    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
+      id: string;
+    }>;
+    expect(insertedRows.map((row) => row.id)).toEqual(["a-new"]);
+    expect(mocks.mockDelete).not.toHaveBeenCalled();
   });
 });

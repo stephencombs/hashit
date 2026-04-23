@@ -20,6 +20,7 @@ import {
   createV2PersistenceMiddleware,
   finalizeV2PersistenceTelemetry,
 } from "~/features/chat-v2/server/persistence-runtime";
+import { hasV2MessageByIdServer } from "~/features/chat-v2/server/messages.server";
 import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
 import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
 import { queueV2ThreadTitleGeneration } from "~/features/chat-v2/server/thread-title";
@@ -124,7 +125,17 @@ export const Route = createFileRoute("/api/v2/chat")({
         const latestMessage = messages[messages.length - 1];
         const hasNewUserTurn = latestMessage?.role === "user";
         const hasUserTurn = userContent.length > 0 || userParts.length > 0;
-        const shouldPersistUserTurn = hasNewUserTurn && hasUserTurn;
+        const hasPersistedLatestUserMessage =
+          hasNewUserTurn && typeof userMessageId === "string"
+            ? await hasV2MessageByIdServer({
+                threadId,
+                messageId: userMessageId,
+              })
+            : false;
+        const isRegenerationTurn =
+          hasNewUserTurn && hasPersistedLatestUserMessage;
+        const shouldPersistUserTurn =
+          hasNewUserTurn && hasUserTurn && !isRegenerationTurn;
 
         const streamPath = buildV2ChatStreamPath(threadId);
         const streamTarget = getDurableChatSessionTarget(streamPath);
@@ -181,6 +192,7 @@ export const Route = createFileRoute("/api/v2/chat")({
               threadId,
               telemetry,
               persistUserTurn: shouldPersistUserTurn,
+              replaceLatestAssistant: isRegenerationTurn,
               userMessageId,
               log,
             });
