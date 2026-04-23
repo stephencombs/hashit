@@ -37,7 +37,10 @@ export function ChatConversation({
   // width. `scrollbar-gutter: stable both-edges` reserves space on both sides
   // so toggling overflow doesn't introduce horizontal layout shift.
   return (
-    <Conversation className={cn("flex-1", className)} onSurfaceReady={onSurfaceReady}>
+    <Conversation
+      className={cn("flex-1", className)}
+      onSurfaceReady={onSurfaceReady}
+    >
       <ConversationContent className="px-0 py-6 [scrollbar-gutter:stable_both-edges]">
         <div className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-6">
           {children}

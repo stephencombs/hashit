@@ -1,5 +1,10 @@
 import { type ReactNode, useEffect } from "react";
-import { ErrorComponent, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  ErrorComponent,
+  HeadContent,
+  Outlet,
+  Scripts,
+} from "@tanstack/react-router";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TooltipProvider } from "~/components/ui/tooltip";
@@ -37,9 +42,13 @@ export function RootComponent() {
         <ModelSettingsProvider>
           <McpSettingsProvider>
             <TooltipProvider>
-              <HotkeysProvider defaultOptions={{ hotkey: { preventDefault: false } }}>
+              <HotkeysProvider
+                defaultOptions={{ hotkey: { preventDefault: false } }}
+              >
                 <Outlet />
-                {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+                {import.meta.env.DEV ? (
+                  <ReactQueryDevtools initialIsOpen={false} />
+                ) : null}
               </HotkeysProvider>
             </TooltipProvider>
           </McpSettingsProvider>

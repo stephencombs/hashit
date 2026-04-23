@@ -25,7 +25,7 @@ export function ChatErrorBanner({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss error"
-        className="text-destructive/70 transition-colors hover:text-destructive"
+        className="text-destructive/70 hover:text-destructive transition-colors"
       >
         <XCircleIcon className="size-4" />
       </button>

@@ -1,26 +1,26 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createError } from 'evlog'
-import { nanoid } from 'nanoid'
-import { desc, eq, and } from 'drizzle-orm'
-import { db } from '~/db'
-import { dashboardSnapshots } from '~/db/schema'
-import type { PersistedWidget } from '~/db/schema'
+import { createFileRoute } from "@tanstack/react-router";
+import { createError } from "evlog";
+import { nanoid } from "nanoid";
+import { desc, eq, and } from "drizzle-orm";
+import { db } from "~/db";
+import { dashboardSnapshots } from "~/db/schema";
+import type { PersistedWidget } from "~/db/schema";
 import {
   persistedWidgetSchema,
   postDashboardBodySchema,
   postDashboardGenerationResultSchema,
   snapshotResponseSchema,
-} from '~/lib/dashboard-schemas'
+} from "~/lib/dashboard-schemas";
 
-const STALE_MS = 24 * 60 * 60 * 1000
-const GENERATING_TIMEOUT_MS = 10 * 60 * 1000
+const STALE_MS = 24 * 60 * 60 * 1000;
+const GENERATING_TIMEOUT_MS = 10 * 60 * 1000;
 
-export const Route = createFileRoute('/api/dashboard')({
+export const Route = createFileRoute("/api/dashboard")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const url = new URL(request.url)
-        const persona = url.searchParams.get('persona') || 'HR Admin'
+        const url = new URL(request.url);
+        const persona = url.searchParams.get("persona") || "HR Admin";
 
         const latest = await db
           .select()
@@ -28,27 +28,28 @@ export const Route = createFileRoute('/api/dashboard')({
           .where(eq(dashboardSnapshots.persona, persona))
           .orderBy(desc(dashboardSnapshots.createdAt))
           .limit(1)
-          .then((rows) => rows[0] ?? null)
+          .then((rows) => rows[0] ?? null);
 
         if (
-          latest?.status === 'generating' &&
-          (Date.now() - latest.createdAt.getTime()) > GENERATING_TIMEOUT_MS
+          latest?.status === "generating" &&
+          Date.now() - latest.createdAt.getTime() > GENERATING_TIMEOUT_MS
         ) {
           await db
             .update(dashboardSnapshots)
             .set({
-              status: 'failed',
-              error: 'Generation timed out',
+              status: "failed",
+              error: "Generation timed out",
               completedAt: new Date(),
             })
-            .where(eq(dashboardSnapshots.id, latest.id))
-          latest.status = 'failed'
-          latest.error = 'Generation timed out'
+            .where(eq(dashboardSnapshots.id, latest.id));
+          latest.status = "failed";
+          latest.error = "Generation timed out";
         }
 
-        const isStale = !latest
-          || latest.status === 'failed'
-          || (Date.now() - latest.createdAt.getTime()) > STALE_MS
+        const isStale =
+          !latest ||
+          latest.status === "failed" ||
+          Date.now() - latest.createdAt.getTime() > STALE_MS;
 
         const payload = {
           snapshot: latest
@@ -64,8 +65,8 @@ export const Route = createFileRoute('/api/dashboard')({
               }
             : null,
           isStale,
-        }
-        return Response.json(snapshotResponseSchema.parse(payload))
+        };
+        return Response.json(snapshotResponseSchema.parse(payload));
       },
 
       POST: async ({ request }) => {
@@ -75,27 +76,29 @@ export const Route = createFileRoute('/api/dashboard')({
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
           throw createError({
-            message: 'Azure OpenAI environment variables not configured',
+            message: "Azure OpenAI environment variables not configured",
             status: 500,
-            why: 'Missing one or more required environment variables',
-            fix: 'Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT',
-          })
+            why: "Missing one or more required environment variables",
+            fix: "Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT",
+          });
         }
 
-        const url = new URL(request.url)
-        const force = url.searchParams.get('force') === 'true'
-        const rawBody = await request.json().catch(() => ({}))
-        const parsedBody = postDashboardBodySchema.safeParse(rawBody)
+        const url = new URL(request.url);
+        const force = url.searchParams.get("force") === "true";
+        const rawBody = await request.json().catch(() => ({}));
+        const parsedBody = postDashboardBodySchema.safeParse(rawBody);
         if (!parsedBody.success) {
           throw createError({
-            message: 'Invalid dashboard generation request body',
+            message: "Invalid dashboard generation request body",
             status: 400,
-            why: parsedBody.error.issues.map((issue) => issue.message).join('; '),
-            fix: 'Provide a JSON body matching { persona?: string }',
-          })
+            why: parsedBody.error.issues
+              .map((issue) => issue.message)
+              .join("; "),
+            fix: "Provide a JSON body matching { persona?: string }",
+          });
         }
-        const body = parsedBody.data
-        const persona = body.persona || 'HR Admin'
+        const body = parsedBody.data;
+        const persona = body.persona || "HR Admin";
 
         const existing = await db
           .select()
@@ -103,79 +106,96 @@ export const Route = createFileRoute('/api/dashboard')({
           .where(
             and(
               eq(dashboardSnapshots.persona, persona),
-              eq(dashboardSnapshots.status, 'generating'),
+              eq(dashboardSnapshots.status, "generating"),
             ),
           )
           .orderBy(desc(dashboardSnapshots.createdAt))
           .limit(1)
-          .then((rows) => rows[0] ?? null)
+          .then((rows) => rows[0] ?? null);
 
         if (existing && !force) {
-          const isStuck = (Date.now() - existing.createdAt.getTime()) > GENERATING_TIMEOUT_MS
+          const isStuck =
+            Date.now() - existing.createdAt.getTime() > GENERATING_TIMEOUT_MS;
           if (!isStuck) {
             return Response.json(
               postDashboardGenerationResultSchema.parse({
                 snapshotId: existing.id,
-                status: 'already_generating',
+                status: "already_generating",
               }),
-            )
+            );
           }
           await db
             .update(dashboardSnapshots)
-            .set({ status: 'failed', error: 'Generation timed out', completedAt: new Date() })
-            .where(eq(dashboardSnapshots.id, existing.id))
+            .set({
+              status: "failed",
+              error: "Generation timed out",
+              completedAt: new Date(),
+            })
+            .where(eq(dashboardSnapshots.id, existing.id));
         }
 
-        let previousWidgetIds: string[] = []
-        let previousWidgets: PersistedWidget[] = []
+        let previousWidgetIds: string[] = [];
+        let previousWidgets: PersistedWidget[] = [];
         const lastComplete = await db
           .select()
           .from(dashboardSnapshots)
           .where(
             and(
               eq(dashboardSnapshots.persona, persona),
-              eq(dashboardSnapshots.status, 'complete'),
+              eq(dashboardSnapshots.status, "complete"),
             ),
           )
           .orderBy(desc(dashboardSnapshots.createdAt))
           .limit(1)
-          .then((rows) => rows[0] ?? null)
+          .then((rows) => rows[0] ?? null);
 
         if (lastComplete?.widgets) {
-          const parsedWidgets = persistedWidgetSchema.array().safeParse(lastComplete.widgets)
+          const parsedWidgets = persistedWidgetSchema
+            .array()
+            .safeParse(lastComplete.widgets);
           if (parsedWidgets.success) {
-            previousWidgets = parsedWidgets.data.filter((w) => w.spec !== null)
-            previousWidgetIds = previousWidgets.map((w) => w.widgetId)
+            previousWidgets = parsedWidgets.data.filter((w) => w.spec !== null);
+            previousWidgetIds = previousWidgets.map((w) => w.widgetId);
           } else {
             console.warn(
               `[dashboard] Invalid persisted widgets for snapshot ${lastComplete.id}:`,
               parsedWidgets.error.message,
-            )
+            );
           }
         }
 
-        const snapshotId = nanoid()
-        const now = new Date()
+        const snapshotId = nanoid();
+        const now = new Date();
 
         await db.insert(dashboardSnapshots).values({
           id: snapshotId,
           persona,
-          status: 'generating',
+          status: "generating",
           previousWidgetIds,
           createdAt: now,
-        })
+        });
 
-        const { generateDashboard } = await import('../../../server/lib/dashboard-generator')
-        generateDashboard({ snapshotId, persona, previousWidgetIds, previousWidgets }).catch(
-          (err: unknown) => {
-            console.error(`[dashboard] Generation failed for snapshot ${snapshotId}:`, err)
-          },
-        )
+        const { generateDashboard } =
+          await import("../../../server/lib/dashboard-generator");
+        generateDashboard({
+          snapshotId,
+          persona,
+          previousWidgetIds,
+          previousWidgets,
+        }).catch((err: unknown) => {
+          console.error(
+            `[dashboard] Generation failed for snapshot ${snapshotId}:`,
+            err,
+          );
+        });
 
         return Response.json(
-          postDashboardGenerationResultSchema.parse({ snapshotId, status: 'started' }),
-        )
+          postDashboardGenerationResultSchema.parse({
+            snapshotId,
+            status: "started",
+          }),
+        );
       },
     },
   },
-})
+});

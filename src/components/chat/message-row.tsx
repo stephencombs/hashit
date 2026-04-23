@@ -1,5 +1,17 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { Message, MessageContent, MessageResponse } from "~/components/ai-elements/message";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "~/components/ai-elements/message";
 import { DuplicateResolutionDisplay } from "~/components/duplicate-resolution-display";
 import { FormDisplay } from "~/components/form-display";
 import { MessageRowActivity } from "~/components/chat/message-row-activity";
@@ -9,7 +21,10 @@ import {
   InteractiveToolFallback,
   MediaPartView,
 } from "~/components/chat/message-row-parts";
-import type { ChatMessage, MessageRowProps } from "~/components/chat/message-row.types";
+import type {
+  ChatMessage,
+  MessageRowProps,
+} from "~/components/chat/message-row.types";
 import { useMessageRowData } from "~/components/chat/use-message-row-data";
 import {
   hasCollectFormDataOutput,
@@ -17,7 +32,10 @@ import {
   parseInteractiveSpec,
 } from "~/components/chat/message-row-utils";
 import type { FormSpec } from "~/lib/form-tool";
-import type { DuplicateResolutionSpec, ResolutionOutput } from "~/lib/resolve-duplicate-tool";
+import type {
+  DuplicateResolutionSpec,
+  ResolutionOutput,
+} from "~/lib/resolve-duplicate-tool";
 
 const JsonRenderDisplay = lazy(() =>
   import("~/components/json-render-display").then((module) => ({
@@ -77,11 +95,15 @@ function MessageRowImpl({
   onSaveArtifact,
 }: MessageRowProps) {
   const messageComplete = !isStreaming || !isLastMessage;
-  const { lastInteractiveToolCallIndexById, steps, persistedSpecs, toolSummary } =
-    useMessageRowData({
-      parts: message.parts,
-      messageComplete,
-    });
+  const {
+    lastInteractiveToolCallIndexById,
+    steps,
+    persistedSpecs,
+    toolSummary,
+  } = useMessageRowData({
+    parts: message.parts,
+    messageComplete,
+  });
 
   return (
     <Message
@@ -152,7 +174,9 @@ function MessageRowImpl({
                   // snapshots as "submitted" cards.
                   return null;
                 }
-                const submittedOutput = isFormSubmitted ? part.output : undefined;
+                const submittedOutput = isFormSubmitted
+                  ? part.output
+                  : undefined;
                 const userSubmittedData = submittedOutput?.data;
 
                 return (
@@ -177,8 +201,9 @@ function MessageRowImpl({
                 );
               }
               if (part.name === "resolve_duplicate_entity") {
-                const dupSpec =
-                  parseInteractiveSpec<DuplicateResolutionSpec>(part.arguments);
+                const dupSpec = parseInteractiveSpec<DuplicateResolutionSpec>(
+                  part.arguments,
+                );
                 if (!dupSpec) {
                   return messageComplete ? (
                     <InteractiveToolFallback
@@ -244,7 +269,9 @@ function MessageRowImpl({
             <BottomSpecPendingTracker
               key={`persisted-${idx}`}
               specKey={`persisted:${message.id}:${idx}`}
-              onPendingChange={isLastMessage ? onBottomSpecPendingChange : undefined}
+              onPendingChange={
+                isLastMessage ? onBottomSpecPendingChange : undefined
+              }
             >
               {(markReady) => (
                 <Suspense fallback={null}>
@@ -267,25 +294,27 @@ function MessageRowImpl({
               <BottomSpecPendingTracker
                 key={`live-${idx}`}
                 specKey={`live:${message.id}:${idx}`}
-                onPendingChange={isLastMessage ? onBottomSpecPendingChange : undefined}
+                onPendingChange={
+                  isLastMessage ? onBottomSpecPendingChange : undefined
+                }
               >
                 {(markReady) => (
-                <Suspense fallback={null}>
-                  <SpecMountReporter onReady={markReady}>
-                    <JsonRenderDisplay
-                      spec={spec}
-                      isStreaming={
-                        isLastMessage &&
-                        isStreaming &&
-                        idx === liveSpecs.length - 1
-                      }
-                      messageId={message.id}
-                      specIndex={idx}
-                      saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
-                      onSaveArtifact={onSaveArtifact}
-                    />
-                  </SpecMountReporter>
-                </Suspense>
+                  <Suspense fallback={null}>
+                    <SpecMountReporter onReady={markReady}>
+                      <JsonRenderDisplay
+                        spec={spec}
+                        isStreaming={
+                          isLastMessage &&
+                          isStreaming &&
+                          idx === liveSpecs.length - 1
+                        }
+                        messageId={message.id}
+                        specIndex={idx}
+                        saved={savedArtifactKeys.has(`${message.id}:${idx}`)}
+                        onSaveArtifact={onSaveArtifact}
+                      />
+                    </SpecMountReporter>
+                  </Suspense>
                 )}
               </BottomSpecPendingTracker>
             ))

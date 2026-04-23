@@ -42,7 +42,9 @@ export function buildArgsPreview(args: string): string | undefined {
  * Mirrors the display logic previously inline in `formatToolDescription` so the
  * client can consume `part.summary` directly without any further parsing.
  */
-export function buildResultSummary(content: string | undefined): string | undefined {
+export function buildResultSummary(
+  content: string | undefined,
+): string | undefined {
   if (!content) return undefined;
   try {
     const parsed = JSON.parse(content) as unknown;

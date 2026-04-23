@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, ServerIcon, WrenchIcon } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
@@ -22,13 +27,21 @@ const TABS: { id: Tab; label: string; icon: typeof ServerIcon }[] = [
 ];
 
 function shortName(serverName: string) {
-  return serverName.replace(/\.Mcp$/, "").split(".").pop()!;
+  return serverName
+    .replace(/\.Mcp$/, "")
+    .split(".")
+    .pop()!;
 }
 
 export function McpSettingsPage() {
   const queryClient = useQueryClient();
-  const { selectedServers, enabledTools, toggleServer, toggleTool, toggleAllTools } =
-    useMcpSettings();
+  const {
+    selectedServers,
+    enabledTools,
+    toggleServer,
+    toggleTool,
+    toggleAllTools,
+  } = useMcpSettings();
   const [tab, setTab] = useState<Tab>("servers");
   const [filterDomain, setFilterDomain] = useState<string | null>(null);
   const [filterServer, setFilterServer] = useState<string | null>(null);
@@ -79,7 +92,9 @@ export function McpSettingsPage() {
   const handleServerToggle = useCallback(
     async (serverName: string, enabled: boolean) => {
       if (enabled) {
-        const tools = await queryClient.fetchQuery(mcpToolsQueryOptions(serverName));
+        const tools = await queryClient.fetchQuery(
+          mcpToolsQueryOptions(serverName),
+        );
         toggleServer(
           serverName,
           tools.map((tool) => tool.name),
@@ -95,14 +110,14 @@ export function McpSettingsPage() {
     <div className="mx-auto max-w-2xl space-y-8 p-8">
       <div>
         <h2 className="text-lg font-semibold">MCP Servers</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Choose which MCP servers and tools are available during chat.
         </p>
       </div>
 
       <Separator />
 
-      <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
+      <div className="bg-muted inline-flex gap-1 rounded-lg p-1">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -124,7 +139,7 @@ export function McpSettingsPage() {
       {tab === "servers" && (
         <div className="space-y-6">
           {serversLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2Icon className="size-4 animate-spin" />
               Loading servers...
             </div>
@@ -189,12 +204,12 @@ export function McpSettingsPage() {
                                   {shortName(server.name)}
                                 </span>
                                 {count !== undefined && (
-                                  <span className="text-xs tabular-nums text-muted-foreground">
+                                  <span className="text-muted-foreground text-xs tabular-nums">
                                     {count} tool{count === 1 ? "" : "s"}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-muted-foreground text-xs">
                                 {server.description}
                               </p>
                             </div>
@@ -212,7 +227,7 @@ export function McpSettingsPage() {
       {tab === "tools" && (
         <div className="space-y-4">
           {selectedServers.length === 0 ? (
-            <p className="rounded-lg border border-dashed px-6 py-8 text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground rounded-lg border border-dashed px-6 py-8 text-center text-sm">
               Enable at least one server to configure tools.
             </p>
           ) : (
@@ -253,87 +268,91 @@ export function McpSettingsPage() {
                 type="multiple"
                 defaultValue={filterServer ? [filterServer] : []}
               >
-                {(filterServer ? [filterServer] : selectedServers).map((serverName) => {
-                  const tools = serverToolsMap[serverName] ?? [];
-                  const enabled = enabledTools[serverName] ?? [];
-                  const server = servers.find((s) => s.name === serverName);
-                  const loading = tools.length === 0;
+                {(filterServer ? [filterServer] : selectedServers).map(
+                  (serverName) => {
+                    const tools = serverToolsMap[serverName] ?? [];
+                    const enabled = enabledTools[serverName] ?? [];
+                    const server = servers.find((s) => s.name === serverName);
+                    const loading = tools.length === 0;
 
-                  return (
-                    <AccordionItem key={serverName} value={serverName}>
-                      <AccordionTrigger>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate font-medium">
-                            {shortName(serverName)}
-                          </span>
-                          {server && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {server.domain}
-                            </Badge>
-                          )}
-                          <span className="text-xs tabular-nums text-muted-foreground">
-                            {enabled.length}/{tools.length} enabled
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        {loading ? (
-                          <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-                            <Loader2Icon className="size-4 animate-spin" />
-                            Loading tools...
+                    return (
+                      <AccordionItem key={serverName} value={serverName}>
+                        <AccordionTrigger>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium">
+                              {shortName(serverName)}
+                            </span>
+                            {server && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {server.domain}
+                              </Badge>
+                            )}
+                            <span className="text-muted-foreground text-xs tabular-nums">
+                              {enabled.length}/{tools.length} enabled
+                            </span>
                           </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <div className="mb-2 flex justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() =>
-                                  toggleAllTools(
-                                    serverName,
-                                    tools.map((tool) => tool.name),
-                                  )
-                                }
-                              >
-                                {enabled.length === tools.length
-                                  ? "Deselect all"
-                                  : "Select all"}
-                              </Button>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {loading ? (
+                            <div className="text-muted-foreground flex items-center gap-2 py-2 text-sm">
+                              <Loader2Icon className="size-4 animate-spin" />
+                              Loading tools...
                             </div>
-                            {tools.map((tool) => {
-                              const isOn = enabled.includes(tool.name);
-                              return (
-                                <label
-                                  key={tool.name}
-                                  className={cn(
-                                    "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50",
-                                    !isOn && "opacity-70",
-                                  )}
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="mb-2 flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() =>
+                                    toggleAllTools(
+                                      serverName,
+                                      tools.map((tool) => tool.name),
+                                    )
+                                  }
                                 >
-                                  <Switch
-                                    size="sm"
-                                    checked={isOn}
-                                    onCheckedChange={() => toggleTool(serverName, tool.name)}
-                                    className="mt-0.5"
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="break-all text-sm font-medium">
-                                      {tool.name}
+                                  {enabled.length === tools.length
+                                    ? "Deselect all"
+                                    : "Select all"}
+                                </Button>
+                              </div>
+                              {tools.map((tool) => {
+                                const isOn = enabled.includes(tool.name);
+                                return (
+                                  <label
+                                    key={tool.name}
+                                    className={cn(
+                                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50",
+                                      !isOn && "opacity-70",
+                                    )}
+                                  >
+                                    <Switch
+                                      size="sm"
+                                      checked={isOn}
+                                      onCheckedChange={() =>
+                                        toggleTool(serverName, tool.name)
+                                      }
+                                      className="mt-0.5"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-sm font-medium break-all">
+                                        {tool.name}
+                                      </div>
+                                      <p className="text-muted-foreground text-xs">
+                                        {tool.description}
+                                      </p>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {tool.description}
-                                    </p>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  },
+                )}
               </Accordion>
             </>
           )}

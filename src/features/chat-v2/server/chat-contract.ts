@@ -1,12 +1,7 @@
 import { z } from "zod";
 
 const v2MessagePartSchema = z.object({ type: z.string() }).passthrough();
-const v2ChatMessageRoleSchema = z.enum([
-  "system",
-  "user",
-  "assistant",
-  "tool",
-]);
+const v2ChatMessageRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
 
 const v2ChatMessageSchema = z.object({
   id: z.string().optional(),

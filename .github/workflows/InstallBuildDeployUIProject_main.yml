@@ -25,7 +25,7 @@ jobs:
     needs: build-and-package
     uses: PaycorInc/Paycor-Reusable-Actions/.github/workflows/octopus-release.yml@main
     with:
-      octopus-release-number: '${{ vars.BASE_VERSION_RC }}.${{ github.run_number }}'
+      octopus-release-number: "${{ vars.BASE_VERSION_RC }}.${{ github.run_number }}"
       octopus-operation-type: ${{ vars.OCTOPUS_CREATEANDDEPLOY_OPERATION }}
       octopus-project-name: ${{ vars.OCTOPUS_PROJECT_NAME }} #repo var
       octopus-package-name: ${{ vars.OCTOPUS_PACKAGE_NAME }} #repo var

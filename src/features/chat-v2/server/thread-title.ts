@@ -5,7 +5,10 @@ import type { RequestLogger } from "evlog";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
 import { getAzureAdapter } from "~/lib/openai-adapter";
-import { appendV2CustomEvents, createV2CustomChunk } from "./persistence-runtime";
+import {
+  appendV2CustomEvents,
+  createV2CustomChunk,
+} from "./persistence-runtime";
 import { ATTACHMENT_ONLY_CONTENT_PREFIX } from "./user-message";
 
 const GENERIC_THREAD_TITLES: ReadonlyArray<string> = ["Untitled", "New Chat"];
@@ -55,7 +58,9 @@ function resolveTitleDeployment(): string {
   return fromEnv || FALLBACK_TITLE_DEPLOYMENT;
 }
 
-async function readFirstPromptForTitle(threadId: string): Promise<string | null> {
+async function readFirstPromptForTitle(
+  threadId: string,
+): Promise<string | null> {
   const [thread] = await db
     .select({ title: v2Threads.title })
     .from(v2Threads)
@@ -83,7 +88,9 @@ async function readFirstPromptForTitle(threadId: string): Promise<string | null>
   return content;
 }
 
-async function generateTitleFromFirstPrompt(firstPrompt: string): Promise<string | null> {
+async function generateTitleFromFirstPrompt(
+  firstPrompt: string,
+): Promise<string | null> {
   const titleStream = chat({
     adapter: getAzureAdapter(resolveTitleDeployment()),
     messages: [

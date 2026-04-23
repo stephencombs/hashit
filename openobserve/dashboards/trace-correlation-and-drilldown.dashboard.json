@@ -31,11 +31,30 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "traces",
-                "x": [{ "label": "Operation", "alias": "x_axis_1", "column": "x_axis_1", "color": null }],
-                "y": [{ "label": "Spans", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }],
+                "x": [
+                  {
+                    "label": "Operation",
+                    "alias": "x_axis_1",
+                    "column": "x_axis_1",
+                    "color": null
+                  }
+                ],
+                "y": [
+                  {
+                    "label": "Spans",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -74,16 +93,42 @@
                 "stream": "hashit",
                 "stream_type": "traces",
                 "x": [
-                  { "label": "Source", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
-                  { "label": "Profile", "alias": "x_axis_2", "column": "x_axis_2", "color": null }
+                  {
+                    "label": "Source",
+                    "alias": "x_axis_1",
+                    "column": "x_axis_1",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_2",
+                    "column": "x_axis_2",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Trace Count", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" },
-                  { "label": "Avg Duration", "alias": "y_axis_2", "column": "y_axis_2", "color": "#61a0a8", "aggregationFunction": "avg" }
+                  {
+                    "label": "Trace Count",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  },
+                  {
+                    "label": "Avg Duration",
+                    "alias": "y_axis_2",
+                    "column": "y_axis_2",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "avg"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -122,18 +167,57 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
-                  { "label": "Trace Id", "alias": "x_axis_2", "column": "x_axis_2", "color": null },
-                  { "label": "Span Id", "alias": "x_axis_3", "column": "x_axis_3", "color": null },
-                  { "label": "Profile", "alias": "x_axis_4", "column": "x_axis_4", "color": null },
-                  { "label": "Source", "alias": "x_axis_5", "column": "x_axis_5", "color": null },
-                  { "label": "Status", "alias": "x_axis_6", "column": "x_axis_6", "color": null },
-                  { "label": "Request Id", "alias": "x_axis_7", "column": "x_axis_7", "color": null }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "x_axis_1",
+                    "color": null
+                  },
+                  {
+                    "label": "Trace Id",
+                    "alias": "x_axis_2",
+                    "column": "x_axis_2",
+                    "color": null
+                  },
+                  {
+                    "label": "Span Id",
+                    "alias": "x_axis_3",
+                    "column": "x_axis_3",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_4",
+                    "column": "x_axis_4",
+                    "color": null
+                  },
+                  {
+                    "label": "Source",
+                    "alias": "x_axis_5",
+                    "column": "x_axis_5",
+                    "color": null
+                  },
+                  {
+                    "label": "Status",
+                    "alias": "x_axis_6",
+                    "column": "x_axis_6",
+                    "color": null
+                  },
+                  {
+                    "label": "Request Id",
+                    "alias": "x_axis_7",
+                    "column": "x_axis_7",
+                    "color": null
+                  }
                 ],
                 "y": [],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -172,18 +256,65 @@
                 "stream": "hashit",
                 "stream_type": "traces",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
-                  { "label": "Trace Id", "alias": "x_axis_2", "column": "x_axis_2", "color": null },
-                  { "label": "Span Id", "alias": "x_axis_3", "column": "x_axis_3", "color": null },
-                  { "label": "Operation", "alias": "x_axis_4", "column": "x_axis_4", "color": null },
-                  { "label": "Profile", "alias": "x_axis_5", "column": "x_axis_5", "color": null },
-                  { "label": "Source", "alias": "x_axis_6", "column": "x_axis_6", "color": null },
-                  { "label": "Span Status", "alias": "x_axis_7", "column": "x_axis_7", "color": null }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "x_axis_1",
+                    "color": null
+                  },
+                  {
+                    "label": "Trace Id",
+                    "alias": "x_axis_2",
+                    "column": "x_axis_2",
+                    "color": null
+                  },
+                  {
+                    "label": "Span Id",
+                    "alias": "x_axis_3",
+                    "column": "x_axis_3",
+                    "color": null
+                  },
+                  {
+                    "label": "Operation",
+                    "alias": "x_axis_4",
+                    "column": "x_axis_4",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_5",
+                    "column": "x_axis_5",
+                    "color": null
+                  },
+                  {
+                    "label": "Source",
+                    "alias": "x_axis_6",
+                    "column": "x_axis_6",
+                    "color": null
+                  },
+                  {
+                    "label": "Span Status",
+                    "alias": "x_axis_7",
+                    "column": "x_axis_7",
+                    "color": null
+                  }
                 ],
-                "y": [{ "label": "Duration", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "max" }],
+                "y": [
+                  {
+                    "label": "Duration",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "max"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",

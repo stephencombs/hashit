@@ -77,7 +77,8 @@ export function useMessageRowData({
         seenToolIds.add(part.id);
         const tr = toolResults.get(part.id);
         const done =
-          messageComplete || (tr ? tr.state === "complete" : part.output !== undefined);
+          messageComplete ||
+          (tr ? tr.state === "complete" : part.output !== undefined);
         steps.push({
           kind: "tool",
           tc: part,

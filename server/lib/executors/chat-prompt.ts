@@ -1,22 +1,22 @@
-import type { ExecutorResult } from './index'
-import { executeAutomationRun } from '../../../src/lib/automation-agent'
+import type { ExecutorResult } from "./index";
+import { executeAutomationRun } from "../../../src/lib/automation-agent";
 
 export async function executeChatPrompt(
   config: Record<string, unknown>,
 ): Promise<ExecutorResult> {
-  const threadId = config.threadId as string | undefined
-  const prompt = config.prompt as string | undefined
+  const threadId = config.threadId as string | undefined;
+  const prompt = config.prompt as string | undefined;
 
   if (!prompt) {
-    return { success: false, error: 'Missing prompt in automation config' }
+    return { success: false, error: "Missing prompt in automation config" };
   }
 
-  const result = await executeAutomationRun(prompt, threadId)
+  const result = await executeAutomationRun(prompt, threadId);
 
   return {
-    success: result.telemetry.status === 'completed',
+    success: result.telemetry.status === "completed",
     error:
-      result.telemetry.status === 'completed'
+      result.telemetry.status === "completed"
         ? undefined
         : result.telemetry.error ||
           `Automation run ended with status: ${result.telemetry.status}`,
@@ -33,5 +33,5 @@ export async function executeChatPrompt(
       spanId: result.telemetry.spanId,
       mcpServersUsed: result.telemetry.mcpServersUsed,
     },
-  }
+  };
 }

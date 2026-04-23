@@ -34,7 +34,7 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" className="select-none" {...props}>
       <SidebarHeader>
         <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+          <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
             <FlaskConicalIcon className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -60,7 +60,9 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
                 })}
               >
                 <HoverIcon as={SquarePenIcon} />
-                <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
+                <span className="group-data-[collapsible=icon]:hidden">
+                  New Chat
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -77,7 +79,9 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild tooltip="Back to current chat">
               <Link to="/" draggable={false}>
                 <ArrowLeftIcon className="size-4" />
-                <span className="group-data-[collapsible=icon]:hidden">Back to V1</span>
+                <span className="group-data-[collapsible=icon]:hidden">
+                  Back to V1
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

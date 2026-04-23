@@ -1,32 +1,32 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const ALLOWED_IMAGE_MIME_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-  'image/heic',
-] as const
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+] as const;
 
-export const ALLOWED_DOCUMENT_MIME_TYPES = ['application/pdf'] as const
+export const ALLOWED_DOCUMENT_MIME_TYPES = ["application/pdf"] as const;
 
 export const ALLOWED_MIME_TYPES = [
   ...ALLOWED_IMAGE_MIME_TYPES,
   ...ALLOWED_DOCUMENT_MIME_TYPES,
-] as const
+] as const;
 
-export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number]
+export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
 
-export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
-export const MAX_ATTACHMENTS_PER_REQUEST = 5
+export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+export const MAX_ATTACHMENTS_PER_REQUEST = 5;
 
-export const ATTACHMENT_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/
+export const ATTACHMENT_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
 export const attachmentIdSchema = z
   .string()
   .min(16)
   .max(64)
-  .regex(ATTACHMENT_ID_PATTERN)
+  .regex(ATTACHMENT_ID_PATTERN);
 
 export const attachmentResponseSchema = z.object({
   id: attachmentIdSchema,
@@ -34,12 +34,12 @@ export const attachmentResponseSchema = z.object({
   mimeType: z.enum(ALLOWED_MIME_TYPES),
   filename: z.string(),
   size: z.number().int().positive(),
-})
+});
 
-export type AttachmentResponse = z.infer<typeof attachmentResponseSchema>
+export type AttachmentResponse = z.infer<typeof attachmentResponseSchema>;
 
 export function isAllowedMimeType(value: string): value is AllowedMimeType {
-  return (ALLOWED_MIME_TYPES as readonly string[]).includes(value)
+  return (ALLOWED_MIME_TYPES as readonly string[]).includes(value);
 }
 
 /**
@@ -47,8 +47,10 @@ export function isAllowedMimeType(value: string): value is AllowedMimeType {
  * our allowlist. Returns null when the magic bytes do not match any allowed
  * type. Used to defend against forged Content-Type headers.
  */
-export function sniffAllowedMimeType(bytes: Uint8Array): AllowedMimeType | null {
-  if (bytes.length < 12) return null
+export function sniffAllowedMimeType(
+  bytes: Uint8Array,
+): AllowedMimeType | null {
+  if (bytes.length < 12) return null;
 
   if (
     bytes[0] === 0x89 &&
@@ -56,15 +58,15 @@ export function sniffAllowedMimeType(bytes: Uint8Array): AllowedMimeType | null 
     bytes[2] === 0x4e &&
     bytes[3] === 0x47
   ) {
-    return 'image/png'
+    return "image/png";
   }
 
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return 'image/jpeg'
+    return "image/jpeg";
   }
 
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
-    return 'image/gif'
+    return "image/gif";
   }
 
   if (
@@ -77,7 +79,7 @@ export function sniffAllowedMimeType(bytes: Uint8Array): AllowedMimeType | null 
     bytes[10] === 0x42 &&
     bytes[11] === 0x50
   ) {
-    return 'image/webp'
+    return "image/webp";
   }
 
   if (
@@ -90,7 +92,7 @@ export function sniffAllowedMimeType(bytes: Uint8Array): AllowedMimeType | null 
     bytes[10] === 0x69 &&
     bytes[11] === 0x63
   ) {
-    return 'image/heic'
+    return "image/heic";
   }
 
   if (
@@ -99,8 +101,8 @@ export function sniffAllowedMimeType(bytes: Uint8Array): AllowedMimeType | null 
     bytes[2] === 0x44 &&
     bytes[3] === 0x46
   ) {
-    return 'application/pdf'
+    return "application/pdf";
   }
 
-  return null
+  return null;
 }

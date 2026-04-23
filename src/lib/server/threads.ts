@@ -1,10 +1,10 @@
-import { createServerFn } from '@tanstack/react-start'
-import { desc, isNull, sql } from 'drizzle-orm'
-import { db } from '~/db'
-import { threads } from '~/db/schema'
-import { isThreadRunActive } from '~/lib/server/thread-run-state'
+import { createServerFn } from "@tanstack/react-start";
+import { desc, isNull, sql } from "drizzle-orm";
+import { db } from "~/db";
+import { threads } from "~/db/schema";
+import { isThreadRunActive } from "~/lib/server/thread-run-state";
 
-export const listThreads = createServerFn({ method: 'GET' }).handler(
+export const listThreads = createServerFn({ method: "GET" }).handler(
   async () => {
     const rows = await db
       .select()
@@ -13,10 +13,10 @@ export const listThreads = createServerFn({ method: 'GET' }).handler(
       .orderBy(
         sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
         desc(threads.updatedAt),
-      )
+      );
     return rows.map((row) => ({
       ...row,
       isStreaming: isThreadRunActive(row.id),
-    }))
+    }));
   },
-)
+);

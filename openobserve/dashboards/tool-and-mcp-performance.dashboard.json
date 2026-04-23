@@ -34,11 +34,21 @@
                 "stream_type": "logs",
                 "x": [],
                 "y": [
-                  { "label": "Runs With Tools", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "count" }
+                  {
+                    "label": "Runs With Tools",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -78,11 +88,21 @@
                 "stream_type": "logs",
                 "x": [],
                 "y": [
-                  { "label": "Avg Tools/Run", "alias": "y_axis_1", "column": "y_axis_1", "color": "#61a0a8", "aggregationFunction": "avg" }
+                  {
+                    "label": "Avg Tools/Run",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "avg"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -120,14 +140,31 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null, "aggregationFunction": "histogram", "args": [{ "value": "5 minutes" }] }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null,
+                    "aggregationFunction": "histogram",
+                    "args": [{ "value": "5 minutes" }]
+                  }
                 ],
                 "y": [
-                  { "label": "Runs", "alias": "y_axis_1", "column": "_timestamp", "color": "#5960b2", "aggregationFunction": "count" }
+                  {
+                    "label": "Runs",
+                    "alias": "y_axis_1",
+                    "column": "_timestamp",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -166,14 +203,29 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "MCP Server(s)", "alias": "x_axis_1", "column": "mcpserversused", "color": null }
+                  {
+                    "label": "MCP Server(s)",
+                    "alias": "x_axis_1",
+                    "column": "mcpserversused",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Runs", "alias": "y_axis_1", "column": "_timestamp", "color": "#5960b2", "aggregationFunction": "count" }
+                  {
+                    "label": "Runs",
+                    "alias": "y_axis_1",
+                    "column": "_timestamp",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -211,14 +263,29 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Profile", "alias": "x_axis_1", "column": "runprofile", "color": null }
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_1",
+                    "column": "runprofile",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Total Tool Calls", "alias": "y_axis_1", "column": "toolcallcount", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Total Tool Calls",
+                    "alias": "y_axis_1",
+                    "column": "toolcallcount",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -257,17 +324,51 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null },
-                  { "label": "Profile", "alias": "x_axis_2", "column": "runprofile", "color": null },
-                  { "label": "Tool Calls", "alias": "x_axis_3", "column": "toolcallcount", "color": null },
-                  { "label": "Tools Used", "alias": "x_axis_4", "column": "toolnames", "color": null },
-                  { "label": "Status", "alias": "x_axis_5", "column": "runstatus", "color": null },
-                  { "label": "Trace ID", "alias": "x_axis_6", "column": "trace_id", "color": null }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_2",
+                    "column": "runprofile",
+                    "color": null
+                  },
+                  {
+                    "label": "Tool Calls",
+                    "alias": "x_axis_3",
+                    "column": "toolcallcount",
+                    "color": null
+                  },
+                  {
+                    "label": "Tools Used",
+                    "alias": "x_axis_4",
+                    "column": "toolnames",
+                    "color": null
+                  },
+                  {
+                    "label": "Status",
+                    "alias": "x_axis_5",
+                    "column": "runstatus",
+                    "color": null
+                  },
+                  {
+                    "label": "Trace ID",
+                    "alias": "x_axis_6",
+                    "column": "trace_id",
+                    "color": null
+                  }
                 ],
                 "y": [],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",

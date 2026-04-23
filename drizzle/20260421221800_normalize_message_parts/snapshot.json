@@ -1,8 +1,6 @@
 {
   "id": "730e06d6-3f48-48e6-a8fe-af9baa77aac1",
-  "prevIds": [
-    "df63a570-4b74-4ef1-872b-c96e47463b5d"
-  ],
+  "prevIds": ["df63a570-4b74-4ef1-872b-c96e47463b5d"],
   "version": "8",
   "dialect": "postgres",
   "ddl": [
@@ -715,14 +713,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "thread_id"
-      ],
+      "columns": ["thread_id"],
       "schemaTo": "public",
       "tableTo": "threads",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "artifacts_thread_id_threads_id_fkey",
@@ -732,14 +726,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "automation_id"
-      ],
+      "columns": ["automation_id"],
       "schemaTo": "public",
       "tableTo": "automations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "automation_runs_automation_id_automations_id_fkey",
@@ -749,14 +739,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "thread_id"
-      ],
+      "columns": ["thread_id"],
       "schemaTo": "public",
       "tableTo": "threads",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "messages_thread_id_threads_id_fkey",
@@ -765,9 +751,7 @@
       "table": "messages"
     },
     {
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nameExplicit": false,
       "name": "app_settings_pkey",
       "schema": "public",
@@ -775,9 +759,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "artifacts_pkey",
       "schema": "public",
@@ -785,9 +767,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "automation_runs_pkey",
       "schema": "public",
@@ -795,9 +775,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "automations_pkey",
       "schema": "public",
@@ -805,9 +783,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "dashboard_snapshots_pkey",
       "schema": "public",
@@ -815,9 +791,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "messages_pkey",
       "schema": "public",
@@ -825,9 +799,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "threads_pkey",
       "schema": "public",

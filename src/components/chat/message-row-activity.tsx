@@ -24,7 +24,10 @@ export function MessageRowActivity({
   toolSummaryContent?: string;
 }) {
   const allDone = useMemo(
-    () => steps.every((step) => (step.kind === "thinking" ? !step.isStreaming : step.done)),
+    () =>
+      steps.every((step) =>
+        step.kind === "thinking" ? !step.isStreaming : step.done,
+      ),
     [steps],
   );
 
@@ -43,7 +46,7 @@ export function MessageRowActivity({
                 label={step.isStreaming ? "Reasoning..." : "Reasoned"}
                 status={step.isStreaming ? "active" : "complete"}
               >
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   <MessageResponse
                     deferMarkdown={!isStreaming}
                     mode="static"
@@ -63,7 +66,7 @@ export function MessageRowActivity({
               label={formatToolLabel(step.tc.name, step.tc.argsPreview)}
               description={
                 step.done
-                  ? formatToolDescription(step.summary) ?? "Complete"
+                  ? (formatToolDescription(step.summary) ?? "Complete")
                   : "Running..."
               }
               status={step.done ? "complete" : "active"}

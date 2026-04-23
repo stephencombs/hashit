@@ -24,71 +24,71 @@
  */
 
 type PendingEntry = {
-  resolve: (value: unknown) => void
-  reject: (reason: unknown) => void
-}
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+};
 
-const pending = new Map<string, PendingEntry>()
+const pending = new Map<string, PendingEntry>();
 
 export function registerPending<T>(toolName: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const existing = pending.get(toolName)
+    const existing = pending.get(toolName);
     if (existing) {
       // Previous pending invocation was never resolved (e.g. stale navigation).
       // Reject it so its `.client()` handler errors out cleanly and the new
       // one owns the slot.
-      existing.reject(new Error('superseded'))
+      existing.reject(new Error("superseded"));
     }
     pending.set(toolName, {
       resolve: resolve as (value: unknown) => void,
       reject,
-    })
-  })
+    });
+  });
 }
 
 export function resolvePending(toolName: string, output: unknown): boolean {
-  const entry = pending.get(toolName)
-  if (!entry) return false
-  pending.delete(toolName)
-  entry.resolve(output)
-  return true
+  const entry = pending.get(toolName);
+  if (!entry) return false;
+  pending.delete(toolName);
+  entry.resolve(output);
+  return true;
 }
 
 export function cancelPending(
   toolName: string,
-  reason: string = 'cancelled',
+  reason: string = "cancelled",
 ): boolean {
-  const entry = pending.get(toolName)
-  if (!entry) return false
-  pending.delete(toolName)
-  entry.reject(new Error(reason))
-  return true
+  const entry = pending.get(toolName);
+  if (!entry) return false;
+  pending.delete(toolName);
+  entry.reject(new Error(reason));
+  return true;
 }
 
-export function cancelAllPending(reason: string = 'cancelled'): number {
-  const names = Array.from(pending.keys())
+export function cancelAllPending(reason: string = "cancelled"): number {
+  const names = Array.from(pending.keys());
   for (const name of names) {
-    const entry = pending.get(name)
-    if (!entry) continue
-    pending.delete(name)
-    entry.reject(new Error(reason))
+    const entry = pending.get(name);
+    if (!entry) continue;
+    pending.delete(name);
+    entry.reject(new Error(reason));
   }
-  return names.length
+  return names.length;
 }
 
 export function hasPending(toolName: string): boolean {
-  return pending.has(toolName)
+  return pending.has(toolName);
 }
 
 export const INTERACTIVE_TOOL_NAMES = [
-  'collect_form_data',
-  'resolve_duplicate_entity',
-] as const
+  "collect_form_data",
+  "resolve_duplicate_entity",
+] as const;
 
-export type InteractiveToolName = (typeof INTERACTIVE_TOOL_NAMES)[number]
+export type InteractiveToolName = (typeof INTERACTIVE_TOOL_NAMES)[number];
 
 export function isInteractiveToolName(
   name: string,
 ): name is InteractiveToolName {
-  return (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(name)
+  return (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(name);
 }

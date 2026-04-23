@@ -1,10 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { formatForDisplay } from "@tanstack/react-hotkeys"
-import { AppHotkeys } from "~/hooks/use-app-hotkeys"
-import { CommandPalette } from "~/components/command-palette"
-import { Kbd, KbdGroup } from "~/components/ui/kbd"
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatForDisplay } from "@tanstack/react-hotkeys";
+import { AppHotkeys } from "~/hooks/use-app-hotkeys";
+import { CommandPalette } from "~/components/command-palette";
+import { Kbd, KbdGroup } from "~/components/ui/kbd";
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckSquare2Icon,
   FlaskConicalIcon,
@@ -14,17 +14,17 @@ import {
   TriangleAlertIcon,
   XIcon,
   ZapIcon,
-} from "lucide-react"
+} from "lucide-react";
 import {
   GaugeIcon,
   LayersIcon,
   SparklesIcon,
   SquarePenIcon,
   ZapIcon as AnimatedZapIcon,
-} from "lucide-animated"
-import { HoverIcon } from "~/components/animated-icon"
-import { Checkbox } from "~/components/ui/checkbox"
-import { Button } from "~/components/ui/button"
+} from "lucide-animated";
+import { HoverIcon } from "~/components/animated-icon";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Button } from "~/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -33,9 +33,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog"
+} from "~/components/ui/dialog";
 
-import { NavUser } from "~/components/nav-user"
+import { NavUser } from "~/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -47,55 +47,55 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "~/components/ui/sidebar"
+} from "~/components/ui/sidebar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "~/components/ui/tooltip"
-import { useIsOverflowing } from "~/hooks/use-is-overflowing"
-import { Skeleton } from "~/components/ui/skeleton"
+} from "~/components/ui/tooltip";
+import { useIsOverflowing } from "~/hooks/use-is-overflowing";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
   artifactsByThreadQuery,
   threadDetailQuery,
   threadListQuery,
-} from "~/lib/queries"
-import type { Thread } from "~/lib/schemas"
+} from "~/lib/queries";
+import type { Thread } from "~/lib/schemas";
 import {
   clearThreadStreaming,
   markThreadStreaming,
   useStreamingThreadIds,
-} from "~/components/chat/thread-streaming-db"
+} from "~/components/chat/thread-streaming-db";
 
 const user = {
   name: "User",
   email: "user@example.com",
   avatar: "",
-}
+};
 
 function KbdHint({ keys }: { keys: string }) {
-  const parts = formatForDisplay(keys).split(/\s+/).filter(Boolean)
+  const parts = formatForDisplay(keys).split(/\s+/).filter(Boolean);
   return (
     <KbdGroup className="ml-auto hidden group-data-[collapsible=icon]:hidden md:inline-flex">
       {parts.map((part, i) => (
         <Kbd key={i}>{part}</Kbd>
       ))}
     </KbdGroup>
-  )
+  );
 }
 
 // Delay (ms) before a thread-title tooltip appears on hover. Long enough
 // that casually scanning the thread list doesn't flash tooltips on every
 // row, short enough to feel responsive when you actually pause on one.
-const THREAD_TOOLTIP_DELAY_MS = 500
+const THREAD_TOOLTIP_DELAY_MS = 500;
 // Sidebar rows have a 4px vertical menu gap. Extend the clickable surface by
 // 2px above and below so there is no dead zone between adjacent thread items.
-const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5"
-const EMPTY_STREAMING_IDS: ReadonlySet<string> = new Set<string>()
+const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5";
+const EMPTY_STREAMING_IDS: ReadonlySet<string> = new Set<string>();
 
 const ItemTitle = memo(function ItemTitle({ title }: { title: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const isOverflowing = useIsOverflowing(title, ref)
+  const ref = useRef<HTMLSpanElement>(null);
+  const isOverflowing = useIsOverflowing(title, ref);
 
   return (
     <Tooltip delayDuration={THREAD_TOOLTIP_DELAY_MS}>
@@ -104,20 +104,18 @@ const ItemTitle = memo(function ItemTitle({ title }: { title: string }) {
           {title}
         </span>
       </TooltipTrigger>
-      {isOverflowing && (
-        <TooltipContent side="bottom">{title}</TooltipContent>
-      )}
+      {isOverflowing && <TooltipContent side="bottom">{title}</TooltipContent>}
     </Tooltip>
-  )
-})
+  );
+});
 
 /** Right-edge slide-in actions. Render inside `HoverActionsClip` so overflow does not clip the row link’s hit-area. */
 function HoverActions({ children }: { children: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 flex translate-x-full items-center justify-end gap-1 pr-2 pl-6 bg-gradient-to-r from-transparent to-sidebar to-30% transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0">
+    <div className="to-sidebar absolute inset-0 flex translate-x-full items-center justify-end gap-1 bg-gradient-to-r from-transparent to-30% pr-2 pl-6 transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0">
       {children}
     </div>
-  )
+  );
 }
 
 /** Clips off-screen hover actions horizontally without clipping the row link (hit-area ::before). */
@@ -129,7 +127,7 @@ function HoverActionsClip({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
-  )
+  );
 }
 
 function HoverButton({
@@ -137,79 +135,93 @@ function HoverButton({
   label,
   children,
 }: {
-  onClick: (e: React.MouseEvent) => void
-  label: string
-  children: React.ReactNode
+  onClick: (e: React.MouseEvent) => void;
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
     <button
-      className="flex size-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 items-center justify-center rounded-md"
       onClick={(e) => {
-        e.preventDefault()
-        e.currentTarget.blur()
-        onClick(e)
+        e.preventDefault();
+        e.currentTarget.blur();
+        onClick(e);
       }}
     >
       {children}
       <span className="sr-only">{label}</span>
     </button>
-  )
+  );
 }
 
 function usePinThread() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ threadId, pinned }: { threadId: string; pinned: boolean }) => {
+    mutationFn: async ({
+      threadId,
+      pinned,
+    }: {
+      threadId: string;
+      pinned: boolean;
+    }) => {
       await fetch(`/api/threads/${threadId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pinned }),
-      })
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
     },
-  })
+  });
 }
 
 function useDeleteThread() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: async (threadId: string) => {
-      await fetch(`/api/threads/${threadId}`, { method: "DELETE" })
+      await fetch(`/api/threads/${threadId}`, { method: "DELETE" });
     },
     onSuccess: (_data, threadId) => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
       if (window.location.pathname.includes(threadId)) {
-        navigate({ to: "/" })
+        navigate({ to: "/" });
       }
     },
-  })
+  });
 }
 
 function useBulkDeleteThreads() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: async (threadIds: string[]) => {
       await Promise.all(
-        threadIds.map((id) => fetch(`/api/threads/${id}`, { method: "DELETE" })),
-      )
+        threadIds.map((id) =>
+          fetch(`/api/threads/${id}`, { method: "DELETE" }),
+        ),
+      );
     },
     onSuccess: (_data, threadIds) => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
       if (threadIds.some((id) => window.location.pathname.includes(id))) {
-        navigate({ to: "/" })
+        navigate({ to: "/" });
       }
     },
-  })
+  });
 }
 
 function useBulkPinThreads() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ threadIds, pinned }: { threadIds: string[]; pinned: boolean }) => {
+    mutationFn: async ({
+      threadIds,
+      pinned,
+    }: {
+      threadIds: string[];
+      pinned: boolean;
+    }) => {
       await Promise.all(
         threadIds.map((id) =>
           fetch(`/api/threads/${id}`, {
@@ -218,12 +230,12 @@ function useBulkPinThreads() {
             body: JSON.stringify({ pinned }),
           }),
         ),
-      )
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] })
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
     },
-  })
+  });
 }
 
 function ThreadItem({
@@ -235,20 +247,20 @@ function ThreadItem({
   isStreaming,
   onToggleSelect,
 }: {
-  conversation: Thread
-  pinThread: ReturnType<typeof usePinThread>
-  deleteThread: ReturnType<typeof useDeleteThread>
-  bulkMode: boolean
-  selected: boolean
-  isStreaming: boolean
-  onToggleSelect: (id: string, shiftKey: boolean) => void
+  conversation: Thread;
+  pinThread: ReturnType<typeof usePinThread>;
+  deleteThread: ReturnType<typeof useDeleteThread>;
+  bulkMode: boolean;
+  selected: boolean;
+  isStreaming: boolean;
+  onToggleSelect: (id: string, shiftKey: boolean) => void;
 }) {
-  const queryClient = useQueryClient()
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const queryClient = useQueryClient();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const prefetchThread = useCallback(() => {
-    void queryClient.prefetchQuery(threadDetailQuery(conversation.id))
-    void queryClient.prefetchQuery(artifactsByThreadQuery(conversation.id))
-  }, [conversation.id, queryClient])
+    void queryClient.prefetchQuery(threadDetailQuery(conversation.id));
+    void queryClient.prefetchQuery(artifactsByThreadQuery(conversation.id));
+  }, [conversation.id, queryClient]);
 
   if (bulkMode) {
     return (
@@ -257,23 +269,24 @@ function ThreadItem({
           isActive={selected}
           className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
           onMouseDown={(e) => {
-            if (e.shiftKey) e.preventDefault()
+            if (e.shiftKey) e.preventDefault();
           }}
           onClick={(e) => onToggleSelect(conversation.id, e.shiftKey)}
         >
-          <Checkbox checked={selected} tabIndex={-1} className="pointer-events-none" />
+          <Checkbox
+            checked={selected}
+            tabIndex={-1}
+            className="pointer-events-none"
+          />
           <ItemTitle title={conversation.title} />
         </SidebarMenuButton>
       </SidebarMenuItem>
-    )
+    );
   }
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
-      >
+      <SidebarMenuButton asChild className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}>
         <Link
           to="/chat/$threadId"
           params={{ threadId: conversation.id }}
@@ -290,7 +303,9 @@ function ThreadItem({
                   <ZapIcon className="size-4 text-amber-500" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="right">Created by automation</TooltipContent>
+              <TooltipContent side="right">
+                Created by automation
+              </TooltipContent>
             </Tooltip>
           )}
           <ItemTitle title={conversation.title} />
@@ -298,7 +313,7 @@ function ThreadItem({
             <>
               <span
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-md border border-sidebar-ring/60"
+                className="border-sidebar-ring/60 pointer-events-none absolute inset-0 rounded-md border"
               />
               <span className="sr-only">Streaming response</span>
             </>
@@ -308,16 +323,25 @@ function ThreadItem({
       <HoverActionsClip>
         <HoverActions>
           <HoverButton
-            onClick={() => pinThread.mutate({ threadId: conversation.id, pinned: !conversation.pinnedAt })}
+            onClick={() =>
+              pinThread.mutate({
+                threadId: conversation.id,
+                pinned: !conversation.pinnedAt,
+              })
+            }
             label={conversation.pinnedAt ? "Unpin" : "Pin"}
           >
-            {conversation.pinnedAt ? <PinOffIcon className="size-5" /> : <PinIcon className="size-5" />}
+            {conversation.pinnedAt ? (
+              <PinOffIcon className="size-5" />
+            ) : (
+              <PinIcon className="size-5" />
+            )}
           </HoverButton>
           <HoverButton
             onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setDeleteOpen(true)
+              e.preventDefault();
+              e.stopPropagation();
+              setDeleteOpen(true);
             }}
             label="Delete"
           >
@@ -328,17 +352,20 @@ function ThreadItem({
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
-              <TriangleAlertIcon className="size-5 text-destructive" />
+            <div className="bg-destructive/10 flex size-10 items-center justify-center rounded-full">
+              <TriangleAlertIcon className="text-destructive size-5" />
             </div>
             <DialogTitle>Delete conversation?</DialogTitle>
             <DialogDescription>
-              Permanently delete &quot;{conversation.title}&quot;? This cannot be undone.
+              Permanently delete &quot;{conversation.title}&quot;? This cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
             </DialogClose>
             <Button
               type="button"
@@ -356,7 +383,7 @@ function ThreadItem({
         </DialogContent>
       </Dialog>
     </SidebarMenuItem>
-  )
+  );
 }
 
 function ThreadSection({
@@ -367,102 +394,103 @@ function ThreadSection({
   bulkAction,
   streamingIds,
 }: {
-  label: string
-  threads: Thread[]
-  pinThread: ReturnType<typeof usePinThread>
-  deleteThread: ReturnType<typeof useDeleteThread>
-  bulkAction: "pin" | "unpin"
-  streamingIds: ReadonlySet<string>
+  label: string;
+  threads: Thread[];
+  pinThread: ReturnType<typeof usePinThread>;
+  deleteThread: ReturnType<typeof useDeleteThread>;
+  bulkAction: "pin" | "unpin";
+  streamingIds: ReadonlySet<string>;
 }) {
-  const [bulkMode, setBulkMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [anchorId, setAnchorId] = useState<string | null>(null)
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [anchorId, setAnchorId] = useState<string | null>(null);
   // Set of rows that belong to the active shift-drag range anchored at
   // `anchorId`. When the user shift+clicks again from the same anchor, we
   // remove the previous range and apply the new one — this is what makes
   // the selection "shrink" correctly when the second shift+click lands
   // between the anchor and the prior shift+click (macOS Finder behavior).
-  const [rangeIds, setRangeIds] = useState<Set<string>>(new Set())
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
-  const bulkDelete = useBulkDeleteThreads()
-  const bulkPin = useBulkPinThreads()
+  const [rangeIds, setRangeIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const bulkDelete = useBulkDeleteThreads();
+  const bulkPin = useBulkPinThreads();
 
   const handleSelect = useCallback(
     (id: string, shiftKey: boolean) => {
       if (shiftKey && anchorId) {
-        const ids = threads.map((t) => t.id)
-        const a = ids.indexOf(anchorId)
-        const b = ids.indexOf(id)
-        if (a === -1 || b === -1) return
-        const [lo, hi] = a < b ? [a, b] : [b, a]
-        const newRange = ids.slice(lo, hi + 1)
+        const ids = threads.map((t) => t.id);
+        const a = ids.indexOf(anchorId);
+        const b = ids.indexOf(id);
+        if (a === -1 || b === -1) return;
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        const newRange = ids.slice(lo, hi + 1);
         setSelectedIds((prev) => {
-          const next = new Set(prev)
+          const next = new Set(prev);
           // Remove the previous shift-drag range, then reapply the new one.
           // If the anchor itself is not selected, treat the shift-drag as a
           // deselect sweep (Finder behavior when the anchor row was toggled
           // off before the shift+click).
-          for (const rid of rangeIds) next.delete(rid)
-          const anchorSelected = next.has(anchorId) || newRange.includes(anchorId)
+          for (const rid of rangeIds) next.delete(rid);
+          const anchorSelected =
+            next.has(anchorId) || newRange.includes(anchorId);
           for (const rid of newRange) {
-            if (anchorSelected) next.add(rid)
-            else next.delete(rid)
+            if (anchorSelected) next.add(rid);
+            else next.delete(rid);
           }
-          return next
-        })
-        setRangeIds(new Set(newRange))
+          return next;
+        });
+        setRangeIds(new Set(newRange));
         // Anchor does NOT move on shift+click — that's the carry-forward part.
-        return
+        return;
       }
 
       setSelectedIds((prev) => {
-        const next = new Set(prev)
-        if (next.has(id)) next.delete(id)
-        else next.add(id)
-        return next
-      })
-      setAnchorId(id)
-      setRangeIds(new Set())
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setAnchorId(id);
+      setRangeIds(new Set());
     },
     [anchorId, rangeIds, threads],
-  )
+  );
 
   const exitBulkMode = useCallback(() => {
-    setBulkMode(false)
-    setSelectedIds(new Set())
-    setAnchorId(null)
-    setRangeIds(new Set())
-  }, [])
+    setBulkMode(false);
+    setSelectedIds(new Set());
+    setAnchorId(null);
+    setRangeIds(new Set());
+  }, []);
 
-  const allSelected = selectedIds.size === threads.length && threads.length > 0
+  const allSelected = selectedIds.size === threads.length && threads.length > 0;
 
   const handleToggleAll = useCallback(() => {
-    if (allSelected) setSelectedIds(new Set())
-    else setSelectedIds(new Set(threads.map((t) => t.id)))
-    setRangeIds(new Set())
-  }, [allSelected, threads])
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(threads.map((t) => t.id)));
+    setRangeIds(new Set());
+  }, [allSelected, threads]);
 
   const handleBulkDelete = useCallback(() => {
-    const ids = [...selectedIds]
-    if (ids.length === 0) return
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
     bulkDelete.mutate(ids, {
       onSuccess: () => {
-        setBulkDeleteOpen(false)
-        exitBulkMode()
+        setBulkDeleteOpen(false);
+        exitBulkMode();
       },
-    })
-  }, [selectedIds, bulkDelete, exitBulkMode])
+    });
+  }, [selectedIds, bulkDelete, exitBulkMode]);
 
   const handleBulkPinAction = useCallback(() => {
-    const ids = [...selectedIds]
-    if (ids.length === 0) return
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
     bulkPin.mutate(
       { threadIds: ids, pinned: bulkAction === "pin" },
       { onSuccess: () => exitBulkMode() },
-    )
-  }, [selectedIds, bulkPin, bulkAction, exitBulkMode])
+    );
+  }, [selectedIds, bulkPin, bulkAction, exitBulkMode]);
 
-  if (threads.length === 0) return null
+  if (threads.length === 0) return null;
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -470,10 +498,14 @@ function ThreadSection({
         {bulkMode ? (
           <span className="flex flex-1 items-center gap-2">
             <button
-              className="flex items-center text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              className="text-sidebar-foreground/70 hover:text-sidebar-foreground flex items-center"
               onClick={handleToggleAll}
             >
-              <Checkbox checked={allSelected} tabIndex={-1} className="pointer-events-none size-3.5" />
+              <Checkbox
+                checked={allSelected}
+                tabIndex={-1}
+                className="pointer-events-none size-3.5"
+              />
             </button>
             <span className="flex-1 truncate">
               {selectedIds.size > 0 ? `${selectedIds.size} selected` : label}
@@ -484,7 +516,7 @@ function ThreadSection({
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:bg-destructive/10 flex size-5 items-center justify-center rounded"
                       onClick={() => setBulkDeleteOpen(true)}
                     >
                       <Trash2Icon className="size-3" />
@@ -495,7 +527,7 @@ function ThreadSection({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex size-5 items-center justify-center rounded"
                       onClick={handleBulkPinAction}
                     >
                       {bulkAction === "pin" ? (
@@ -512,7 +544,7 @@ function ThreadSection({
               </>
             )}
             <button
-              className="flex size-5 items-center justify-center rounded text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex size-5 items-center justify-center rounded"
               onClick={exitBulkMode}
             >
               <XIcon className="size-3" />
@@ -523,7 +555,7 @@ function ThreadSection({
             <span>{label}</span>
             {threads.length > 1 && (
               <button
-                className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-normal text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                className="text-sidebar-foreground/50 hover:text-sidebar-foreground flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-normal"
                 onClick={() => setBulkMode(true)}
               >
                 <CheckSquare2Icon className="size-3" />
@@ -552,8 +584,8 @@ function ThreadSection({
       <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
-              <TriangleAlertIcon className="size-5 text-destructive" />
+            <div className="bg-destructive/10 flex size-10 items-center justify-center rounded-full">
+              <TriangleAlertIcon className="text-destructive size-5" />
             </div>
             <DialogTitle>Delete conversations?</DialogTitle>
             <DialogDescription>
@@ -563,7 +595,9 @@ function ThreadSection({
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
             </DialogClose>
             <Button
               type="button"
@@ -577,16 +611,16 @@ function ThreadSection({
         </DialogContent>
       </Dialog>
     </SidebarGroup>
-  )
+  );
 }
 
 type ThreadSectionsProps = {
-  pinned: Thread[]
-  recents: Thread[]
-  pinThread: ReturnType<typeof usePinThread>
-  deleteThread: ReturnType<typeof useDeleteThread>
-  streamingIds: ReadonlySet<string>
-}
+  pinned: Thread[];
+  recents: Thread[];
+  pinThread: ReturnType<typeof usePinThread>;
+  deleteThread: ReturnType<typeof useDeleteThread>;
+  streamingIds: ReadonlySet<string>;
+};
 
 function ThreadSections({
   pinned,
@@ -614,7 +648,7 @@ function ThreadSections({
         streamingIds={streamingIds}
       />
     </>
-  )
+  );
 }
 
 function LiveThreadSections({
@@ -623,7 +657,7 @@ function LiveThreadSections({
   pinThread,
   deleteThread,
 }: Omit<ThreadSectionsProps, "streamingIds">) {
-  const streamingIds = useStreamingThreadIds()
+  const streamingIds = useStreamingThreadIds();
   return (
     <ThreadSections
       pinned={pinned}
@@ -632,7 +666,7 @@ function LiveThreadSections({
       deleteThread={deleteThread}
       streamingIds={streamingIds}
     />
-  )
+  );
 }
 
 function SidebarSkeletonGroup({ widths }: { widths: string[] }) {
@@ -655,16 +689,18 @@ function SidebarSkeletonGroup({ widths }: { widths: string[] }) {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  )
+  );
 }
 
 function SidebarListSkeleton() {
   return (
     <>
       <SidebarSkeletonGroup widths={["w-3/5", "w-1/2"]} />
-      <SidebarSkeletonGroup widths={["w-3/4", "w-2/3", "w-4/5", "w-1/2", "w-3/5"]} />
+      <SidebarSkeletonGroup
+        widths={["w-3/4", "w-2/3", "w-4/5", "w-1/2", "w-3/5"]}
+      />
     </>
-  )
+  );
 }
 
 function ChatSidebarContent() {
@@ -674,43 +710,44 @@ function ChatSidebarContent() {
     // persistence_complete; polling at 10 s covers automation-created threads
     // and title updates without generating frequent thread-list re-renders.
     refetchInterval: 10_000,
-  })
-  const pinThread = usePinThread()
-  const deleteThread = useDeleteThread()
-  const [hasHydratedStreamingState, setHasHydratedStreamingState] = useState(false)
+  });
+  const pinThread = usePinThread();
+  const deleteThread = useDeleteThread();
+  const [hasHydratedStreamingState, setHasHydratedStreamingState] =
+    useState(false);
 
   const { pinned, recents } = useMemo(() => {
-    const pinned: Thread[] = []
-    const recents: Thread[] = []
+    const pinned: Thread[] = [];
+    const recents: Thread[] = [];
     for (const c of conversations) {
-      if (c.pinnedAt) pinned.push(c)
-      else recents.push(c)
+      if (c.pinnedAt) pinned.push(c);
+      else recents.push(c);
     }
-    return { pinned, recents }
-  }, [conversations])
+    return { pinned, recents };
+  }, [conversations]);
 
   useEffect(() => {
-    setHasHydratedStreamingState(true)
-  }, [])
+    setHasHydratedStreamingState(true);
+  }, []);
 
   useEffect(() => {
     for (const conversation of conversations) {
       if (conversation.isStreaming) {
-        markThreadStreaming(conversation.id, "event")
+        markThreadStreaming(conversation.id, "event");
       } else {
-        clearThreadStreaming(conversation.id)
+        clearThreadStreaming(conversation.id);
       }
     }
-  }, [conversations])
+  }, [conversations]);
 
-  if (isPending) return <SidebarListSkeleton />
+  if (isPending) return <SidebarListSkeleton />;
 
   if (conversations.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+      <div className="text-muted-foreground p-4 text-center text-sm group-data-[collapsible=icon]:hidden">
         No conversations yet
       </div>
-    )
+    );
   }
 
   if (!hasHydratedStreamingState) {
@@ -722,7 +759,7 @@ function ChatSidebarContent() {
         deleteThread={deleteThread}
         streamingIds={EMPTY_STREAMING_IDS}
       />
-    )
+    );
   }
 
   return (
@@ -732,108 +769,122 @@ function ChatSidebarContent() {
       pinThread={pinThread}
       deleteThread={deleteThread}
     />
-  )
+  );
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const matchRoute = useMatchRoute()
-  const isNewChatActive = !!matchRoute({ to: "/" })
-  const isV2Active = !!matchRoute({ to: "/v2", fuzzy: true })
-  const [paletteOpen, setPaletteOpen] = useState(false)
+  const matchRoute = useMatchRoute();
+  const isNewChatActive = !!matchRoute({ to: "/" });
+  const isV2Active = !!matchRoute({ to: "/v2", fuzzy: true });
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   return (
     <>
-    <AppHotkeys onOpenCommandPalette={() => setPaletteOpen(true)} />
-    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-    <Sidebar collapsible="icon" className="select-none" {...props}>
-      <SidebarHeader>
-        <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <HoverIcon as={SparklesIcon} />
+      <AppHotkeys onOpenCommandPalette={() => setPaletteOpen(true)} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <Sidebar collapsible="icon" className="select-none" {...props}>
+        <SidebarHeader>
+          <div className="flex h-12 items-center gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
+              <HoverIcon as={SparklesIcon} />
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="truncate font-semibold">Teammate</span>
+              <span className="truncate text-xs">AI Chat</span>
+            </div>
           </div>
-          <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate font-semibold">Teammate</span>
-            <span className="truncate text-xs">AI Chat</span>
-          </div>
-        </div>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={isNewChatActive}
-              asChild
-              tooltip="New Chat"
-            >
-              <Link
-                to="/"
-                draggable={false}
-                state={(prev) => ({
-                  ...prev,
-                  __newChatNavNonce: Date.now(),
-                })}
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isNewChatActive}
+                asChild
+                tooltip="New Chat"
               >
-                <HoverIcon as={SquarePenIcon} />
-                <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
-                <KbdHint keys="Mod+Shift+N" />
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={!!matchRoute({ to: "/dashboard" })}
-              asChild
-              tooltip="Dashboard"
-            >
-              <Link to="/dashboard" draggable={false}>
-                <HoverIcon as={GaugeIcon} />
-                <span className="group-data-[collapsible=icon]:hidden">Dashboard</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={!!matchRoute({ to: "/artifacts" })}
-              asChild
-              tooltip="Artifacts"
-            >
-              <Link to="/artifacts" draggable={false}>
-                <HoverIcon as={LayersIcon} />
-                <span className="group-data-[collapsible=icon]:hidden">Artifacts</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={!!matchRoute({ to: "/automations" })}
-              asChild
-              tooltip="Automations"
-            >
-              <Link to="/automations" draggable={false}>
-                <HoverIcon as={AnimatedZapIcon} />
-                <span className="group-data-[collapsible=icon]:hidden">Automations</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+                <Link
+                  to="/"
+                  draggable={false}
+                  state={(prev) => ({
+                    ...prev,
+                    __newChatNavNonce: Date.now(),
+                  })}
+                >
+                  <HoverIcon as={SquarePenIcon} />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    New Chat
+                  </span>
+                  <KbdHint keys="Mod+Shift+N" />
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={!!matchRoute({ to: "/dashboard" })}
+                asChild
+                tooltip="Dashboard"
+              >
+                <Link to="/dashboard" draggable={false}>
+                  <HoverIcon as={GaugeIcon} />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Dashboard
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={!!matchRoute({ to: "/artifacts" })}
+                asChild
+                tooltip="Artifacts"
+              >
+                <Link to="/artifacts" draggable={false}>
+                  <HoverIcon as={LayersIcon} />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Artifacts
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={!!matchRoute({ to: "/automations" })}
+                asChild
+                tooltip="Automations"
+              >
+                <Link to="/automations" draggable={false}>
+                  <HoverIcon as={AnimatedZapIcon} />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Automations
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-      <SidebarContent>
-        <ChatSidebarContent />
-      </SidebarContent>
+        <SidebarContent>
+          <ChatSidebarContent />
+        </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton isActive={isV2Active} asChild tooltip="Try V2 Sidebar/Chat">
-              <Link to="/v2" draggable={false}>
-                <FlaskConicalIcon className="size-4" />
-                <span className="group-data-[collapsible=icon]:hidden">Try V2 Beta</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <NavUser user={user} />
-      </SidebarFooter>
-    </Sidebar>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isV2Active}
+                asChild
+                tooltip="Try V2 Sidebar/Chat"
+              >
+                <Link to="/v2" draggable={false}>
+                  <FlaskConicalIcon className="size-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Try V2 Beta
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <NavUser user={user} />
+        </SidebarFooter>
+      </Sidebar>
     </>
-  )
+  );
 }

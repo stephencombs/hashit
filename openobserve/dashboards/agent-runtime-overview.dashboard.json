@@ -44,7 +44,11 @@
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -94,7 +98,11 @@
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -132,7 +140,12 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Status", "alias": "x_axis_1", "column": "runstatus", "color": null }
+                  {
+                    "label": "Status",
+                    "alias": "x_axis_1",
+                    "column": "runstatus",
+                    "color": null
+                  }
                 ],
                 "y": [
                   {
@@ -145,7 +158,11 @@
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -191,7 +208,12 @@
                     "aggregationFunction": "histogram",
                     "args": [{ "value": "5 minutes" }]
                   },
-                  { "label": "Status", "alias": "x_axis_2", "column": "runstatus", "color": null }
+                  {
+                    "label": "Status",
+                    "alias": "x_axis_2",
+                    "column": "runstatus",
+                    "color": null
+                  }
                 ],
                 "y": [
                   {
@@ -204,7 +226,11 @@
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -252,12 +278,28 @@
                   }
                 ],
                 "y": [
-                  { "label": "p50", "alias": "percentile_50", "column": "percentile_50", "color": "#5960b2", "aggregationFunction": "count" },
-                  { "label": "p95", "alias": "percentile_95", "column": "percentile_95", "color": "#c23531", "aggregationFunction": "count" }
+                  {
+                    "label": "p50",
+                    "alias": "percentile_50",
+                    "column": "percentile_50",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  },
+                  {
+                    "label": "p95",
+                    "alias": "percentile_95",
+                    "column": "percentile_95",
+                    "color": "#c23531",
+                    "aggregationFunction": "count"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -296,17 +338,49 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Profile", "alias": "x_axis_1", "column": "x_axis_1", "color": null },
-                  { "label": "Model", "alias": "x_axis_2", "column": "x_axis_2", "color": null }
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_1",
+                    "column": "x_axis_1",
+                    "color": null
+                  },
+                  {
+                    "label": "Model",
+                    "alias": "x_axis_2",
+                    "column": "x_axis_2",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Prompt", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "y_axis_2", "column": "y_axis_2", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "y_axis_3", "column": "y_axis_3", "color": "#c23531", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "y_axis_2",
+                    "column": "y_axis_2",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "y_axis_3",
+                    "column": "y_axis_3",
+                    "color": "#c23531",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -344,7 +418,12 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Trace Source", "alias": "x_axis_1", "column": "tracesource", "color": null }
+                  {
+                    "label": "Trace Source",
+                    "alias": "x_axis_1",
+                    "column": "tracesource",
+                    "color": null
+                  }
                 ],
                 "y": [
                   {
@@ -357,7 +436,11 @@
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -395,14 +478,29 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Profile", "alias": "x_axis_1", "column": "runprofile", "color": null }
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_1",
+                    "column": "runprofile",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Runs", "alias": "y_axis_1", "column": "_timestamp", "color": "#5960b2", "aggregationFunction": "count" }
+                  {
+                    "label": "Runs",
+                    "alias": "y_axis_1",
+                    "column": "_timestamp",
+                    "color": "#5960b2",
+                    "aggregationFunction": "count"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",
@@ -441,14 +539,29 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Profile", "alias": "x_axis_1", "column": "runprofile", "color": null }
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_1",
+                    "column": "runprofile",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Avg Duration Ms", "alias": "y_axis_1", "column": "durationms", "color": "#61a0a8", "aggregationFunction": "avg" }
+                  {
+                    "label": "Avg Duration Ms",
+                    "alias": "y_axis_1",
+                    "column": "durationms",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "avg"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
               "config": {
                 "promql_legend": "",

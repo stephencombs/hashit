@@ -33,7 +33,7 @@ export function V2Composer({
   };
 
   return (
-    <div className="border-t bg-background p-3">
+    <div className="bg-background border-t p-3">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
         <Textarea
           value={value}

@@ -33,12 +33,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Total Tokens", "alias": "y_axis_1", "column": "y_axis_1", "color": "#5960b2", "aggregationFunction": "sum" }],
+                "y": [
+                  {
+                    "label": "Total Tokens",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 0, "w": 8, "h": 7, "i": 1 },
@@ -67,12 +87,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Prompt Tokens", "alias": "y_axis_1", "column": "y_axis_1", "color": "#61a0a8", "aggregationFunction": "sum" }],
+                "y": [
+                  {
+                    "label": "Prompt Tokens",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 8, "y": 0, "w": 8, "h": 7, "i": 2 },
@@ -101,12 +141,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Completion Tokens", "alias": "y_axis_1", "column": "y_axis_1", "color": "#d48265", "aggregationFunction": "sum" }],
+                "y": [
+                  {
+                    "label": "Completion Tokens",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 16, "y": 0, "w": 8, "h": 7, "i": 3 },
@@ -135,12 +195,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Avg Tokens", "alias": "y_axis_1", "column": "y_axis_1", "color": "#91c7ae", "aggregationFunction": "avg" }],
+                "y": [
+                  {
+                    "label": "Avg Tokens",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#91c7ae",
+                    "aggregationFunction": "avg"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 24, "y": 0, "w": 8, "h": 7, "i": 4 },
@@ -169,12 +249,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Runs", "alias": "y_axis_1", "column": "y_axis_1", "color": "#749f83", "aggregationFunction": "count" }],
+                "y": [
+                  {
+                    "label": "Runs",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#749f83",
+                    "aggregationFunction": "count"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 32, "y": 0, "w": 8, "h": 7, "i": 5 },
@@ -203,12 +303,32 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [],
-                "y": [{ "label": "Ratio", "alias": "y_axis_1", "column": "y_axis_1", "color": "#c4ccd3", "aggregationFunction": "avg" }],
+                "y": [
+                  {
+                    "label": "Ratio",
+                    "alias": "y_axis_1",
+                    "column": "y_axis_1",
+                    "color": "#c4ccd3",
+                    "aggregationFunction": "avg"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 40, "y": 0, "w": 8, "h": 7, "i": 6 },
@@ -235,17 +355,56 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "logs",
-                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null, "aggregationFunction": "histogram", "args": [{ "value": "5 minutes" }] }],
+                "x": [
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null,
+                    "aggregationFunction": "histogram",
+                    "args": [{ "value": "5 minutes" }]
+                  }
+                ],
                 "y": [
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 7, "w": 48, "h": 10, "i": 7 },
@@ -272,17 +431,54 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "logs",
-                "x": [{ "label": "Model", "alias": "x_axis_1", "column": "model", "color": null }],
+                "x": [
+                  {
+                    "label": "Model",
+                    "alias": "x_axis_1",
+                    "column": "model",
+                    "color": null
+                  }
+                ],
                 "y": [
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 17, "w": 24, "h": 11, "i": 8 },
@@ -309,17 +505,54 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "logs",
-                "x": [{ "label": "Provider", "alias": "x_axis_1", "column": "provider", "color": null }],
+                "x": [
+                  {
+                    "label": "Provider",
+                    "alias": "x_axis_1",
+                    "column": "provider",
+                    "color": null
+                  }
+                ],
                 "y": [
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 24, "y": 17, "w": 24, "h": 11, "i": 9 },
@@ -346,17 +579,54 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "logs",
-                "x": [{ "label": "Profile", "alias": "x_axis_1", "column": "runprofile", "color": null }],
+                "x": [
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_1",
+                    "column": "runprofile",
+                    "color": null
+                  }
+                ],
                 "y": [
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 28, "w": 24, "h": 11, "i": 10 },
@@ -383,17 +653,54 @@
               "fields": {
                 "stream": "hashit",
                 "stream_type": "logs",
-                "x": [{ "label": "Trace Source", "alias": "x_axis_1", "column": "tracesource", "color": null }],
+                "x": [
+                  {
+                    "label": "Trace Source",
+                    "alias": "x_axis_1",
+                    "column": "tracesource",
+                    "color": null
+                  }
+                ],
                 "y": [
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" }
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 24, "y": 28, "w": 24, "h": 11, "i": 11 },
@@ -421,15 +728,47 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null, "aggregationFunction": "histogram", "args": [{ "value": "5 minutes" }] },
-                  { "label": "Model", "alias": "x_axis_2", "column": "model", "color": null }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null,
+                    "aggregationFunction": "histogram",
+                    "args": [{ "value": "5 minutes" }]
+                  },
+                  {
+                    "label": "Model",
+                    "alias": "x_axis_2",
+                    "column": "model",
+                    "color": null
+                  }
                 ],
-                "y": [{ "label": "Total Tokens", "alias": "y_axis_1", "column": "totaltokens", "color": "#5960b2", "aggregationFunction": "sum" }],
+                "y": [
+                  {
+                    "label": "Total Tokens",
+                    "alias": "y_axis_1",
+                    "column": "totaltokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  }
+                ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 39, "w": 48, "h": 10, "i": 12 },
@@ -458,22 +797,79 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Model", "alias": "x_axis_1", "column": "model", "color": null },
-                  { "label": "Profile", "alias": "x_axis_2", "column": "runprofile", "color": null },
-                  { "label": "Provider", "alias": "x_axis_3", "column": "provider", "color": null }
+                  {
+                    "label": "Model",
+                    "alias": "x_axis_1",
+                    "column": "model",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_2",
+                    "column": "runprofile",
+                    "color": null
+                  },
+                  {
+                    "label": "Provider",
+                    "alias": "x_axis_3",
+                    "column": "provider",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Runs", "alias": "runs", "column": "runs", "color": "#749f83", "aggregationFunction": "count" },
-                  { "label": "Prompt", "alias": "prompt_tokens", "column": "prompt_tokens", "color": "#61a0a8", "aggregationFunction": "sum" },
-                  { "label": "Completion", "alias": "completion_tokens", "column": "completion_tokens", "color": "#d48265", "aggregationFunction": "sum" },
-                  { "label": "Total", "alias": "total_tokens", "column": "total_tokens", "color": "#5960b2", "aggregationFunction": "sum" },
-                  { "label": "Avg / Run", "alias": "avg_tokens_per_run", "column": "avg_tokens_per_run", "color": "#91c7ae", "aggregationFunction": "avg" }
+                  {
+                    "label": "Runs",
+                    "alias": "runs",
+                    "column": "runs",
+                    "color": "#749f83",
+                    "aggregationFunction": "count"
+                  },
+                  {
+                    "label": "Prompt",
+                    "alias": "prompt_tokens",
+                    "column": "prompt_tokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "completion_tokens",
+                    "column": "completion_tokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "total_tokens",
+                    "column": "total_tokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "sum"
+                  },
+                  {
+                    "label": "Avg / Run",
+                    "alias": "avg_tokens_per_run",
+                    "column": "avg_tokens_per_run",
+                    "color": "#91c7ae",
+                    "aggregationFunction": "avg"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 49, "w": 48, "h": 14, "i": 13 },
@@ -502,23 +898,83 @@
                 "stream": "hashit",
                 "stream_type": "logs",
                 "x": [
-                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "color": null },
-                  { "label": "Model", "alias": "x_axis_2", "column": "model", "color": null },
-                  { "label": "Provider", "alias": "x_axis_3", "column": "provider", "color": null },
-                  { "label": "Profile", "alias": "x_axis_4", "column": "runprofile", "color": null },
-                  { "label": "Source", "alias": "x_axis_5", "column": "tracesource", "color": null },
-                  { "label": "Status", "alias": "x_axis_6", "column": "runstatus", "color": null }
+                  {
+                    "label": "Timestamp",
+                    "alias": "x_axis_1",
+                    "column": "_timestamp",
+                    "color": null
+                  },
+                  {
+                    "label": "Model",
+                    "alias": "x_axis_2",
+                    "column": "model",
+                    "color": null
+                  },
+                  {
+                    "label": "Provider",
+                    "alias": "x_axis_3",
+                    "column": "provider",
+                    "color": null
+                  },
+                  {
+                    "label": "Profile",
+                    "alias": "x_axis_4",
+                    "column": "runprofile",
+                    "color": null
+                  },
+                  {
+                    "label": "Source",
+                    "alias": "x_axis_5",
+                    "column": "tracesource",
+                    "color": null
+                  },
+                  {
+                    "label": "Status",
+                    "alias": "x_axis_6",
+                    "column": "runstatus",
+                    "color": null
+                  }
                 ],
                 "y": [
-                  { "label": "Prompt", "alias": "y_axis_1", "column": "prompttokens", "color": "#61a0a8", "aggregationFunction": "max" },
-                  { "label": "Completion", "alias": "y_axis_2", "column": "completiontokens", "color": "#d48265", "aggregationFunction": "max" },
-                  { "label": "Total", "alias": "y_axis_3", "column": "totaltokens", "color": "#5960b2", "aggregationFunction": "max" }
+                  {
+                    "label": "Prompt",
+                    "alias": "y_axis_1",
+                    "column": "prompttokens",
+                    "color": "#61a0a8",
+                    "aggregationFunction": "max"
+                  },
+                  {
+                    "label": "Completion",
+                    "alias": "y_axis_2",
+                    "column": "completiontokens",
+                    "color": "#d48265",
+                    "aggregationFunction": "max"
+                  },
+                  {
+                    "label": "Total",
+                    "alias": "y_axis_3",
+                    "column": "totaltokens",
+                    "color": "#5960b2",
+                    "aggregationFunction": "max"
+                  }
                 ],
                 "z": [],
                 "breakdown": [],
-                "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
               },
-              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1, "limit": 0, "min": 0, "max": 100, "time_shift": [] }
+              "config": {
+                "promql_legend": "",
+                "layer_type": "scatter",
+                "weight_fixed": 1,
+                "limit": 0,
+                "min": 0,
+                "max": 100,
+                "time_shift": []
+              }
             }
           ],
           "layout": { "x": 0, "y": 63, "w": 48, "h": 14, "i": 14 },

@@ -23,8 +23,8 @@ export function ChatEmptyState({
     >
       <div className="text-muted-foreground">{icon}</div>
       <div className="space-y-1">
-        <h3 className="text-balance font-medium text-sm">{title}</h3>
-        <p className="text-pretty text-muted-foreground text-sm">
+        <h3 className="text-sm font-medium text-balance">{title}</h3>
+        <p className="text-muted-foreground text-sm text-pretty">
           {description}
         </p>
       </div>

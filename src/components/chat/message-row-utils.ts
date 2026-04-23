@@ -39,8 +39,7 @@ export function isToolResultPart(part: unknown): part is ToolResultPart {
 export function isUiSpecPart(part: unknown): part is UiSpecPart {
   if (!part || typeof part !== "object") return false;
   return (
-    (part as { type: string }).type === "ui-spec" &&
-    "spec" in (part as object)
+    (part as { type: string }).type === "ui-spec" && "spec" in (part as object)
   );
 }
 
@@ -52,7 +51,9 @@ export function isToolSummaryPart(part: unknown): part is ToolSummaryPart {
   );
 }
 
-export function isInteractiveToolName(name: string): name is InteractiveToolName {
+export function isInteractiveToolName(
+  name: string,
+): name is InteractiveToolName {
   return INTERACTIVE_TOOL_NAMES.has(name as InteractiveToolName);
 }
 
@@ -77,13 +78,13 @@ export function hasCollectFormDataOutput(
   if (!output || typeof output !== "object") return false;
   const maybe = output as { data?: unknown };
   return (
-    !!maybe.data &&
-    typeof maybe.data === "object" &&
-    !Array.isArray(maybe.data)
+    !!maybe.data && typeof maybe.data === "object" && !Array.isArray(maybe.data)
   );
 }
 
-export function hasResolutionOutput(output: unknown): output is ResolutionOutput {
+export function hasResolutionOutput(
+  output: unknown,
+): output is ResolutionOutput {
   if (!output || typeof output !== "object") return false;
   const maybe = output as {
     actionId?: unknown;
@@ -110,7 +111,10 @@ export function resolveSourceUrl(source: {
   return `data:${source.mimeType ?? "application/octet-stream"};base64,${source.value}`;
 }
 
-export function formatToolLabel(name: string, argsPreview: string | undefined): string {
+export function formatToolLabel(
+  name: string,
+  argsPreview: string | undefined,
+): string {
   const displayName = name.replace(/__/g, " / ");
   if (argsPreview) return `${displayName}: ${argsPreview}`;
   return displayName;

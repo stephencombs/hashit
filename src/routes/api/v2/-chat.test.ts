@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => {
   const callOrder: Array<string> = [];
   const mockLogSet = vi.fn();
-  const mockUseRequest = vi.fn(() => ({ context: { log: { set: mockLogSet } } }));
+  const mockUseRequest = vi.fn(() => ({
+    context: { log: { set: mockLogSet } },
+  }));
   const mockToDurableChatSessionResponse = vi.fn(async () => {
     callOrder.push("durable:start");
     await Promise.resolve();
@@ -221,7 +223,8 @@ describe("/api/v2/chat", () => {
         v2ProjectionError: "projection failed",
       }),
     );
-    const appendedEvents = mocks.mockAppendV2CustomEvents.mock.calls[0]?.[1] as Array<{
+    const appendedEvents = mocks.mockAppendV2CustomEvents.mock
+      .calls[0]?.[1] as Array<{
       name: string;
       value: { error?: string | null };
     }>;

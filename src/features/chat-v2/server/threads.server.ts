@@ -42,7 +42,9 @@ export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
   );
 }
 
-export async function getV2ThreadByIdServer(threadId: string): Promise<V2Thread> {
+export async function getV2ThreadByIdServer(
+  threadId: string,
+): Promise<V2Thread> {
   const [row] = await db
     .select()
     .from(v2Threads)
@@ -59,7 +61,9 @@ export async function getV2ThreadByIdServer(threadId: string): Promise<V2Thread>
   });
 }
 
-export async function createV2ThreadServer(input: CreateV2ThreadInput): Promise<V2Thread> {
+export async function createV2ThreadServer(
+  input: CreateV2ThreadInput,
+): Promise<V2Thread> {
   const now = new Date();
   const nextId = input.id?.trim() || `v2_${nanoid()}`;
   const nextTitle = input.title?.trim() || "Untitled";
@@ -101,9 +105,7 @@ export async function setV2ThreadPinnedServer(
     .set({
       pinnedAt: input.pinned ? new Date() : null,
     })
-    .where(
-      and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)),
-    )
+    .where(and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)))
     .returning();
 
   if (!row) {
@@ -122,9 +124,7 @@ export async function deleteV2ThreadServer(threadId: string): Promise<void> {
     .set({
       deletedAt: new Date(),
     })
-    .where(
-      and(eq(v2Threads.id, threadId), isNull(v2Threads.deletedAt)),
-    )
+    .where(and(eq(v2Threads.id, threadId), isNull(v2Threads.deletedAt)))
     .returning({ id: v2Threads.id });
 
   if (!row) {

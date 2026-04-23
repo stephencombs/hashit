@@ -8,7 +8,13 @@ export function ChatThreadPending() {
   return <AppPageHeader title="Loading thread..." />;
 }
 
-function EditableTitle({ threadId, title }: { threadId: string; title: string }) {
+function EditableTitle({
+  threadId,
+  title,
+}: {
+  threadId: string;
+  title: string;
+}) {
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLHeadingElement>(null);
   const queryClient = useQueryClient();
@@ -47,7 +53,7 @@ function EditableTitle({ threadId, title }: { threadId: string; title: string })
   return (
     <h1
       ref={ref}
-      className={`text-sm font-medium ${editing ? "rounded border border-input px-1 outline-none ring-1 ring-ring" : "cursor-text"}`}
+      className={`text-sm font-medium ${editing ? "border-input ring-ring rounded border px-1 ring-1 outline-none" : "cursor-text"}`}
       contentEditable={editing}
       suppressContentEditableWarning
       onDoubleClick={() => {
@@ -120,7 +126,9 @@ export function ChatThreadPage({ threadId }: { threadId: string }) {
 
   return (
     <>
-      <AppPageHeader title={<EditableTitle threadId={thread.id} title={thread.title} />} />
+      <AppPageHeader
+        title={<EditableTitle threadId={thread.id} title={thread.title} />}
+      />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Chat
           key={`thread-${threadId}`}

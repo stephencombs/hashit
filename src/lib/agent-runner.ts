@@ -7,19 +7,19 @@ import {
   type Tool,
   type StreamChunk,
   type UsageInfo,
-} from '@tanstack/ai'
-import type { Span } from '@opentelemetry/api'
-import type { RequestLogger } from 'evlog'
-import { collectFormDataTool } from '~/lib/form-tool'
-import { resolveDuplicateEntityTool } from '~/lib/resolve-duplicate-tool'
-import { getMcpTools, type GetMcpToolsOptions } from '~/lib/mcp/client'
-import { getAzureAdapter } from '~/lib/openai-adapter'
+} from "@tanstack/ai";
+import type { Span } from "@opentelemetry/api";
+import type { RequestLogger } from "evlog";
+import { collectFormDataTool } from "~/lib/form-tool";
+import { resolveDuplicateEntityTool } from "~/lib/resolve-duplicate-tool";
+import { getMcpTools, type GetMcpToolsOptions } from "~/lib/mcp/client";
+import { getAzureAdapter } from "~/lib/openai-adapter";
 import {
   PROFILE_CONFIGS,
   resolveAgentModel,
   sanitizeCustomSystemPrompt,
   type AgentRunProfile,
-} from '~/lib/agent-profile-policy'
+} from "~/lib/agent-profile-policy";
 import {
   bindTraceToLogger,
   endIterationSpan,
@@ -29,76 +29,76 @@ import {
   startToolSpan,
   type AgentTraceSource,
   type AgentTraceState,
-} from '~/lib/telemetry/agent-spans'
+} from "~/lib/telemetry/agent-spans";
 import {
   markTraceError,
   markTraceSuccess,
   setTraceAttributes,
-} from '~/lib/telemetry/otel'
+} from "~/lib/telemetry/otel";
 
 /**
  * TanStack AI injects this synthetic tool when any tool has `lazy: true`
  * (see LazyToolManager in @tanstack/ai). It is not part of the `tools` array
  * we pass to `chat()`, so policy checks must allow it explicitly.
  */
-const LAZY_TOOL_DISCOVERY_NAME = '__lazy__tool__discovery__'
+const LAZY_TOOL_DISCOVERY_NAME = "__lazy__tool__discovery__";
 
 export type AgentRunStatus =
-  | 'running'
-  | 'awaiting_input'
-  | 'completed'
-  | 'failed'
-  | 'aborted'
+  | "running"
+  | "awaiting_input"
+  | "completed"
+  | "failed"
+  | "aborted";
 
 export interface AgentToolCallTelemetry {
-  toolName: string
-  toolCallId: string
-  ok: boolean
-  durationMs: number
-  error?: string
+  toolName: string;
+  toolCallId: string;
+  ok: boolean;
+  durationMs: number;
+  error?: string;
 }
 
 export interface AgentRunTelemetry {
-  profile: AgentRunProfile
-  source: AgentTraceSource
-  status: AgentRunStatus
-  requestId?: string
-  streamId?: string
-  conversationId?: string
-  provider?: string
-  model?: string
-  traceId?: string
-  spanId?: string
-  requestMessageCount: number
-  iterationCount: number
-  toolCallCount: number
-  toolCalls: AgentToolCallTelemetry[]
-  mcpServersUsed: string[]
-  finishReason?: string | null
-  usage?: UsageInfo
-  durationMs?: number
-  error?: string
-  startedAt: number
-  completedAt?: number
-  traceState?: AgentTraceState
+  profile: AgentRunProfile;
+  source: AgentTraceSource;
+  status: AgentRunStatus;
+  requestId?: string;
+  streamId?: string;
+  conversationId?: string;
+  provider?: string;
+  model?: string;
+  traceId?: string;
+  spanId?: string;
+  requestMessageCount: number;
+  iterationCount: number;
+  toolCallCount: number;
+  toolCalls: AgentToolCallTelemetry[];
+  mcpServersUsed: string[];
+  finishReason?: string | null;
+  usage?: UsageInfo;
+  durationMs?: number;
+  error?: string;
+  startedAt: number;
+  completedAt?: number;
+  traceState?: AgentTraceState;
 }
 
 interface CreateAgentRunOptions {
-  profile: AgentRunProfile
-  source?: AgentTraceSource
-  messages: Array<any>
-  conversationId?: string
-  model?: string
-  temperature?: number
-  customSystemPrompt?: string
-  selectedServers?: string[]
-  enabledTools?: Record<string, string[]>
-  extraTools?: Tool[]
-  extraSystemPrompts?: string[]
-  maxToolIterations?: number
-  log?: RequestLogger
-  parentSpan?: Span
-  traceState?: AgentTraceState
+  profile: AgentRunProfile;
+  source?: AgentTraceSource;
+  messages: Array<any>;
+  conversationId?: string;
+  model?: string;
+  temperature?: number;
+  customSystemPrompt?: string;
+  selectedServers?: string[];
+  enabledTools?: Record<string, string[]>;
+  extraTools?: Tool[];
+  extraSystemPrompts?: string[];
+  maxToolIterations?: number;
+  log?: RequestLogger;
+  parentSpan?: Span;
+  traceState?: AgentTraceState;
 }
 
 export function createAgentRunTelemetry(
@@ -109,14 +109,14 @@ export function createAgentRunTelemetry(
   return {
     profile,
     source,
-    status: 'running',
+    status: "running",
     requestMessageCount: messageCount,
     iterationCount: 0,
     toolCallCount: 0,
     toolCalls: [],
     mcpServersUsed: [],
     startedAt: Date.now(),
-  }
+  };
 }
 
 function createTelemetryMiddleware(
@@ -126,33 +126,33 @@ function createTelemetryMiddleware(
 ): ChatMiddleware {
   const safely = (fn: () => void) => {
     try {
-      fn()
+      fn();
     } catch (error) {
       log?.set({
         telemetryHookError:
           error instanceof Error ? error.message : String(error),
-      })
+      });
     }
-  }
+  };
 
   return {
-    name: 'agent-runtime-telemetry',
+    name: "agent-runtime-telemetry",
     onStart(ctx) {
       safely(() => {
-        telemetry.requestId = ctx.requestId
-        telemetry.streamId = ctx.streamId
-        telemetry.conversationId = ctx.conversationId
-        telemetry.provider = ctx.provider
-        telemetry.model = ctx.model
+        telemetry.requestId = ctx.requestId;
+        telemetry.streamId = ctx.streamId;
+        telemetry.conversationId = ctx.conversationId;
+        telemetry.provider = ctx.provider;
+        telemetry.model = ctx.model;
 
         setTraceAttributes(telemetry.traceState?.rootSpan, {
-          'agent.request_id': ctx.requestId,
-          'agent.stream_id': ctx.streamId,
-          'agent.conversation_id': ctx.conversationId,
-          'llm.provider': ctx.provider,
-          'llm.model': ctx.model,
-          'agent.tool_names': ctx.toolNames,
-        })
+          "agent.request_id": ctx.requestId,
+          "agent.stream_id": ctx.streamId,
+          "agent.conversation_id": ctx.conversationId,
+          "llm.provider": ctx.provider,
+          "llm.model": ctx.model,
+          "agent.tool_names": ctx.toolNames,
+        });
         bindTraceToLogger(log, telemetry.traceState, {
           runProfile: telemetry.profile,
           runRequestId: ctx.requestId,
@@ -162,52 +162,52 @@ function createTelemetryMiddleware(
           model: ctx.model,
           requestMessageCount: telemetry.requestMessageCount,
           toolNames: ctx.toolNames,
-        })
-      })
+        });
+      });
     },
     onIteration(_ctx, info) {
       safely(() => {
         telemetry.iterationCount = Math.max(
           telemetry.iterationCount,
           info.iteration + 1,
-        )
+        );
         startIterationSpan(telemetry.traceState, {
-          'agent.iteration': info.iteration + 1,
-          'agent.message_id': info.messageId,
-        })
+          "agent.iteration": info.iteration + 1,
+          "agent.message_id": info.messageId,
+        });
         log?.set({
           agentIteration: info.iteration + 1,
           agentMessageId: info.messageId,
-        })
-      })
+        });
+      });
     },
     onBeforeToolCall(_ctx, hookCtx) {
       if (allowedToolNames && !allowedToolNames.has(hookCtx.toolName)) {
         safely(() => {
           setTraceAttributes(telemetry.traceState?.rootSpan, {
-            'agent.blocked_tool': hookCtx.toolName,
-          })
+            "agent.blocked_tool": hookCtx.toolName,
+          });
           log?.set({
             blockedToolName: hookCtx.toolName,
-          })
-        })
+          });
+        });
         return {
-          type: 'abort' as const,
+          type: "abort" as const,
           reason: `Tool blocked by profile policy: ${hookCtx.toolName}`,
-        }
+        };
       }
 
       safely(() => {
         startToolSpan(telemetry.traceState, hookCtx.toolCallId, {
-          'tool.name': hookCtx.toolName,
-          'tool.call_id': hookCtx.toolCallId,
-        })
-      })
-      return undefined
+          "tool.name": hookCtx.toolName,
+          "tool.call_id": hookCtx.toolCallId,
+        });
+      });
+      return undefined;
     },
     onAfterToolCall(_ctx, info) {
       safely(() => {
-        telemetry.toolCallCount += 1
+        telemetry.toolCallCount += 1;
         const toolCall = {
           toolName: info.toolName,
           toolCallId: info.toolCallId,
@@ -218,66 +218,66 @@ function createTelemetryMiddleware(
             : info.error instanceof Error
               ? info.error.message
               : String(info.error),
-        }
-        telemetry.toolCalls.push(toolCall)
-        if (info.toolName.includes('__')) {
-          const serverName = info.toolName.split('__')[0]
+        };
+        telemetry.toolCalls.push(toolCall);
+        if (info.toolName.includes("__")) {
+          const serverName = info.toolName.split("__")[0];
           if (serverName && !telemetry.mcpServersUsed.includes(serverName)) {
-            telemetry.mcpServersUsed.push(serverName)
+            telemetry.mcpServersUsed.push(serverName);
           }
         }
         finishToolSpan(telemetry.traceState, info.toolCallId, {
           ok: info.ok,
           error: info.ok ? undefined : info.error,
           attributes: {
-            'tool.name': info.toolName,
-            'tool.call_id': info.toolCallId,
-            'tool.duration_ms': info.duration,
-            'tool.ok': info.ok,
+            "tool.name": info.toolName,
+            "tool.call_id": info.toolCallId,
+            "tool.duration_ms": info.duration,
+            "tool.ok": info.ok,
           },
-        })
+        });
         log?.set({
           lastToolName: info.toolName,
           lastToolDurationMs: info.duration,
           lastToolOk: info.ok,
           toolCallCount: telemetry.toolCallCount,
-        })
-      })
+        });
+      });
     },
     onUsage(_ctx, usage) {
       safely(() => {
-        telemetry.usage = usage
+        telemetry.usage = usage;
         setTraceAttributes(telemetry.traceState?.rootSpan, {
-          'llm.prompt_tokens': usage.promptTokens,
-          'llm.completion_tokens': usage.completionTokens,
-          'llm.total_tokens': usage.totalTokens,
-        })
+          "llm.prompt_tokens": usage.promptTokens,
+          "llm.completion_tokens": usage.completionTokens,
+          "llm.total_tokens": usage.totalTokens,
+        });
         log?.set({
           promptTokens: usage.promptTokens,
           completionTokens: usage.completionTokens,
           totalTokens: usage.totalTokens,
-        })
-      })
+        });
+      });
     },
     onFinish(_ctx, info: FinishInfo) {
       safely(() => {
-        telemetry.status = 'completed'
-        telemetry.finishReason = info.finishReason
-        telemetry.durationMs = info.duration
-        telemetry.completedAt = telemetry.startedAt + info.duration
+        telemetry.status = "completed";
+        telemetry.finishReason = info.finishReason;
+        telemetry.durationMs = info.duration;
+        telemetry.completedAt = telemetry.startedAt + info.duration;
         endIterationSpan(telemetry.traceState, {
           attributes: {
-            'agent.finish_reason': info.finishReason,
+            "agent.finish_reason": info.finishReason,
           },
-        })
+        });
         markTraceSuccess(telemetry.traceState?.rootSpan, {
-          'agent.status': telemetry.status,
-          'agent.finish_reason': info.finishReason,
-          'agent.duration_ms': info.duration,
-          'agent.tool_call_count': telemetry.toolCallCount,
-          'agent.iteration_count': telemetry.iterationCount,
-          'agent.mcp_servers': telemetry.mcpServersUsed,
-        })
+          "agent.status": telemetry.status,
+          "agent.finish_reason": info.finishReason,
+          "agent.duration_ms": info.duration,
+          "agent.tool_call_count": telemetry.toolCallCount,
+          "agent.iteration_count": telemetry.iterationCount,
+          "agent.mcp_servers": telemetry.mcpServersUsed,
+        });
         log?.set({
           runStatus: telemetry.status,
           finishReason: info.finishReason,
@@ -285,75 +285,73 @@ function createTelemetryMiddleware(
           toolCallCount: telemetry.toolCallCount,
           iterationCount: telemetry.iterationCount,
           mcpServersUsed: telemetry.mcpServersUsed,
-        })
-      })
+        });
+      });
     },
     onAbort(_ctx, info) {
       safely(() => {
-        telemetry.status = 'aborted'
-        telemetry.error = info.reason
-        telemetry.durationMs = info.duration
-        telemetry.completedAt = telemetry.startedAt + info.duration
+        telemetry.status = "aborted";
+        telemetry.error = info.reason;
+        telemetry.durationMs = info.duration;
+        telemetry.completedAt = telemetry.startedAt + info.duration;
         endIterationSpan(telemetry.traceState, {
           error: info.reason,
           attributes: {
-            'agent.abort_reason': info.reason,
+            "agent.abort_reason": info.reason,
           },
-        })
+        });
         markTraceError(telemetry.traceState?.rootSpan, info.reason, {
-          'agent.status': telemetry.status,
-          'agent.duration_ms': info.duration,
-        })
+          "agent.status": telemetry.status,
+          "agent.duration_ms": info.duration,
+        });
         log?.set({
           runStatus: telemetry.status,
           durationMs: info.duration,
           abortReason: info.reason,
-        })
-      })
+        });
+      });
     },
     onError(_ctx, info: ErrorInfo) {
       safely(() => {
-        telemetry.status = 'failed'
+        telemetry.status = "failed";
         telemetry.error =
-          info.error instanceof Error ? info.error.message : String(info.error)
-        telemetry.durationMs = info.duration
-        telemetry.completedAt = telemetry.startedAt + info.duration
+          info.error instanceof Error ? info.error.message : String(info.error);
+        telemetry.durationMs = info.duration;
+        telemetry.completedAt = telemetry.startedAt + info.duration;
         endIterationSpan(telemetry.traceState, {
           error: info.error,
-        })
+        });
         markTraceError(telemetry.traceState?.rootSpan, info.error, {
-          'agent.status': telemetry.status,
-          'agent.duration_ms': info.duration,
-          'agent.tool_call_count': telemetry.toolCallCount,
-          'agent.iteration_count': telemetry.iterationCount,
-        })
+          "agent.status": telemetry.status,
+          "agent.duration_ms": info.duration,
+          "agent.tool_call_count": telemetry.toolCallCount,
+          "agent.iteration_count": telemetry.iterationCount,
+        });
         log?.set({
           runStatus: telemetry.status,
           durationMs: info.duration,
           runError: telemetry.error,
           toolCallCount: telemetry.toolCallCount,
           iterationCount: telemetry.iterationCount,
-        })
-      })
+        });
+      });
     },
-  }
+  };
 }
 
-function getDefaultTraceSource(
-  profile: AgentRunProfile,
-): AgentTraceSource {
+function getDefaultTraceSource(profile: AgentRunProfile): AgentTraceSource {
   switch (profile) {
-    case 'interactiveChat':
-      return 'interactive-chat'
-    case 'interactiveChatV2':
-      return 'interactive-chat-v2'
-    case 'dashboardPlanning':
-      return 'dashboard-planning'
-    case 'dashboardRender':
-      return 'dashboard-render'
-    case 'automation':
+    case "interactiveChat":
+      return "interactive-chat";
+    case "interactiveChatV2":
+      return "interactive-chat-v2";
+    case "dashboardPlanning":
+      return "dashboard-planning";
+    case "dashboardRender":
+      return "dashboard-render";
+    case "automation":
     default:
-      return 'automation-executor'
+      return "automation-executor";
   }
 }
 
@@ -374,31 +372,30 @@ export async function createAgentRun({
   parentSpan,
   traceState: providedTraceState,
 }: CreateAgentRunOptions): Promise<{
-  stream: AsyncIterable<StreamChunk>
-  telemetry: AgentRunTelemetry
+  stream: AsyncIterable<StreamChunk>;
+  telemetry: AgentRunTelemetry;
 }> {
-  const profileConfig = PROFILE_CONFIGS[profile]
-  const resolvedModel = resolveAgentModel(profile, model)
-  const adapter = getAzureAdapter(resolvedModel)
-  const modelName = resolvedModel || process.env.AZURE_OPENAI_DEPLOYMENT!
-  const supportsReasoning = /gpt-5|o[1-9]/.test(modelName)
+  const profileConfig = PROFILE_CONFIGS[profile];
+  const resolvedModel = resolveAgentModel(profile, model);
+  const adapter = getAzureAdapter(resolvedModel);
+  const modelName = resolvedModel || process.env.AZURE_OPENAI_DEPLOYMENT!;
+  const supportsReasoning = /gpt-5|o[1-9]/.test(modelName);
 
   const sanitizedPrompt = profileConfig.allowCustomSystemPrompt
     ? sanitizeCustomSystemPrompt(customSystemPrompt)
-    : undefined
+    : undefined;
 
   const systemPrompts = profileConfig.buildSystemPrompts({
     customSystemPrompt: sanitizedPrompt,
     extraSystemPrompts,
-  })
+  });
 
   const mcpOptions: GetMcpToolsOptions = {
     lazy: profileConfig.lazyMcpTools,
-  }
-  const mcpTools =
-    profileConfig.includeMcpTools
-      ? await getMcpTools(selectedServers, enabledTools, mcpOptions)
-      : []
+  };
+  const mcpTools = profileConfig.includeMcpTools
+    ? await getMcpTools(selectedServers, enabledTools, mcpOptions)
+    : [];
 
   const tools: Tool[] = [
     ...(profileConfig.includeFormTool
@@ -406,10 +403,14 @@ export async function createAgentRun({
       : []),
     ...extraTools,
     ...mcpTools,
-  ]
+  ];
 
-  const traceSource = source ?? getDefaultTraceSource(profile)
-  const telemetry = createAgentRunTelemetry(profile, messages.length, traceSource)
+  const traceSource = source ?? getDefaultTraceSource(profile);
+  const telemetry = createAgentRunTelemetry(
+    profile,
+    messages.length,
+    traceSource,
+  );
   const traceState =
     providedTraceState ??
     startAgentRunTrace({
@@ -419,17 +420,17 @@ export async function createAgentRun({
       conversationId,
       log,
       attributes: {
-        'agent.message_count': messages.length,
-        'agent.tool_count': tools.length,
+        "agent.message_count": messages.length,
+        "agent.tool_count": tools.length,
       },
-    })
-  telemetry.traceState = traceState
-  telemetry.traceId = traceState.traceId
-  telemetry.spanId = traceState.spanId
+    });
+  telemetry.traceState = traceState;
+  telemetry.traceId = traceState.traceId;
+  telemetry.spanId = traceState.spanId;
 
-  const allowedToolNames = new Set(tools.map((tool) => tool.name))
+  const allowedToolNames = new Set(tools.map((tool) => tool.name));
   if (tools.some((t) => t.lazy)) {
-    allowedToolNames.add(LAZY_TOOL_DISCOVERY_NAME)
+    allowedToolNames.add(LAZY_TOOL_DISCOVERY_NAME);
   }
 
   const stream = chat({
@@ -450,11 +451,11 @@ export async function createAgentRun({
       : {}),
     ...(supportsReasoning && {
       modelOptions: {
-        reasoning: { effort: 'low', summary: 'auto' },
+        reasoning: { effort: "low", summary: "auto" },
       },
     }),
     middleware: [createTelemetryMiddleware(telemetry, log, allowedToolNames)],
-  })
+  });
 
-  return { stream, telemetry }
+  return { stream, telemetry };
 }

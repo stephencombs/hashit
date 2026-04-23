@@ -1,9 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "~/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 import { getV2Collections } from "~/features/chat-v2/data/collections";
 import { V2Sidebar } from "~/features/chat-v2/ui/v2-sidebar";
 

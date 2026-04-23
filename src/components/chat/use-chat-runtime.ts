@@ -35,9 +35,19 @@ import type {
 import { useMcpSettings } from "~/hooks/use-mcp-settings";
 import { useModelSettings } from "~/hooks/use-model-settings";
 import { LiveSpecStore } from "~/lib/live-spec-store";
-import { buildPromptContentParts, isVisionCapableModel } from "~/lib/multimodal-parts";
-import { artifactsByThreadQuery, threadDetailQuery, type ThreadArtifact } from "~/lib/queries";
-import { collectFormDataTool, type CollectFormDataOutput } from "~/lib/form-tool";
+import {
+  buildPromptContentParts,
+  isVisionCapableModel,
+} from "~/lib/multimodal-parts";
+import {
+  artifactsByThreadQuery,
+  threadDetailQuery,
+  type ThreadArtifact,
+} from "~/lib/queries";
+import {
+  collectFormDataTool,
+  type CollectFormDataOutput,
+} from "~/lib/form-tool";
 import {
   resolveDuplicateEntityTool,
   type ResolutionOutput,
@@ -69,14 +79,20 @@ type PendingSend =
 const OPTIMISTIC_SIDEBAR_INSERT_DELAY_MS = 48;
 
 function createClientThreadId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return `thread_${crypto.randomUUID()}`;
   }
   return `thread_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function createClientMessageId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return `msg_${crypto.randomUUID()}`;
   }
   return `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
@@ -240,10 +256,12 @@ export function useChatRuntime({
           return {
             id: m.id,
             role: message.role,
-            parts: Array.isArray(message.parts) && message.parts.length > 0
-              ? message.parts
-              : null,
-            content: typeof message.content === "string" ? message.content : null,
+            parts:
+              Array.isArray(message.parts) && message.parts.length > 0
+                ? message.parts
+                : null,
+            content:
+              typeof message.content === "string" ? message.content : null,
           };
         }),
         initialResumeOffset: undefined,
@@ -305,7 +323,10 @@ export function useChatRuntime({
         }
       }
       if (eventType === "thread_title_updated") {
-        const { threadId, title } = data as { threadId?: string; title?: string };
+        const { threadId, title } = data as {
+          threadId?: string;
+          title?: string;
+        };
         if (!threadId || typeof title !== "string") return;
         setThreadTitle(queryClient, threadId, title);
         queryClient.setQueryData<{
@@ -318,13 +339,10 @@ export function useChatRuntime({
             content?: string | null;
             parts?: unknown[] | null;
           }>;
-        }>(
-          threadDetailQuery(threadId).queryKey,
-          (old) => {
-            if (!old || old.title === title) return old;
-            return { ...old, title };
-          },
-        );
+        }>(threadDetailQuery(threadId).queryKey, (old) => {
+          if (!old || old.title === title) return old;
+          return { ...old, title };
+        });
       }
       if (eventType === "persistence_complete") {
         invalidateThreadList(queryClient);
@@ -333,15 +351,16 @@ export function useChatRuntime({
       if (TERMINAL_RUN_EVENT_TYPES.has(eventType)) {
         const maybeThreadId = (data as { threadId?: string } | null)?.threadId;
         const targetThreadId =
-          maybeThreadId ??
-          resolvedThreadIdRef.current ??
-          activeThreadId;
+          maybeThreadId ?? resolvedThreadIdRef.current ?? activeThreadId;
         if (targetThreadId) {
           clearThreadStreaming(targetThreadId);
         }
       }
       if (eventType === "spec_patch" || eventType === "spec_complete") {
-        const { spec, specIndex: idx } = data as { spec: Spec; specIndex: number };
+        const { spec, specIndex: idx } = data as {
+          spec: Spec;
+          specIndex: number;
+        };
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         if (lastMsg) liveSpecStore.set(lastMsg.id, idx, spec);
       }
@@ -364,9 +383,7 @@ export function useChatRuntime({
         return;
       }
 
-      setSubmissionError(
-        errorMessage,
-      );
+      setSubmissionError(errorMessage);
       setIsBootstrappingThread(false);
     },
   });
@@ -398,7 +415,9 @@ export function useChatRuntime({
 
     stop();
     cancelAllPending("thread-changed");
-    setMessages(((initialMessages as ChatMessageShape[] | undefined) ?? []) as never);
+    setMessages(
+      ((initialMessages as ChatMessageShape[] | undefined) ?? []) as never,
+    );
     liveSpecStore.clear();
 
     if (routeThreadId !== undefined) {
@@ -432,7 +451,8 @@ export function useChatRuntime({
   const clearSubmissionError = useCallback(() => setSubmissionError(null), []);
 
   const scrollToHashTarget = useCallback(() => {
-    if (typeof window === "undefined" || hashScrollTriggeredRef.current) return false;
+    if (typeof window === "undefined" || hashScrollTriggeredRef.current)
+      return false;
     const hash = window.location.hash;
     if (!hash) return false;
     hashScrollTriggeredRef.current = true;
@@ -443,42 +463,46 @@ export function useChatRuntime({
     return true;
   }, []);
 
-  const ensureThreadId = useCallback(async (preferredId?: string): Promise<string> => {
-    if (resolvedThreadIdRef.current) return resolvedThreadIdRef.current;
-    const optimisticId =
-      preferredId ??
-      pendingThreadCreationIdRef.current ??
-      createClientThreadId();
-    pendingThreadCreationIdRef.current = optimisticId;
-    const response = await fetch("/api/threads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: optimisticId }),
-    });
-    if (!response.ok) {
-      let detail: string | undefined;
-      try {
-        const body = (await response.json()) as { message?: string };
-        detail = body.message;
-      } catch {
-        // ignore
+  const ensureThreadId = useCallback(
+    async (preferredId?: string): Promise<string> => {
+      if (resolvedThreadIdRef.current) return resolvedThreadIdRef.current;
+      const optimisticId =
+        preferredId ??
+        pendingThreadCreationIdRef.current ??
+        createClientThreadId();
+      pendingThreadCreationIdRef.current = optimisticId;
+      const response = await fetch("/api/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: optimisticId }),
+      });
+      if (!response.ok) {
+        let detail: string | undefined;
+        try {
+          const body = (await response.json()) as { message?: string };
+          detail = body.message;
+        } catch {
+          // ignore
+        }
+        throw new Error(detail ?? `Failed to create chat (${response.status})`);
       }
-      throw new Error(detail ?? `Failed to create chat (${response.status})`);
-    }
-    const { id } = (await response.json()) as { id: string };
-    pendingThreadCreationIdRef.current = null;
-    resolvedThreadIdRef.current = id;
-    setResolvedThreadId(id);
-    promoteOptimisticToRealThread(queryClient, id, optimisticId);
-    return id;
-  }, [queryClient]);
+      const { id } = (await response.json()) as { id: string };
+      pendingThreadCreationIdRef.current = null;
+      resolvedThreadIdRef.current = id;
+      setResolvedThreadId(id);
+      promoteOptimisticToRealThread(queryClient, id, optimisticId);
+      return id;
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     if (!activeThreadId) return;
     const pending = pendingFirstMessageRef.current;
     if (!pending) return;
     pendingFirstMessageRef.current = null;
-    const optimisticMessageId = pendingOptimisticUserMessageIdRef.current ?? undefined;
+    const optimisticMessageId =
+      pendingOptimisticUserMessageIdRef.current ?? undefined;
     if (pending.kind === "text") {
       if (optimisticMessageId) {
         void sendMessage({
@@ -547,7 +571,8 @@ export function useChatRuntime({
       setSubmissionError(null);
       hasUserSubmittedRef.current = true;
 
-      let attachments: Awaited<ReturnType<typeof uploadAttachmentSource>>[] = [];
+      let attachments: Awaited<ReturnType<typeof uploadAttachmentSource>>[] =
+        [];
       if (fileCount > 0) {
         try {
           attachments = await Promise.all(
@@ -649,7 +674,8 @@ export function useChatRuntime({
       const root = spec.elements?.[spec.root] as
         | { props?: { title?: string } }
         | undefined;
-      const title = root?.props?.title || `Chart – ${new Date().toLocaleDateString()}`;
+      const title =
+        root?.props?.title || `Chart – ${new Date().toLocaleDateString()}`;
 
       const tid = activeThreadId;
       try {
@@ -716,7 +742,8 @@ export function useChatRuntime({
     scrollToHashTarget,
     // Prevent "Thinking…" from rendering before the user's first message is
     // visible in the transcript during new-thread bootstrap.
-    isAwaitingResponse: isStreaming && lastMessageIsUser && !hasAssistantContent,
+    isAwaitingResponse:
+      isStreaming && lastMessageIsUser && !hasAssistantContent,
     submissionError,
     clearSubmissionError,
   };

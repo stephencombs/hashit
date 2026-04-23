@@ -22,7 +22,7 @@ export const Node = ({ handles, className, ...props }: NodeProps) => (
   <Card
     className={cn(
       "node-container relative h-auto w-[612px] max-h-[792px] gap-0 rounded-md p-0",
-      className
+      className,
     )}
     {...props}
   >

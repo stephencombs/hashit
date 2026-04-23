@@ -17,4 +17,3 @@ Legacy middleware orchestration in `persistence.ts` was removed in favor of
 - `v2_threads.resumeOffset` tracks durable replay position.
 - `v2_threads.updatedAt` and `resumeOffset` updates happen during projection.
 - Title updates are best-effort async and do not block `/api/v2/chat`.
-

@@ -1,21 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "@tanstack/react-db";
-import {
-  Link,
-  useMatchRoute,
-  useNavigate,
-} from "@tanstack/react-router";
-import {
-  Loader2Icon,
-  PinIcon,
-  PinOffIcon,
-  Trash2Icon,
-} from "lucide-react";
-import {
-  type MouseEvent,
-  useMemo,
-  useState,
-} from "react";
+import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import { Loader2Icon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -264,7 +251,10 @@ export function V2ThreadList() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const matchRoute = useMatchRoute();
-  const { threadsCollection } = useMemo(() => getV2Collections(queryClient), [queryClient]);
+  const { threadsCollection } = useMemo(
+    () => getV2Collections(queryClient),
+    [queryClient],
+  );
   const [pendingPinIds, setPendingPinIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -384,11 +374,11 @@ export function V2ThreadList() {
     return (
       <>
         {actionError ? (
-          <div className="px-4 pt-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
+          <div className="text-destructive px-4 pt-2 text-xs group-data-[collapsible=icon]:hidden">
             {actionError}
           </div>
         ) : null}
-        <div className="p-4 text-center text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+        <div className="text-muted-foreground p-4 text-center text-sm group-data-[collapsible=icon]:hidden">
           No threads yet
         </div>
       </>
@@ -398,7 +388,7 @@ export function V2ThreadList() {
   return (
     <>
       {actionError ? (
-        <div className="px-4 pt-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
+        <div className="text-destructive px-4 pt-2 text-xs group-data-[collapsible=icon]:hidden">
           {actionError}
         </div>
       ) : null}
@@ -434,13 +424,17 @@ export function V2ThreadList() {
           <DialogHeader>
             <DialogTitle>Delete thread?</DialogTitle>
             <DialogDescription>
-              This removes &quot;{deleteCandidate?.title ?? "thread"}&quot; from the
-              V2 sidebar and hides it from future runs.
+              This removes &quot;{deleteCandidate?.title ?? "thread"}&quot; from
+              the V2 sidebar and hides it from future runs.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={Boolean(pendingDeleteId)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={Boolean(pendingDeleteId)}
+              >
                 Cancel
               </Button>
             </DialogClose>

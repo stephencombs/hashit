@@ -1,20 +1,20 @@
 import {
   createSpecStreamCompiler,
   parseSpecStreamLine,
-} from '@json-render/core'
-import type { Spec } from '@json-render/core'
-import type { StreamChunk } from '@tanstack/ai'
+} from "@json-render/core";
+import type { Spec } from "@json-render/core";
+import type { StreamChunk } from "@tanstack/ai";
 
 /** Telemetry counters emitted once after the stream closes. */
 export interface UiGenerationMetrics {
   /** Total patch lines parsed from the LLM output. */
-  patchLinesReceived: number
+  patchLinesReceived: number;
   /** Number of `spec_patch` events emitted to the client (≤ patchLinesReceived due to coalescing). */
-  patchesEmitted: number
+  patchesEmitted: number;
   /** Number of `spec_complete` events emitted (one per spec block). */
-  specsCompleted: number
+  specsCompleted: number;
   /** Wall-clock milliseconds from first patch line to last spec_complete. */
-  totalMs: number
+  totalMs: number;
 }
 
 /**
@@ -37,176 +37,176 @@ export async function* withJsonRender(
   stream: AsyncIterable<StreamChunk>,
   onMetrics?: (metrics: UiGenerationMetrics) => void,
 ): AsyncIterable<StreamChunk> {
-  let compiler = createSpecStreamCompiler<Spec>()
-  let hasSpec = false
-  let flushed = false
-  let specIndex = 0
-  const textQueue: string[] = []
-  const patchQueue: Array<{ spec: Spec; specIndex: number }> = []
-  const completeQueue: Array<{ spec: Spec; specIndex: number }> = []
+  let compiler = createSpecStreamCompiler<Spec>();
+  let hasSpec = false;
+  let flushed = false;
+  let specIndex = 0;
+  const textQueue: string[] = [];
+  const patchQueue: Array<{ spec: Spec; specIndex: number }> = [];
+  const completeQueue: Array<{ spec: Spec; specIndex: number }> = [];
 
   // Telemetry counters — only paid for when onMetrics is provided.
-  let patchLinesReceived = 0
-  let patchesEmitted = 0
-  let specsCompleted = 0
-  let firstPatchAt = 0
+  let patchLinesReceived = 0;
+  let patchesEmitted = 0;
+  let specsCompleted = 0;
+  let firstPatchAt = 0;
 
-  let parseBuffer = ''
-  let inSpecFence = false
+  let parseBuffer = "";
+  let inSpecFence = false;
 
   function enqueueProse(fragment: string) {
     if (hasSpec) {
-      completeQueue.push({ spec: compiler.getResult(), specIndex })
-      hasSpec = false
-      specIndex++
-      compiler = createSpecStreamCompiler<Spec>()
+      completeQueue.push({ spec: compiler.getResult(), specIndex });
+      hasSpec = false;
+      specIndex++;
+      compiler = createSpecStreamCompiler<Spec>();
     }
-    textQueue.push(fragment)
+    textQueue.push(fragment);
   }
 
   function enqueuePatch(patch: ReturnType<typeof parseSpecStreamLine>) {
-    if (!patch) return
-    hasSpec = true
+    if (!patch) return;
+    hasSpec = true;
     if (onMetrics) {
-      patchLinesReceived++
-      if (firstPatchAt === 0) firstPatchAt = Date.now()
+      patchLinesReceived++;
+      if (firstPatchAt === 0) firstPatchAt = Date.now();
     }
-    compiler.push(JSON.stringify(patch) + '\n')
-    patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex })
+    compiler.push(JSON.stringify(patch) + "\n");
+    patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex });
   }
 
   function processLine(line: string) {
-    const trimmed = line.trim()
-    if (!inSpecFence && trimmed.startsWith('```spec')) {
-      inSpecFence = true
-      return
+    const trimmed = line.trim();
+    if (!inSpecFence && trimmed.startsWith("```spec")) {
+      inSpecFence = true;
+      return;
     }
-    if (inSpecFence && trimmed === '```') {
-      inSpecFence = false
-      return
+    if (inSpecFence && trimmed === "```") {
+      inSpecFence = false;
+      return;
     }
     if (!trimmed) {
       if (!inSpecFence) {
-        enqueueProse('\n')
+        enqueueProse("\n");
       }
-      return
+      return;
     }
     if (inSpecFence) {
-      const patch = parseSpecStreamLine(trimmed)
-      if (patch) enqueuePatch(patch)
-      return
+      const patch = parseSpecStreamLine(trimmed);
+      if (patch) enqueuePatch(patch);
+      return;
     }
-    const patch = parseSpecStreamLine(trimmed)
+    const patch = parseSpecStreamLine(trimmed);
     if (patch) {
-      enqueuePatch(patch)
+      enqueuePatch(patch);
     } else {
-      enqueueProse(line + '\n')
+      enqueueProse(line + "\n");
     }
   }
 
   function pushChunk(chunk: string) {
-    parseBuffer += chunk
-    const lines = parseBuffer.split('\n')
-    parseBuffer = lines.pop() ?? ''
+    parseBuffer += chunk;
+    const lines = parseBuffer.split("\n");
+    parseBuffer = lines.pop() ?? "";
     for (const line of lines) {
-      processLine(line)
+      processLine(line);
     }
   }
 
   function flushParser() {
     if (parseBuffer.trim()) {
-      processLine(parseBuffer)
+      processLine(parseBuffer);
     }
-    parseBuffer = ''
+    parseBuffer = "";
   }
 
   function* drainTextQueue(templateChunk?: StreamChunk) {
     while (textQueue.length > 0) {
-      const text = textQueue.shift()!
+      const text = textQueue.shift()!;
       if (templateChunk) {
-        yield { ...templateChunk, delta: text, content: undefined }
+        yield { ...templateChunk, delta: text, content: undefined };
       } else {
         yield {
-          type: 'TEXT_MESSAGE_CONTENT' as const,
+          type: "TEXT_MESSAGE_CONTENT" as const,
           delta: text,
           timestamp: Date.now(),
-        } as StreamChunk
+        } as StreamChunk;
       }
     }
   }
 
   function* drainCompleteQueue() {
     while (completeQueue.length > 0) {
-      const entry = completeQueue.shift()!
-      if (onMetrics) specsCompleted++
+      const entry = completeQueue.shift()!;
+      if (onMetrics) specsCompleted++;
       yield {
-        type: 'CUSTOM' as const,
-        name: 'spec_complete',
+        type: "CUSTOM" as const,
+        name: "spec_complete",
         value: { spec: entry.spec, specIndex: entry.specIndex },
         timestamp: Date.now(),
-      }
+      };
     }
   }
 
   function* drainPatchQueue() {
-    if (patchQueue.length === 0) return
+    if (patchQueue.length === 0) return;
     // Skip intermediate patches and only emit the latest compiled snapshot.
     // When the model streams many JSONL lines in a single text chunk we would
     // otherwise emit N full-spec copies per chunk; coalescing to the last entry
     // cuts SSE bandwidth and client rerender frequency without losing any data.
-    const latest = patchQueue[patchQueue.length - 1]!
-    patchQueue.length = 0
-    if (onMetrics) patchesEmitted++
+    const latest = patchQueue[patchQueue.length - 1]!;
+    patchQueue.length = 0;
+    if (onMetrics) patchesEmitted++;
     yield {
-      type: 'CUSTOM' as const,
-      name: 'spec_patch',
+      type: "CUSTOM" as const,
+      name: "spec_patch",
       value: { spec: latest.spec, specIndex: latest.specIndex },
       timestamp: Date.now(),
-    }
+    };
   }
 
   function* emitSpecComplete() {
     if (hasSpec) {
-      hasSpec = false
-      if (onMetrics) specsCompleted++
+      hasSpec = false;
+      if (onMetrics) specsCompleted++;
       yield {
-        type: 'CUSTOM' as const,
-        name: 'spec_complete',
+        type: "CUSTOM" as const,
+        name: "spec_complete",
         value: { spec: compiler.getResult(), specIndex },
         timestamp: Date.now(),
-      }
-      specIndex++
-      compiler = createSpecStreamCompiler<Spec>()
+      };
+      specIndex++;
+      compiler = createSpecStreamCompiler<Spec>();
     }
   }
 
   for await (const chunk of stream) {
-    if (chunk.type === 'TEXT_MESSAGE_CONTENT' && chunk.delta) {
-      pushChunk(chunk.delta)
-      yield* drainCompleteQueue()
-      yield* drainTextQueue(chunk)
-      yield* drainPatchQueue()
-      continue
+    if (chunk.type === "TEXT_MESSAGE_CONTENT" && chunk.delta) {
+      pushChunk(chunk.delta);
+      yield* drainCompleteQueue();
+      yield* drainTextQueue(chunk);
+      yield* drainPatchQueue();
+      continue;
     }
 
-    if (chunk.type === 'TEXT_MESSAGE_END' && !flushed) {
-      flushed = true
-      flushParser()
-      yield* drainCompleteQueue()
-      yield* drainTextQueue()
-      yield* drainPatchQueue()
-      yield* emitSpecComplete()
+    if (chunk.type === "TEXT_MESSAGE_END" && !flushed) {
+      flushed = true;
+      flushParser();
+      yield* drainCompleteQueue();
+      yield* drainTextQueue();
+      yield* drainPatchQueue();
+      yield* emitSpecComplete();
     }
 
-    yield chunk
+    yield chunk;
   }
 
   if (!flushed) {
-    flushParser()
-    yield* drainCompleteQueue()
-    yield* drainTextQueue()
-    yield* drainPatchQueue()
-    yield* emitSpecComplete()
+    flushParser();
+    yield* drainCompleteQueue();
+    yield* drainTextQueue();
+    yield* drainPatchQueue();
+    yield* emitSpecComplete();
   }
 
   if (onMetrics) {
@@ -215,6 +215,6 @@ export async function* withJsonRender(
       patchesEmitted,
       specsCompleted,
       totalMs: firstPatchAt > 0 ? Date.now() - firstPatchAt : 0,
-    })
+    });
   }
 }

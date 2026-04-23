@@ -15,11 +15,7 @@ export const getThread = createServerFn({ method: "GET" })
   .inputValidator(zodValidator(z.string()))
   .handler(async ({ data: threadId }) => {
     const [[thread], threadMessages] = await Promise.all([
-      db
-        .select()
-        .from(threads)
-        .where(eq(threads.id, threadId))
-        .limit(1),
+      db.select().from(threads).where(eq(threads.id, threadId)).limit(1),
       db
         .select()
         .from(messages)
@@ -31,7 +27,8 @@ export const getThread = createServerFn({ method: "GET" })
       throw new Error("Thread not found");
     }
 
-    let initialResumeOffset: string | undefined = thread.resumeOffset ?? undefined;
+    let initialResumeOffset: string | undefined =
+      thread.resumeOffset ?? undefined;
     if (!initialResumeOffset && isDurableStreamsConfigured()) {
       if (isThreadRunActive(threadId)) {
         // While a run is actively streaming, avoid tail-based head fallback.
@@ -39,16 +36,16 @@ export const getThread = createServerFn({ method: "GET" })
         // active run instead of mid-stream truncation.
         initialResumeOffset = "-1";
       } else {
-      try {
-        initialResumeOffset = await readDurableStreamHeadOffset(
-          buildChatStreamPath(threadId),
-        );
-      } catch (error) {
-        console.error(
-          "[getThread] durable head lookup failed, using Postgres-only hydration",
-          error,
-        );
-      }
+        try {
+          initialResumeOffset = await readDurableStreamHeadOffset(
+            buildChatStreamPath(threadId),
+          );
+        } catch (error) {
+          console.error(
+            "[getThread] durable head lookup failed, using Postgres-only hydration",
+            error,
+          );
+        }
       }
     }
 

@@ -1,27 +1,19 @@
-import { useState } from "react"
-import { Link } from "@tanstack/react-router"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  KeyRoundIcon,
-  LoaderIcon,
-  MonitorIcon,
-} from "lucide-react"
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { KeyRoundIcon, LoaderIcon, MonitorIcon } from "lucide-react";
 import {
   ChevronsUpDownIcon,
   LogoutIcon,
   MoonIcon,
   SettingsIcon,
   SunIcon,
-} from "lucide-animated"
-import { HoverIcon } from "~/components/animated-icon"
+} from "lucide-animated";
+import { HoverIcon } from "~/components/animated-icon";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
-import { ButtonGroup } from "~/components/ui/button-group"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Button } from "~/components/ui/button";
+import { ButtonGroup } from "~/components/ui/button-group";
 import {
   Dialog,
   DialogContent,
@@ -29,55 +21,65 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog"
+} from "~/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
-import { Input } from "~/components/ui/input"
+} from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "~/components/ui/tooltip"
+} from "~/components/ui/tooltip";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "~/components/ui/sidebar"
-import { useTheme } from "~/hooks/use-theme"
+} from "~/components/ui/sidebar";
+import { useTheme } from "~/hooks/use-theme";
 
 const mcpTokenStatusQuery = {
   queryKey: ["mcp-token-status"],
   queryFn: async () => {
-    const res = await fetch("/api/settings/mcp-token")
-    return res.json() as Promise<{ configured: boolean; authenticated: boolean; hint?: string }>
+    const res = await fetch("/api/settings/mcp-token");
+    return res.json() as Promise<{
+      configured: boolean;
+      authenticated: boolean;
+      hint?: string;
+    }>;
   },
-}
+};
 
-function StatusDot({ configured, authenticated }: { configured: boolean; authenticated: boolean }) {
+function StatusDot({
+  configured,
+  authenticated,
+}: {
+  configured: boolean;
+  authenticated: boolean;
+}) {
   const color = authenticated
     ? "bg-emerald-500"
     : configured
       ? "bg-amber-500"
-      : "bg-red-500"
-  return <span className={`size-2 shrink-0 rounded-full ${color}`} />
+      : "bg-red-500";
+  return <span className={`size-2 shrink-0 rounded-full ${color}`} />;
 }
 
 function MCPTokenDialog({
   open,
   onOpenChange,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [token, setToken] = useState("")
-  const queryClient = useQueryClient()
-  const { data: status } = useQuery(mcpTokenStatusQuery)
+  const [token, setToken] = useState("");
+  const queryClient = useQueryClient();
+  const { data: status } = useQuery(mcpTokenStatusQuery);
 
   const saveMutation = useMutation({
     mutationFn: async (value: string) => {
@@ -85,34 +87,34 @@ function MCPTokenDialog({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: value }),
-      })
-      return res.json() as Promise<{ authenticated: boolean; error?: string }>
+      });
+      return res.json() as Promise<{ authenticated: boolean; error?: string }>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mcp-token-status"] })
-      setToken("")
+      queryClient.invalidateQueries({ queryKey: ["mcp-token-status"] });
+      setToken("");
     },
-  })
+  });
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      await fetch("/api/settings/mcp-token", { method: "DELETE" })
+      await fetch("/api/settings/mcp-token", { method: "DELETE" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mcp-token-status"] })
-      setToken("")
+      queryClient.invalidateQueries({ queryKey: ["mcp-token-status"] });
+      setToken("");
     },
-  })
+  });
 
   const statusMessage = saveMutation.data
     ? saveMutation.data.authenticated
       ? "Authenticated"
-      : saveMutation.data.error ?? "Authentication failed"
+      : (saveMutation.data.error ?? "Authentication failed")
     : status?.authenticated
       ? "Authenticated"
       : status?.configured
         ? "Token saved but not authenticated"
-        : "No token configured"
+        : "No token configured";
 
   const statusColor = saveMutation.data
     ? saveMutation.data.authenticated
@@ -122,9 +124,9 @@ function MCPTokenDialog({
       ? "text-emerald-600 dark:text-emerald-400"
       : status?.configured
         ? "text-amber-600 dark:text-amber-400"
-        : "text-muted-foreground"
+        : "text-muted-foreground";
 
-  const isPending = saveMutation.isPending || clearMutation.isPending
+  const isPending = saveMutation.isPending || clearMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,19 +139,23 @@ function MCPTokenDialog({
         </DialogHeader>
         <div className="flex flex-col gap-3">
           {status?.hint && (
-            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
-              <span className="text-xs text-muted-foreground">Current:</span>
-              <code className="flex-1 truncate font-mono text-xs">{status.hint}</code>
+            <div className="bg-muted flex items-center gap-2 rounded-md px-3 py-2">
+              <span className="text-muted-foreground text-xs">Current:</span>
+              <code className="flex-1 truncate font-mono text-xs">
+                {status.hint}
+              </code>
             </div>
           )}
           <Input
             type="password"
-            placeholder={status?.configured ? "Enter a new token" : "Paste your API token"}
+            placeholder={
+              status?.configured ? "Enter a new token" : "Paste your API token"
+            }
             value={token}
             onChange={(e) => setToken(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && token.trim()) {
-                saveMutation.mutate(token.trim())
+                saveMutation.mutate(token.trim());
               }
             }}
             disabled={isPending}
@@ -163,7 +169,9 @@ function MCPTokenDialog({
               onClick={() => clearMutation.mutate()}
               disabled={isPending}
             >
-              {clearMutation.isPending && <LoaderIcon className="animate-spin" />}
+              {clearMutation.isPending && (
+                <LoaderIcon className="animate-spin" />
+              )}
               Clear Token
             </Button>
           )}
@@ -177,22 +185,22 @@ function MCPTokenDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
-  const { theme, setTheme } = useTheme()
-  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
-  const { data: mcpStatus } = useQuery(mcpTokenStatusQuery)
+  const { isMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false);
+  const { data: mcpStatus } = useQuery(mcpTokenStatusQuery);
 
   return (
     <>
@@ -204,26 +212,26 @@ export function NavUser({
                 size="lg"
                 className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
               >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
-              </div>
-              <HoverIcon
-                as={ChevronsUpDownIcon}
-                data-icon="inline-end"
-                className="group-data-[collapsible=icon]:hidden"
-              />
+                <Avatar className="size-8 rounded-lg">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate text-xs">{user.email}</span>
+                </div>
+                <HoverIcon
+                  as={ChevronsUpDownIcon}
+                  data-icon="inline-end"
+                  className="group-data-[collapsible=icon]:hidden"
+                />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -233,21 +241,25 @@ export function NavUser({
               sideOffset={4}
             >
               <div className="flex items-center justify-between px-2 py-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Theme</span>
+                <span className="text-muted-foreground text-xs font-medium">
+                  Theme
+                </span>
                 <ButtonGroup>
-                  {([
-                    { value: "light", icon: SunIcon, label: "Light" },
-                    { value: "dark", icon: MoonIcon, label: "Dark" },
-                    { value: "system", icon: MonitorIcon, label: "System" },
-                  ] as const).map(({ value, icon: Icon, label }) => (
+                  {(
+                    [
+                      { value: "light", icon: SunIcon, label: "Light" },
+                      { value: "dark", icon: MoonIcon, label: "Dark" },
+                      { value: "system", icon: MonitorIcon, label: "System" },
+                    ] as const
+                  ).map(({ value, icon: Icon, label }) => (
                     <Tooltip key={value}>
                       <TooltipTrigger asChild>
                         <Button
                           variant={theme === value ? "secondary" : "outline"}
                           size="icon-xs"
                           onClick={(e) => {
-                            e.preventDefault()
-                            setTheme(value)
+                            e.preventDefault();
+                            setTheme(value);
                           }}
                         >
                           <Icon size={16} />
@@ -260,9 +272,7 @@ export function NavUser({
                 </ButtonGroup>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setTokenDialogOpen(true)}
-              >
+              <DropdownMenuItem onClick={() => setTokenDialogOpen(true)}>
                 <KeyRoundIcon />
                 <span className="flex-1">MCP Token</span>
                 <StatusDot
@@ -285,7 +295,10 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <MCPTokenDialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen} />
+      <MCPTokenDialog
+        open={tokenDialogOpen}
+        onOpenChange={setTokenDialogOpen}
+      />
     </>
-  )
+  );
 }

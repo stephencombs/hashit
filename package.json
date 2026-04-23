@@ -2,6 +2,9 @@
   "name": "hashit",
   "version": "1.0.0",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n streams,app -c cyan,magenta --kill-others-on-fail \"pnpm dev:streams\" \"pnpm dev:app\"",
@@ -10,6 +13,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:run": "vitest run",
@@ -18,15 +23,6 @@
     "db:generate": "dotenv -e .env.local -e .env -- drizzle-kit generate",
     "db:studio": "dotenv -e .env.local -e .env -- drizzle-kit studio",
     "db:backfill-previews": "dotenv -e .env.local -e .env -- tsx scripts/backfill-message-part-previews.ts"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.28.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   },
   "dependencies": {
     "@azure/storage-blob": "^12.31.0",
@@ -128,12 +124,20 @@
     "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "1.0.0-beta.21",
+    "oxfmt": "^0.46.0",
     "oxlint": "^1.61.0",
+    "oxlint-tsgolint": "^0.21.1",
     "portless": "^0.10.1",
     "react-scan": "^0.5.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "vitest": "^4.1.5"
+  },
+  "packageManager": "pnpm@10.28.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

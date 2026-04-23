@@ -14,7 +14,10 @@ import {
 import type { V2RuntimeMessage } from "../server/runtime-message";
 import { V2Composer } from "./v2-composer";
 
-type RuntimeTextPart = Extract<V2RuntimeMessage["parts"][number], { type: "text" }>;
+type RuntimeTextPart = Extract<
+  V2RuntimeMessage["parts"][number],
+  { type: "text" }
+>;
 
 type V2ChatSurfaceProps = {
   threadId: string;
@@ -43,7 +46,14 @@ export function V2ChatSurface({
     });
   }, [initialResumeOffset, threadId]);
 
-  const { messages: runtimeMessages, sendMessage, status, stop, error, setMessages } = useChat({
+  const {
+    messages: runtimeMessages,
+    sendMessage,
+    status,
+    stop,
+    error,
+    setMessages,
+  } = useChat({
     id: threadId,
     connection,
     live: true,
@@ -123,7 +133,7 @@ export function V2ChatSurface({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-3">
           {runtimeMessages.length === 0 ? (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               Start the conversation by sending a message.
             </div>
           ) : null}
@@ -147,10 +157,12 @@ export function V2ChatSurface({
                     : "bg-muted text-foreground",
                 ].join(" ")}
               >
-                <div className="mb-1 text-[10px] uppercase tracking-wide opacity-70">
+                <div className="mb-1 text-[10px] tracking-wide uppercase opacity-70">
                   {message.role}
                 </div>
-                <div className="whitespace-pre-wrap break-words">{renderText}</div>
+                <div className="break-words whitespace-pre-wrap">
+                  {renderText}
+                </div>
               </div>
             );
           })}

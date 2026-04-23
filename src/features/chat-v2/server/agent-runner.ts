@@ -73,9 +73,7 @@ type CreateV2AgentRunOptions = {
   model?: string;
   log?: RequestLogger;
   maxToolIterations?: number;
-  middlewareFactory?: (
-    telemetry: V2AgentRunTelemetry,
-  ) => Array<ChatMiddleware>;
+  middlewareFactory?: (telemetry: V2AgentRunTelemetry) => Array<ChatMiddleware>;
   context?: unknown;
   extraSystemPrompts?: Array<string>;
 };
@@ -343,14 +341,17 @@ export async function createV2AgentRun({
     createTelemetryMiddleware(telemetry, log),
     ...(middlewareFactory?.(telemetry) ?? []),
   ];
-  const iterationLimit = maxToolIterations ?? profileConfig.defaultMaxIterations;
+  const iterationLimit =
+    maxToolIterations ?? profileConfig.defaultMaxIterations;
 
   const stream = chat({
     adapter,
     messages,
     conversationId,
     ...(systemPrompts.length > 0 && { systemPrompts }),
-    ...(iterationLimit ? { agentLoopStrategy: maxIterations(iterationLimit) } : {}),
+    ...(iterationLimit
+      ? { agentLoopStrategy: maxIterations(iterationLimit) }
+      : {}),
     ...(supportsReasoning && {
       modelOptions: {
         reasoning: { effort: "low", summary: "auto" },

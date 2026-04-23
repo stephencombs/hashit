@@ -44,7 +44,10 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
-import { automationListQuery, automationRunsQuery } from "~/lib/automation-queries";
+import {
+  automationListQuery,
+  automationRunsQuery,
+} from "~/lib/automation-queries";
 import type { Automation, AutomationRun } from "~/lib/schemas";
 
 interface AutomationFormData {
@@ -157,7 +160,10 @@ function formFromAutomation(automation: Automation): AutomationFormData {
 function RunStatusBadge({ status }: { status: string }) {
   if (status === "success") {
     return (
-      <Badge variant="secondary" className="gap-1 text-green-700 dark:text-green-400">
+      <Badge
+        variant="secondary"
+        className="gap-1 text-green-700 dark:text-green-400"
+      >
         <CircleCheckIcon className="size-3" />
         Success
       </Badge>
@@ -165,7 +171,10 @@ function RunStatusBadge({ status }: { status: string }) {
   }
   if (status === "failure") {
     return (
-      <Badge variant="secondary" className="gap-1 text-red-700 dark:text-red-400">
+      <Badge
+        variant="secondary"
+        className="gap-1 text-red-700 dark:text-red-400"
+      >
         <CircleXIcon className="size-3" />
         Failed
       </Badge>
@@ -209,27 +218,35 @@ function RunDetailDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Started</p>
+              <p className="text-muted-foreground mb-1 text-xs font-medium">
+                Started
+              </p>
               <p>{formatDate(run.startedAt)}</p>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-muted-foreground mb-1 text-xs font-medium">
+                Completed
+              </p>
               <p>{formatDate(run.completedAt)}</p>
             </div>
           </div>
 
           {errorText && (
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Error</p>
-              <pre className="rounded-md bg-destructive/10 p-3 text-xs text-destructive whitespace-pre-wrap break-all">
+              <p className="text-muted-foreground mb-1 text-xs font-medium">
+                Error
+              </p>
+              <pre className="bg-destructive/10 text-destructive rounded-md p-3 text-xs break-all whitespace-pre-wrap">
                 {errorText}
               </pre>
             </div>
           )}
 
           <div>
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Result</p>
-            <pre className="max-h-60 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">
+            <p className="text-muted-foreground mb-1 text-xs font-medium">
+              Result
+            </p>
+            <pre className="bg-muted max-h-60 overflow-auto rounded-md p-3 text-xs break-all whitespace-pre-wrap">
               {JSON.stringify(result, null, 2)}
             </pre>
           </div>
@@ -250,13 +267,16 @@ function RunRows({ automationId }: { automationId: string }) {
   });
 
   const selectedRun = selectedRunId
-    ? data?.runs.find((run) => run.id === selectedRunId) ?? null
+    ? (data?.runs.find((run) => run.id === selectedRunId) ?? null)
     : null;
 
   if (!data || data.total === 0) {
     return (
       <TableRow>
-        <TableCell colSpan={7} className="bg-muted/30 text-center text-sm text-muted-foreground">
+        <TableCell
+          colSpan={7}
+          className="bg-muted/30 text-muted-foreground text-center text-sm"
+        >
           No runs yet
         </TableCell>
       </TableRow>
@@ -267,10 +287,21 @@ function RunRows({ automationId }: { automationId: string }) {
     <>
       <TableRow className="bg-muted/30 hover:bg-muted/30">
         <TableCell />
-        <TableCell className="text-xs font-medium text-muted-foreground">Status</TableCell>
-        <TableCell className="text-xs font-medium text-muted-foreground">Started</TableCell>
-        <TableCell className="text-xs font-medium text-muted-foreground">Duration</TableCell>
-        <TableCell colSpan={2} className="text-xs font-medium text-muted-foreground">Details</TableCell>
+        <TableCell className="text-muted-foreground text-xs font-medium">
+          Status
+        </TableCell>
+        <TableCell className="text-muted-foreground text-xs font-medium">
+          Started
+        </TableCell>
+        <TableCell className="text-muted-foreground text-xs font-medium">
+          Duration
+        </TableCell>
+        <TableCell
+          colSpan={2}
+          className="text-muted-foreground text-xs font-medium"
+        >
+          Details
+        </TableCell>
         <TableCell />
       </TableRow>
       {data.runs.map((run) => {
@@ -278,7 +309,7 @@ function RunRows({ automationId }: { automationId: string }) {
         return (
           <TableRow
             key={run.id}
-            className="cursor-pointer bg-muted/30"
+            className="bg-muted/30 cursor-pointer"
             onClick={(event) => {
               event.stopPropagation();
               setSelectedRunId(run.id);
@@ -288,11 +319,16 @@ function RunRows({ automationId }: { automationId: string }) {
             <TableCell>
               <RunStatusBadge status={run.status} />
             </TableCell>
-            <TableCell className="text-muted-foreground">{formatDate(run.startedAt)}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {formatDate(run.startedAt)}
+            </TableCell>
             <TableCell className="text-muted-foreground">
               {formatDuration(run.startedAt, run.completedAt)}
             </TableCell>
-            <TableCell colSpan={2} className="max-w-0 truncate text-xs text-muted-foreground">
+            <TableCell
+              colSpan={2}
+              className="text-muted-foreground max-w-0 truncate text-xs"
+            >
               {result.error
                 ? String(result.error)
                 : result.data
@@ -308,7 +344,9 @@ function RunRows({ automationId }: { automationId: string }) {
           <TableCell />
           <TableCell colSpan={5}>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">{data.total} total runs</p>
+              <p className="text-muted-foreground text-xs">
+                {data.total} total runs
+              </p>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -321,7 +359,7 @@ function RunRows({ automationId }: { automationId: string }) {
                 >
                   Previous
                 </Button>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {page} / {data.totalPages}
                 </span>
                 <Button
@@ -341,7 +379,10 @@ function RunRows({ automationId }: { automationId: string }) {
           <TableCell />
         </TableRow>
       )}
-      <RunDetailDialog run={selectedRun} onClose={() => setSelectedRunId(null)} />
+      <RunDetailDialog
+        run={selectedRun}
+        onClose={() => setSelectedRunId(null)}
+      />
     </>
   );
 }
@@ -463,7 +504,9 @@ function AutomationDialog({
   const save = useMutation({
     mutationFn: async () => {
       const cronExpr =
-        form.cronPreset === "__custom__" ? form.cronExpression : form.cronPreset;
+        form.cronPreset === "__custom__"
+          ? form.cronExpression
+          : form.cronPreset;
 
       const body = {
         name: form.name,
@@ -473,7 +516,9 @@ function AutomationDialog({
         enabled: form.enabled,
       };
 
-      const url = isEditing ? `/api/automations/${editing.id}` : "/api/automations";
+      const url = isEditing
+        ? `/api/automations/${editing.id}`
+        : "/api/automations";
       const method = isEditing ? "PATCH" : "POST";
 
       const response = await fetch(url, {
@@ -484,7 +529,9 @@ function AutomationDialog({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error((data as Record<string, string>).error ?? "Failed to save");
+        throw new Error(
+          (data as Record<string, string>).error ?? "Failed to save",
+        );
       }
     },
     onSuccess: () => {
@@ -506,7 +553,9 @@ function AutomationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Automation" : "New Automation"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Edit Automation" : "New Automation"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Update this automation's settings."
@@ -522,7 +571,10 @@ function AutomationDialog({
               placeholder="e.g. Daily summary"
               value={form.name}
               onChange={(event) =>
-                setForm((previous) => ({ ...previous, name: event.target.value }))
+                setForm((previous) => ({
+                  ...previous,
+                  name: event.target.value,
+                }))
               }
             />
           </div>
@@ -563,7 +615,9 @@ function AutomationDialog({
                   ...previous,
                   cronPreset: value as string,
                   cronExpression:
-                    value === "__custom__" ? previous.cronExpression : (value as string),
+                    value === "__custom__"
+                      ? previous.cronExpression
+                      : (value as string),
                 }))
               }
             >
@@ -590,7 +644,11 @@ function AutomationDialog({
                 }
               />
             )}
-            {cronExpr && <p className="text-xs text-muted-foreground">{cronDescription(cronExpr)}</p>}
+            {cronExpr && (
+              <p className="text-muted-foreground text-xs">
+                {cronDescription(cronExpr)}
+              </p>
+            )}
           </div>
 
           {form.type === "chat-prompt" && (
@@ -602,7 +660,10 @@ function AutomationDialog({
                   placeholder="What should the AI do?"
                   value={form.prompt}
                   onChange={(event) =>
-                    setForm((previous) => ({ ...previous, prompt: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      prompt: event.target.value,
+                    }))
                   }
                   rows={3}
                 />
@@ -610,14 +671,19 @@ function AutomationDialog({
               <div className="grid gap-2">
                 <Label htmlFor="auto-thread">
                   Thread ID{" "}
-                  <span className="text-muted-foreground font-normal">(optional)</span>
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
                 </Label>
                 <Input
                   id="auto-thread"
                   placeholder="Leave blank for a new thread each run"
                   value={form.threadId}
                   onChange={(event) =>
-                    setForm((previous) => ({ ...previous, threadId: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      threadId: event.target.value,
+                    }))
                   }
                 />
               </div>
@@ -633,7 +699,10 @@ function AutomationDialog({
                   placeholder="https://example.com/webhook"
                   value={form.webhookUrl}
                   onChange={(event) =>
-                    setForm((previous) => ({ ...previous, webhookUrl: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      webhookUrl: event.target.value,
+                    }))
                   }
                 />
               </div>
@@ -642,7 +711,10 @@ function AutomationDialog({
                 <Select
                   value={form.webhookMethod}
                   onValueChange={(value) =>
-                    setForm((previous) => ({ ...previous, webhookMethod: value as string }))
+                    setForm((previous) => ({
+                      ...previous,
+                      webhookMethod: value as string,
+                    }))
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -660,14 +732,19 @@ function AutomationDialog({
               <div className="grid gap-2">
                 <Label htmlFor="auto-body">
                   Body{" "}
-                  <span className="text-muted-foreground font-normal">(optional JSON)</span>
+                  <span className="text-muted-foreground font-normal">
+                    (optional JSON)
+                  </span>
                 </Label>
                 <Textarea
                   id="auto-body"
                   placeholder='{"key": "value"}'
                   value={form.webhookBody}
                   onChange={(event) =>
-                    setForm((previous) => ({ ...previous, webhookBody: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      webhookBody: event.target.value,
+                    }))
                   }
                   rows={3}
                 />
@@ -688,8 +765,15 @@ function AutomationDialog({
         </div>
 
         <DialogFooter>
-          {save.error && <p className="mr-auto text-sm text-destructive">{save.error.message}</p>}
-          <Button onClick={() => save.mutate()} disabled={!isValid || save.isPending}>
+          {save.error && (
+            <p className="text-destructive mr-auto text-sm">
+              {save.error.message}
+            </p>
+          )}
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!isValid || save.isPending}
+          >
             {save.isPending
               ? "Saving..."
               : isEditing
@@ -704,7 +788,7 @@ function AutomationDialog({
 
 function AutomationsSkeleton() {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+    <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -730,13 +814,27 @@ function AutomationsSkeleton() {
             <TableBody>
               {Array.from({ length: 4 }).map((_, index) => (
                 <TableRow key={index}>
-                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-10 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-40" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-10 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -748,7 +846,8 @@ function AutomationsSkeleton() {
 }
 
 export function AutomationsPage() {
-  const { data: automationsList = [], isPending } = useQuery(automationListQuery);
+  const { data: automationsList = [], isPending } =
+    useQuery(automationListQuery);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Automation | null>(null);
 
@@ -764,19 +863,21 @@ export function AutomationsPage() {
 
   return (
     <>
-      <AppPageHeader title={<h1 className="text-sm font-medium">Automations</h1>} />
+      <AppPageHeader
+        title={<h1 className="text-sm font-medium">Automations</h1>}
+      />
 
       {isPending ? (
         <AutomationsSkeleton />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+        <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-5xl space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-balance">
                   Automations
                 </h2>
-                <p className="text-sm text-pretty text-muted-foreground">
+                <p className="text-muted-foreground text-sm text-pretty">
                   Schedule recurring tasks to run automatically.
                 </p>
               </div>
@@ -788,11 +889,13 @@ export function AutomationsPage() {
 
             {automationsList.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-16 text-center">
-                <ZapIcon className="mb-4 size-12 text-muted-foreground/40" />
-                <h3 className="text-lg font-medium text-balance">No automations yet</h3>
-                <p className="mt-1 max-w-sm text-sm text-pretty text-muted-foreground">
-                  Create your first automation to schedule recurring tasks like chat
-                  prompts or webhooks.
+                <ZapIcon className="text-muted-foreground/40 mb-4 size-12" />
+                <h3 className="text-lg font-medium text-balance">
+                  No automations yet
+                </h3>
+                <p className="text-muted-foreground mt-1 max-w-sm text-sm text-pretty">
+                  Create your first automation to schedule recurring tasks like
+                  chat prompts or webhooks.
                 </p>
                 <Button className="mt-4" onClick={openCreate}>
                   <PlusIcon className="size-4" />

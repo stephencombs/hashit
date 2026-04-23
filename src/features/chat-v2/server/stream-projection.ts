@@ -157,7 +157,10 @@ export async function projectV2StreamSnapshotToDb({
     headers: getDurableReadHeaders(),
   });
 
-  const projectedMessages = toProjectedMessages(threadId, toUnknownArray(messages));
+  const projectedMessages = toProjectedMessages(
+    threadId,
+    toUnknownArray(messages),
+  );
   const [thread, existingRows] = await Promise.all([
     db
       .select({
@@ -178,11 +181,13 @@ export async function projectV2StreamSnapshotToDb({
   }
 
   const existingIds = new Set(existingRows.map((row) => row.id));
-  const latestUserId =
-    persistUserTurn
-      ? (userMessageId ?? findLastMessageIdByRole(projectedMessages, "user"))
-      : undefined;
-  const latestAssistantId = findLastMessageIdByRole(projectedMessages, "assistant");
+  const latestUserId = persistUserTurn
+    ? (userMessageId ?? findLastMessageIdByRole(projectedMessages, "user"))
+    : undefined;
+  const latestAssistantId = findLastMessageIdByRole(
+    projectedMessages,
+    "assistant",
+  );
   const userMetadata = createV2RunMetadata(telemetry);
   const assistantMetadata = createAssistantMetadata(telemetry);
 

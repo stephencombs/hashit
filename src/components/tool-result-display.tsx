@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo } from "react";
 import {
   Table,
   TableBody,
@@ -6,25 +6,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '~/components/ui/table'
+} from "~/components/ui/table";
 
 function formatCellValue(value: unknown): string {
-  if (value == null) return ''
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
+  if (value == null) return "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function formatColumnHeader(key: string): string {
   return key
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function ArrayTable({ data }: { data: Record<string, unknown>[] }) {
-  const columns = Array.from(
-    new Set(data.flatMap((row) => Object.keys(row))),
-  )
+  const columns = Array.from(new Set(data.flatMap((row) => Object.keys(row))));
 
   return (
     <div className="max-h-96 overflow-auto rounded-md border">
@@ -40,20 +38,18 @@ function ArrayTable({ data }: { data: Record<string, unknown>[] }) {
           {data.map((row, i) => (
             <TableRow key={i}>
               {columns.map((col) => (
-                <TableCell key={col}>
-                  {formatCellValue(row[col])}
-                </TableCell>
+                <TableCell key={col}>{formatCellValue(row[col])}</TableCell>
               ))}
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
 
 function ObjectDetail({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data)
+  const entries = Object.entries(data);
 
   return (
     <div className="overflow-auto rounded-md border">
@@ -61,7 +57,7 @@ function ObjectDetail({ data }: { data: Record<string, unknown> }) {
         <TableBody>
           {entries.map(([key, value]) => (
             <TableRow key={key}>
-              <TableCell className="font-medium text-muted-foreground">
+              <TableCell className="text-muted-foreground font-medium">
                 {formatColumnHeader(key)}
               </TableCell>
               <TableCell>{formatCellValue(value)}</TableCell>
@@ -70,32 +66,32 @@ function ObjectDetail({ data }: { data: Record<string, unknown> }) {
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }
 
 export const ToolResultDisplay = memo(function ToolResultDisplay({
   output,
 }: {
-  output: unknown
+  output: unknown;
 }) {
-  if (output == null) return null
+  if (output == null) return null;
 
   if (
     Array.isArray(output) &&
     output.length > 0 &&
-    typeof output[0] === 'object' &&
+    typeof output[0] === "object" &&
     output[0] !== null
   ) {
-    return <ArrayTable data={output as Record<string, unknown>[]} />
+    return <ArrayTable data={output as Record<string, unknown>[]} />;
   }
 
-  if (typeof output === 'object' && !Array.isArray(output)) {
-    return <ObjectDetail data={output as Record<string, unknown>} />
+  if (typeof output === "object" && !Array.isArray(output)) {
+    return <ObjectDetail data={output as Record<string, unknown>} />;
   }
 
   return (
-    <pre className="overflow-auto rounded-md border bg-muted p-3 text-xs text-muted-foreground">
+    <pre className="bg-muted text-muted-foreground overflow-auto rounded-md border p-3 text-xs">
       {String(output)}
     </pre>
-  )
-})
+  );
+});

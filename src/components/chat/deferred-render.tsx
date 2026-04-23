@@ -40,11 +40,9 @@ export function DeferredRender({
 
   return (
     <div ref={hostRef} className="w-full min-w-0">
-      {mounted ? (
-        children
-      ) : (
-        (placeholder ?? <Skeleton className="h-[220px] w-full rounded-md" />)
-      )}
+      {mounted
+        ? children
+        : (placeholder ?? <Skeleton className="h-[220px] w-full rounded-md" />)}
     </div>
   );
 }

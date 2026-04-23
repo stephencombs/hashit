@@ -33,7 +33,7 @@ export function ModelSettingsPage() {
     <div className="mx-auto max-w-2xl space-y-8 p-8">
       <div>
         <h2 className="text-lg font-semibold">Model</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Configure the default AI model and generation parameters.
         </p>
       </div>
@@ -60,11 +60,11 @@ export function ModelSettingsPage() {
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="temperature">Temperature</Label>
-            <span className="text-sm tabular-nums text-muted-foreground">
+            <span className="text-muted-foreground text-sm tabular-nums">
               {temperature.toFixed(1)}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Controls randomness. Lower values are more deterministic.
           </p>
           <Input
@@ -74,10 +74,12 @@ export function ModelSettingsPage() {
             max="2"
             step="0.1"
             value={temperature}
-            onChange={(event) => setTemperature(parseFloat(event.currentTarget.value))}
+            onChange={(event) =>
+              setTemperature(parseFloat(event.currentTarget.value))
+            }
             className="h-auto border-none bg-transparent px-0 shadow-none dark:bg-transparent"
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex justify-between text-xs">
             <span>Precise (0)</span>
             <span>Creative (2)</span>
           </div>
@@ -85,8 +87,9 @@ export function ModelSettingsPage() {
 
         <div className="grid gap-2">
           <Label htmlFor="system-prompt">System prompt</Label>
-          <p className="text-sm text-muted-foreground">
-            Instructions that guide the AI&apos;s behavior across all conversations.
+          <p className="text-muted-foreground text-sm">
+            Instructions that guide the AI&apos;s behavior across all
+            conversations.
           </p>
           <Textarea
             id="system-prompt"

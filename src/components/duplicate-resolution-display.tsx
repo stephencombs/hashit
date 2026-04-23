@@ -1,146 +1,155 @@
-import { useMemo, useState } from 'react'
-import { format } from 'date-fns'
+import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import {
   AlertCircleIcon,
   CalendarIcon,
   CheckIcon,
   TriangleAlertIcon,
-} from 'lucide-react'
-import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
-import { Textarea } from '~/components/ui/textarea'
-import { Calendar } from '~/components/ui/calendar'
+} from "lucide-react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
+import { Calendar } from "~/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover'
+} from "~/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select'
+} from "~/components/ui/select";
 import type {
   DuplicateField,
   DuplicateResolutionSpec,
   ResolutionOutput,
-} from '~/lib/resolve-duplicate-tool'
-import { cn } from '~/lib/utils'
+} from "~/lib/resolve-duplicate-tool";
+import { cn } from "~/lib/utils";
 
 /**
  * Dates are round-tripped as "YYYY-MM-DD" strings — same contract as FormDisplay.
  */
 function parseDateString(value: unknown): Date | undefined {
-  if (typeof value !== 'string' || value === '') return undefined
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (typeof value !== "string" || value === "") return undefined;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!m) {
-    const d = new Date(value)
-    return Number.isNaN(d.getTime()) ? undefined : d
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? undefined : d;
   }
-  const [, y, mo, d] = m
-  return new Date(Number(y), Number(mo) - 1, Number(d))
+  const [, y, mo, d] = m;
+  return new Date(Number(y), Number(mo) - 1, Number(d));
 }
 
 function formatDateString(date: Date): string {
-  const y = date.getFullYear()
-  const mo = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${mo}-${d}`
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${d}`;
 }
 
-function formatDisplayValue(value: string | number | boolean | undefined): string {
-  if (value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  return String(value)
+function formatDisplayValue(
+  value: string | number | boolean | undefined,
+): string {
+  if (value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
 }
 
 function selectRadixPrefix(fieldName: string): string {
-  return `__dup_sel__${fieldName}__`
+  return `__dup_sel__${fieldName}__`;
 }
 
 function selectIndexToRadixValue(fieldName: string, index: number): string {
-  return `${selectRadixPrefix(fieldName)}${index}`
+  return `${selectRadixPrefix(fieldName)}${index}`;
 }
 
-function parseSelectRadixToIndex(fieldName: string, radixValue: string): number {
-  const p = selectRadixPrefix(fieldName)
-  if (!radixValue.startsWith(p)) return -1
-  const n = Number(radixValue.slice(p.length))
-  return Number.isFinite(n) ? n : -1
+function parseSelectRadixToIndex(
+  fieldName: string,
+  radixValue: string,
+): number {
+  const p = selectRadixPrefix(fieldName);
+  if (!radixValue.startsWith(p)) return -1;
+  const n = Number(radixValue.slice(p.length));
+  return Number.isFinite(n) ? n : -1;
 }
 
 function selectSemanticToRadixValue(
-  field: DuplicateField & { type: 'select' },
+  field: DuplicateField & { type: "select" },
   semantic: string,
 ): string | undefined {
-  const idx = field.options?.findIndex((o) => o.value === semantic) ?? -1
-  if (idx < 0) return undefined
-  return selectIndexToRadixValue(field.name, idx)
+  const idx = field.options?.findIndex((o) => o.value === semantic) ?? -1;
+  if (idx < 0) return undefined;
+  return selectIndexToRadixValue(field.name, idx);
 }
 
-type FieldValues = Record<string, string | number | boolean>
+type FieldValues = Record<string, string | number | boolean>;
 
 function initValues(fields: DuplicateField[]): FieldValues {
-  const vals: FieldValues = {}
+  const vals: FieldValues = {};
   for (const f of fields) {
-    const initial = f.proposedValue ?? f.currentValue
-    if (typeof initial === 'string' || typeof initial === 'number' || typeof initial === 'boolean') {
-      vals[f.name] = initial
+    const initial = f.proposedValue ?? f.currentValue;
+    if (
+      typeof initial === "string" ||
+      typeof initial === "number" ||
+      typeof initial === "boolean"
+    ) {
+      vals[f.name] = initial;
     } else {
-      vals[f.name] = ''
+      vals[f.name] = "";
     }
   }
-  return vals
+  return vals;
 }
 
 function initValuesFromSubmission(
   fields: DuplicateField[],
   submittedData?: Record<string, unknown>,
 ): FieldValues | undefined {
-  if (!submittedData || typeof submittedData !== 'object') return undefined
+  if (!submittedData || typeof submittedData !== "object") return undefined;
 
   const rawValues =
-    'values' in submittedData &&
+    "values" in submittedData &&
     submittedData.values &&
-    typeof submittedData.values === 'object'
+    typeof submittedData.values === "object"
       ? (submittedData.values as Record<string, unknown>)
-      : null
+      : null;
 
-  if (!rawValues) return undefined
+  if (!rawValues) return undefined;
 
-  const vals = initValues(fields)
+  const vals = initValues(fields);
   for (const field of fields) {
-    const raw = rawValues[field.name]
+    const raw = rawValues[field.name];
     if (
-      typeof raw === 'string' ||
-      typeof raw === 'number' ||
-      typeof raw === 'boolean'
+      typeof raw === "string" ||
+      typeof raw === "number" ||
+      typeof raw === "boolean"
     ) {
-      vals[field.name] = raw
+      vals[field.name] = raw;
     }
   }
 
-  return vals
+  return vals;
 }
 
 function computeChanges(
   initial: FieldValues,
   current: FieldValues,
 ): Record<string, { from: unknown; to: unknown }> {
-  const changes: Record<string, { from: unknown; to: unknown }> = {}
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
   for (const key of Object.keys(current)) {
     if (current[key] !== initial[key]) {
-      changes[key] = { from: initial[key], to: current[key] }
+      changes[key] = { from: initial[key], to: current[key] };
     }
   }
-  return changes
+  return changes;
 }
 
 const controlBase =
-  'h-10 rounded-md border-border/70 bg-background/60 text-sm shadow-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring/60'
+  "h-10 rounded-md border-border/70 bg-background/60 text-sm shadow-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring/60";
 
 function FieldControl({
   field,
@@ -149,77 +158,80 @@ function FieldControl({
   disabled,
   onChange,
 }: {
-  field: DuplicateField
-  value: string | number | boolean
-  error?: string
-  disabled: boolean
-  onChange: (v: string | number | boolean) => void
+  field: DuplicateField;
+  value: string | number | boolean;
+  error?: string;
+  disabled: boolean;
+  onChange: (v: string | number | boolean) => void;
 }) {
-  const editable = field.editable !== false && field.type !== 'readonly'
+  const editable = field.editable !== false && field.type !== "readonly";
 
-  if (field.type === 'readonly' || !editable) {
+  if (field.type === "readonly" || !editable) {
     return (
-      <p className="flex h-10 items-center rounded-md border border-border/40 bg-muted/20 px-3 text-sm text-muted-foreground">
+      <p className="border-border/40 bg-muted/20 text-muted-foreground flex h-10 items-center rounded-md border px-3 text-sm">
         {formatDisplayValue(value)}
       </p>
-    )
+    );
   }
 
-  if (field.type === 'select') {
-    const stringVal = typeof value === 'string' ? value : ''
+  if (field.type === "select") {
+    const stringVal = typeof value === "string" ? value : "";
     const radixValue = selectSemanticToRadixValue(
-      field as DuplicateField & { type: 'select' },
+      field as DuplicateField & { type: "select" },
       stringVal,
-    )
+    );
     return (
       <Select
         value={radixValue}
         onValueChange={(v) => {
-          const idx = parseSelectRadixToIndex(field.name, v)
-          const opt = field.options?.[idx]
-          if (opt) onChange(opt.value)
+          const idx = parseSelectRadixToIndex(field.name, v);
+          const opt = field.options?.[idx];
+          if (opt) onChange(opt.value);
         }}
         disabled={disabled}
       >
         <SelectTrigger
           id={field.name}
-          className={cn('w-full', controlBase, error && 'border-destructive')}
+          className={cn("w-full", controlBase, error && "border-destructive")}
           aria-invalid={!!error}
         >
-          <SelectValue placeholder={field.placeholder ?? 'Select an option'} />
+          <SelectValue placeholder={field.placeholder ?? "Select an option"} />
         </SelectTrigger>
         <SelectContent>
           {field.options?.map((opt, i) => (
-            <SelectItem key={`${field.name}-${i}`} value={selectIndexToRadixValue(field.name, i)}>
+            <SelectItem
+              key={`${field.name}-${i}`}
+              value={selectIndexToRadixValue(field.name, i)}
+            >
               {opt.label}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-    )
+    );
   }
 
-  if (field.type === 'textarea') {
+  if (field.type === "textarea") {
     return (
       <Textarea
         id={field.name}
-        value={typeof value === 'string' ? value : ''}
+        value={typeof value === "string" ? value : ""}
         placeholder={field.placeholder}
         disabled={disabled}
         aria-invalid={!!error}
         className={cn(
-          'min-h-[80px] resize-y rounded-md border-border/70 bg-background/60 text-sm shadow-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring/60',
-          error && 'border-destructive',
+          "min-h-[80px] resize-y rounded-md border-border/70 bg-background/60 text-sm shadow-none transition-[color,box-shadow,border-color] placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring/60",
+          error && "border-destructive",
         )}
         onChange={(e) => onChange(e.target.value)}
         rows={3}
       />
-    )
+    );
   }
 
-  if (field.type === 'date') {
-    const stringVal = typeof value === 'string' ? value : ''
-    const selected = parseDateString(stringVal)
+  if (field.type === "date") {
+    const stringVal = typeof value === "string" ? value : "";
+    const selected = parseDateString(stringVal);
     return (
       <Popover>
         <PopoverTrigger asChild>
@@ -232,11 +244,15 @@ function FieldControl({
             aria-invalid={!!error}
             className={cn(
               controlBase,
-              'w-full justify-between px-3 font-normal data-[empty=true]:text-muted-foreground/70',
-              error && 'border-destructive',
+              "w-full justify-between px-3 font-normal data-[empty=true]:text-muted-foreground/70",
+              error && "border-destructive",
             )}
           >
-            {selected ? format(selected, 'PPP') : <span>{field.placeholder ?? 'Pick a date'}</span>}
+            {selected ? (
+              format(selected, "PPP")
+            ) : (
+              <span>{field.placeholder ?? "Pick a date"}</span>
+            )}
             <CalendarIcon className="size-4 opacity-60" aria-hidden />
           </Button>
         </PopoverTrigger>
@@ -247,12 +263,12 @@ function FieldControl({
             defaultMonth={selected}
             captionLayout="dropdown"
             onSelect={(d) => {
-              if (d) onChange(formatDateString(d))
+              if (d) onChange(formatDateString(d));
             }}
           />
         </PopoverContent>
       </Popover>
-    )
+    );
   }
 
   // text, email, number
@@ -260,17 +276,23 @@ function FieldControl({
     <Input
       id={field.name}
       type={field.type}
-      value={typeof value === 'string' || typeof value === 'number' ? String(value) : ''}
+      value={
+        typeof value === "string" || typeof value === "number"
+          ? String(value)
+          : ""
+      }
       placeholder={field.placeholder}
       disabled={disabled}
       aria-invalid={!!error}
-      className={cn(controlBase, error && 'border-destructive')}
+      className={cn(controlBase, error && "border-destructive")}
       onChange={(e) => {
-        const raw = e.target.value
-        onChange(field.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw)
+        const raw = e.target.value;
+        onChange(
+          field.type === "number" ? (raw === "" ? "" : Number(raw)) : raw,
+        );
       }}
     />
-  )
+  );
 }
 
 export function DuplicateResolutionDisplay({
@@ -279,108 +301,118 @@ export function DuplicateResolutionDisplay({
   disabled = false,
   submittedData,
 }: {
-  spec: DuplicateResolutionSpec
-  onResolve?: (output: ResolutionOutput) => void
-  disabled?: boolean
-  submittedData?: Record<string, unknown>
+  spec: DuplicateResolutionSpec;
+  onResolve?: (output: ResolutionOutput) => void;
+  disabled?: boolean;
+  submittedData?: Record<string, unknown>;
 }) {
-  const isSubmitted = disabled || !!submittedData
+  const isSubmitted = disabled || !!submittedData;
 
-  const initialValues = useMemo(() => initValues(spec.fields), [spec.fields])
-  const [values, setValues] = useState<FieldValues>(() => initialValues)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const initialValues = useMemo(() => initValues(spec.fields), [spec.fields]);
+  const [values, setValues] = useState<FieldValues>(() => initialValues);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const displayedValues = useMemo(
     () => initValuesFromSubmission(spec.fields, submittedData) ?? values,
     [spec.fields, submittedData, values],
-  )
+  );
 
   function setValue(name: string, value: string | number | boolean) {
-    setValues((prev) => ({ ...prev, [name]: value }))
+    setValues((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => {
-        const next = { ...prev }
-        delete next[name]
-        return next
-      })
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
     }
   }
 
   function handleAction(actionId: string, requiresEdits: boolean) {
     if (requiresEdits) {
-      const newErrors: Record<string, string> = {}
+      const newErrors: Record<string, string> = {};
       for (const f of spec.fields) {
-        if (f.required && f.editable !== false && f.type !== 'readonly') {
-          const val = values[f.name]
-          if (val === '' || val === null || val === undefined) {
-            newErrors[f.name] = `${f.label} is required`
+        if (f.required && f.editable !== false && f.type !== "readonly") {
+          const val = values[f.name];
+          if (val === "" || val === null || val === undefined) {
+            newErrors[f.name] = `${f.label} is required`;
           }
         }
       }
       if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors)
-        return
+        setErrors(newErrors);
+        return;
       }
     }
 
-    const changes = computeChanges(initialValues, values)
-    onResolve?.({ actionId, values, changes })
+    const changes = computeChanges(initialValues, values);
+    onResolve?.({ actionId, values, changes });
   }
 
   const editableCount = spec.fields.filter(
-    (f) => f.editable !== false && f.type !== 'readonly',
-  ).length
+    (f) => f.editable !== false && f.type !== "readonly",
+  ).length;
 
-  const conflictingFields = spec.fields.filter((f) => f.conflicting)
+  const conflictingFields = spec.fields.filter((f) => f.conflicting);
 
   const submittedActionId =
-    submittedData && typeof submittedData === 'object' && 'actionId' in submittedData
+    submittedData &&
+    typeof submittedData === "object" &&
+    "actionId" in submittedData
       ? String((submittedData as Record<string, unknown>).actionId)
-      : undefined
+      : undefined;
 
-  const displayedAction = spec.actions?.find((a) => a.id === submittedActionId) ?? null
+  const displayedAction =
+    spec.actions?.find((a) => a.id === submittedActionId) ?? null;
 
   return (
     <div
       data-slot="resolution-card"
-      className="w-full max-w-xl overflow-hidden rounded-xl border border-border/60 bg-card text-card-foreground shadow-sm ring-1 ring-foreground/[0.04]"
+      className="border-border/60 bg-card text-card-foreground ring-foreground/[0.04] w-full max-w-xl overflow-hidden rounded-xl border shadow-sm ring-1"
     >
       {/* Header */}
       <header className="px-5 pt-4 pb-3">
         <div className="flex items-start gap-2">
-          <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive/70" aria-hidden />
-          <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-balance text-foreground">
+          <TriangleAlertIcon
+            className="text-destructive/70 mt-0.5 size-4 shrink-0"
+            aria-hidden
+          />
+          <h3 className="text-foreground text-[15px] leading-snug font-semibold tracking-tight text-balance">
             {spec.title}
           </h3>
         </div>
         {spec.description && (
-          <p className="mt-1 text-[13px] leading-relaxed text-pretty text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed text-pretty">
             {spec.description}
           </p>
         )}
         {spec.conflictReason && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-md border border-destructive/20 bg-destructive/[0.06] px-2.5 py-1.5">
-            <AlertCircleIcon className="mt-px size-3.5 shrink-0 text-destructive/70" aria-hidden />
-            <p className="text-[11.5px] leading-relaxed text-destructive/80">
+          <div className="border-destructive/20 bg-destructive/[0.06] mt-2 flex items-start gap-1.5 rounded-md border px-2.5 py-1.5">
+            <AlertCircleIcon
+              className="text-destructive/70 mt-px size-3.5 shrink-0"
+              aria-hidden
+            />
+            <p className="text-destructive/80 text-[11.5px] leading-relaxed">
               {spec.conflictReason}
             </p>
           </div>
         )}
       </header>
-      <div className="h-px bg-border/60" />
+      <div className="bg-border/60 h-px" />
 
       {/* Field table */}
       <div className="px-5 py-4">
         {/* Column headers */}
-        <div className="mb-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+        <div className="text-muted-foreground/70 mb-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 text-[11px] font-medium tracking-wider uppercase">
           <span>Current value</span>
           <span>New value</span>
         </div>
         <div className="flex flex-col gap-3.5">
           {spec.fields.map((field) => {
-            const value = displayedValues[field.name]
-            const error = isSubmitted ? undefined : errors[field.name]
-            const isConflicting = field.conflicting === true
-            const editable = field.editable !== false && field.type !== 'readonly'
+            const value = displayedValues[field.name];
+            const error = isSubmitted ? undefined : errors[field.name];
+            const isConflicting = field.conflicting === true;
+            const editable =
+              field.editable !== false && field.type !== "readonly";
 
             return (
               <div key={field.name} className="flex flex-col gap-1.5">
@@ -388,37 +420,39 @@ export function DuplicateResolutionDisplay({
                   <Label
                     htmlFor={field.name}
                     className={cn(
-                      'text-[12.5px] font-medium tracking-tight',
-                      isConflicting ? 'text-destructive/90' : 'text-foreground/90',
+                      "text-[12.5px] font-medium tracking-tight",
+                      isConflicting
+                        ? "text-destructive/90"
+                        : "text-foreground/90",
                     )}
                   >
                     {field.label}
                     {field.required && editable && (
-                      <span className="ml-0.5 text-destructive/90" aria-hidden>
+                      <span className="text-destructive/90 ml-0.5" aria-hidden>
                         *
                       </span>
                     )}
                   </Label>
                   {isConflicting && (
-                    <span className="inline-flex items-center rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive/80 ring-1 ring-inset ring-destructive/20">
+                    <span className="bg-destructive/10 text-destructive/80 ring-destructive/20 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset">
                       conflict
                     </span>
                   )}
                 </div>
                 <div
                   className={cn(
-                    'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4',
+                    "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4",
                     isConflicting &&
-                      'rounded-lg border border-destructive/20 bg-destructive/[0.03] p-2',
+                      "rounded-lg border border-destructive/20 bg-destructive/[0.03] p-2",
                   )}
                 >
                   {/* Current value (read-only left column) */}
                   <p
                     className={cn(
-                      'flex h-10 items-center rounded-md border border-border/40 px-3 text-sm',
+                      "flex h-10 items-center rounded-md border border-border/40 px-3 text-sm",
                       isConflicting
-                        ? 'bg-destructive/[0.06] text-destructive/80'
-                        : 'bg-muted/20 text-muted-foreground',
+                        ? "bg-destructive/[0.06] text-destructive/80"
+                        : "bg-muted/20 text-muted-foreground",
                     )}
                   >
                     {formatDisplayValue(field.currentValue)}
@@ -426,7 +460,7 @@ export function DuplicateResolutionDisplay({
                   {/* Proposed value (editable right column) */}
                   <div className="flex flex-col gap-1">
                     {isSubmitted ? (
-                      <p className="flex h-10 items-center rounded-md border border-border/40 bg-muted/20 px-3 text-sm text-muted-foreground">
+                      <p className="border-border/40 bg-muted/20 text-muted-foreground flex h-10 items-center rounded-md border px-3 text-sm">
                         {formatDisplayValue(value)}
                       </p>
                     ) : (
@@ -439,39 +473,43 @@ export function DuplicateResolutionDisplay({
                       />
                     )}
                     {error && (
-                      <p className="text-[11.5px] leading-tight text-destructive">{error}</p>
+                      <p className="text-destructive text-[11.5px] leading-tight">
+                        {error}
+                      </p>
                     )}
                   </div>
                 </div>
                 {field.helpText && !isSubmitted && (
-                  <p className="text-[11.5px] leading-snug text-muted-foreground/80">
+                  <p className="text-muted-foreground/80 text-[11.5px] leading-snug">
                     {field.helpText}
                   </p>
                 )}
               </div>
-            )
+            );
           })}
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/15 px-5 py-3">
+      <footer className="border-border/60 bg-muted/15 flex items-center justify-between gap-3 border-t px-5 py-3">
         {isSubmitted ? (
           <>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11.5px] font-medium text-emerald-600 ring-1 ring-inset ring-emerald-500/20 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11.5px] font-medium text-emerald-600 ring-1 ring-emerald-500/20 ring-inset dark:text-emerald-400">
               <CheckIcon className="size-3.5" aria-hidden />
-              {displayedAction ? displayedAction.label : 'Resolved'}
+              {displayedAction ? displayedAction.label : "Resolved"}
             </span>
-            <p className="text-[11.5px] text-muted-foreground">
+            <p className="text-muted-foreground text-[11.5px]">
               {conflictingFields.length > 0
-                ? `${conflictingFields.map((f) => f.label).join(', ')} resolved`
-                : ''}
+                ? `${conflictingFields.map((f) => f.label).join(", ")} resolved`
+                : ""}
             </p>
           </>
         ) : (
           <>
-            <p className="text-[11.5px] leading-none text-muted-foreground">
-              {editableCount > 0 ? `${editableCount} editable ${editableCount === 1 ? 'field' : 'fields'}` : ''}
+            <p className="text-muted-foreground text-[11.5px] leading-none">
+              {editableCount > 0
+                ? `${editableCount} editable ${editableCount === 1 ? "field" : "fields"}`
+                : ""}
             </p>
             <div className="flex items-center gap-2">
               {/* Cancel is always present as a ghost button */}
@@ -482,7 +520,7 @@ export function DuplicateResolutionDisplay({
                 className="h-8 px-3 text-[13px]"
                 disabled={!onResolve}
                 onClick={() =>
-                  onResolve?.({ actionId: 'cancel', values: {}, changes: {} })
+                  onResolve?.({ actionId: "cancel", values: {}, changes: {} })
                 }
               >
                 Cancel
@@ -494,16 +532,18 @@ export function DuplicateResolutionDisplay({
                     type="button"
                     size="sm"
                     variant={
-                      action.variant === 'destructive'
-                        ? 'destructive'
-                        : action.variant === 'secondary'
-                          ? 'outline'
-                          : 'default'
+                      action.variant === "destructive"
+                        ? "destructive"
+                        : action.variant === "secondary"
+                          ? "outline"
+                          : "default"
                     }
                     className="h-8 min-w-24 px-4 text-[13px] font-medium"
                     disabled={!onResolve}
                     title={action.description}
-                    onClick={() => handleAction(action.id, action.requiresEdits ?? false)}
+                    onClick={() =>
+                      handleAction(action.id, action.requiresEdits ?? false)
+                    }
                   >
                     {action.label}
                   </Button>
@@ -514,7 +554,7 @@ export function DuplicateResolutionDisplay({
                   size="sm"
                   className="h-8 min-w-24 px-4 text-[13px] font-medium"
                   disabled={!onResolve}
-                  onClick={() => handleAction('submit', true)}
+                  onClick={() => handleAction("submit", true)}
                 >
                   Submit
                 </Button>
@@ -524,5 +564,5 @@ export function DuplicateResolutionDisplay({
         )}
       </footer>
     </div>
-  )
+  );
 }

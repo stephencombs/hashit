@@ -1,19 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/health')({
+export const Route = createFileRoute("/health")({
   server: {
     handlers: {
       GET: async () => {
         const payload = {
-          status: 'healthy',
+          status: "healthy",
           timestamp: new Date().toISOString(),
           uptime: process.uptime(),
           memory: process.memoryUsage(),
-          version: process.env.npm_package_version ?? '1.0.0',
-        }
+          version: process.env.npm_package_version ?? "1.0.0",
+        };
 
-        return Response.json(payload)
+        return Response.json(payload);
       },
     },
   },
-})
+});

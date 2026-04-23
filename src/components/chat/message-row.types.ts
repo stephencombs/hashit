@@ -69,17 +69,22 @@ export interface MessageRowProps {
   liveSpecs: Spec[] | undefined;
   savedArtifactKeys: Set<string>;
   onBottomSpecPendingChange?: (specKey: string, pending: boolean) => void;
-  onResolveInteractive: (toolName: InteractiveToolName, output: unknown) => void;
-  onSaveArtifact: (
-    spec: Spec,
-    messageId?: string,
-    specIndex?: number,
+  onResolveInteractive: (
+    toolName: InteractiveToolName,
+    output: unknown,
   ) => void;
+  onSaveArtifact: (spec: Spec, messageId?: string, specIndex?: number) => void;
 }
 
 export type ActivityStep =
   | { kind: "thinking"; text: string; isStreaming: boolean }
-  | { kind: "tool"; tc: AppToolCallPart; done: boolean; resultContent?: string; summary?: string };
+  | {
+      kind: "tool";
+      tc: AppToolCallPart;
+      done: boolean;
+      resultContent?: string;
+      summary?: string;
+    };
 
 // Re-export ToolCallPart for code that specifically needs the library type.
 export type { MessagePart, ToolCallPart };

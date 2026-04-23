@@ -102,7 +102,9 @@ function makeTitleStream(title: string) {
 describe("queueV2ThreadTitleGeneration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockChat.mockImplementation(() => makeTitleStream("Roadmap planning"));
+    mocks.mockChat.mockImplementation(() =>
+      makeTitleStream("Roadmap planning"),
+    );
   });
 
   it("generates and persists a title for an untitled thread", async () => {
@@ -113,7 +115,9 @@ describe("queueV2ThreadTitleGeneration", () => {
 
     queueV2ThreadTitleGeneration({
       threadId: "thread-1",
-      streamTarget: { writeUrl: "http://durable.local/v2-chat/thread-1" } as never,
+      streamTarget: {
+        writeUrl: "http://durable.local/v2-chat/thread-1",
+      } as never,
       log: { set: mocks.mockLogSet } as never,
     });
 
@@ -137,7 +141,9 @@ describe("queueV2ThreadTitleGeneration", () => {
 
     queueV2ThreadTitleGeneration({
       threadId: "thread-1",
-      streamTarget: { writeUrl: "http://durable.local/v2-chat/thread-1" } as never,
+      streamTarget: {
+        writeUrl: "http://durable.local/v2-chat/thread-1",
+      } as never,
     });
 
     await vi.waitFor(() => {

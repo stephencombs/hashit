@@ -1,7 +1,10 @@
-import { toolDefinition, type Tool } from '@tanstack/ai'
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { CallToolResultSchema, type Tool as MCPTool } from '@modelcontextprotocol/sdk/types.js'
-import type { MCPServerConfig } from './config'
+import { toolDefinition, type Tool } from "@tanstack/ai";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  CallToolResultSchema,
+  type Tool as MCPTool,
+} from "@modelcontextprotocol/sdk/types.js";
+import type { MCPServerConfig } from "./config";
 
 /**
  * OpenAI requires `additionalProperties: false` on every object-type node
@@ -9,88 +12,99 @@ import type { MCPServerConfig } from './config'
  * servers return standard JSON Schema without these constraints. This
  * recursively patches all nodes to satisfy OpenAI strict mode.
  */
-function patchSchemaForOpenAI(schema: Record<string, unknown>): Record<string, unknown> {
-  if (typeof schema !== 'object' || schema === null) return schema
+function patchSchemaForOpenAI(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  if (typeof schema !== "object" || schema === null) return schema;
 
-  const patched = { ...schema }
+  const patched = { ...schema };
 
-  if ('format' in patched) {
-    delete patched.format
+  if ("format" in patched) {
+    delete patched.format;
   }
 
   if (Array.isArray(patched.type)) {
-    const types = patched.type as string[]
-    if (types.length === 2 && types.includes('null')) {
-      const realType = types.find((t) => t !== 'null')!
-      delete patched.type
-      const { type: _ignored, ...rest } = patched
-      const realSchema = patchSchemaForOpenAI({ ...rest, type: realType })
-      return { anyOf: [realSchema, { type: 'null' }] }
+    const types = patched.type as string[];
+    if (types.length === 2 && types.includes("null")) {
+      const realType = types.find((t) => t !== "null")!;
+      delete patched.type;
+      const { type: _ignored, ...rest } = patched;
+      const realSchema = patchSchemaForOpenAI({ ...rest, type: realType });
+      return { anyOf: [realSchema, { type: "null" }] };
     }
   }
 
-  const hasComposition = patched.allOf || patched.anyOf || patched.oneOf || patched.$ref
+  const hasComposition =
+    patched.allOf || patched.anyOf || patched.oneOf || patched.$ref;
   if (!patched.type && !hasComposition) {
     if (patched.properties) {
-      patched.type = 'object'
+      patched.type = "object";
     } else if (patched.items) {
-      patched.type = 'array'
+      patched.type = "array";
     } else {
-      patched.type = 'string'
+      patched.type = "string";
     }
   }
 
-  if (patched.type === 'object') {
-    patched.additionalProperties = false
+  if (patched.type === "object") {
+    patched.additionalProperties = false;
   }
 
-  if (patched.properties && typeof patched.properties === 'object') {
-    const props: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(patched.properties as Record<string, unknown>)) {
-      props[key] = typeof val === 'object' && val !== null
-        ? patchSchemaForOpenAI(val as Record<string, unknown>)
-        : val
+  if (patched.properties && typeof patched.properties === "object") {
+    const props: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(
+      patched.properties as Record<string, unknown>,
+    )) {
+      props[key] =
+        typeof val === "object" && val !== null
+          ? patchSchemaForOpenAI(val as Record<string, unknown>)
+          : val;
     }
-    patched.properties = props
+    patched.properties = props;
   }
 
   if (patched.items) {
     if (Array.isArray(patched.items)) {
       patched.items = patched.items.map((item: unknown) =>
-        typeof item === 'object' && item !== null
+        typeof item === "object" && item !== null
           ? patchSchemaForOpenAI(item as Record<string, unknown>)
           : item,
-      )
-    } else if (typeof patched.items === 'object') {
-      patched.items = patchSchemaForOpenAI(patched.items as Record<string, unknown>)
+      );
+    } else if (typeof patched.items === "object") {
+      patched.items = patchSchemaForOpenAI(
+        patched.items as Record<string, unknown>,
+      );
     }
   }
 
-  for (const keyword of ['allOf', 'anyOf', 'oneOf'] as const) {
+  for (const keyword of ["allOf", "anyOf", "oneOf"] as const) {
     if (Array.isArray(patched[keyword])) {
       patched[keyword] = (patched[keyword] as unknown[]).map((item: unknown) =>
-        typeof item === 'object' && item !== null
+        typeof item === "object" && item !== null
           ? patchSchemaForOpenAI(item as Record<string, unknown>)
           : item,
-      )
+      );
     }
   }
 
-  return patched
+  return patched;
 }
 
 function sanitizeToolName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]/g, '_')
+  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-const MCP_TOOL_TIMEOUT_MS = 60_000
+const MCP_TOOL_TIMEOUT_MS = 60_000;
 
 type RequestCapableClient = {
   request: (
-    req: { method: 'tools/call'; params: { name: string; arguments: Record<string, unknown> } },
+    req: {
+      method: "tools/call";
+      params: { name: string; arguments: Record<string, unknown> };
+    },
     schema: unknown,
-  ) => Promise<Awaited<ReturnType<Client['callTool']>>>
-}
+  ) => Promise<Awaited<ReturnType<Client["callTool"]>>>;
+};
 
 async function callToolWithTimeout(
   client: Client,
@@ -110,25 +124,30 @@ async function callToolWithTimeout(
    * unique. Using one unvalidated call prevents double side effects.
    */
   const doCall = async () => {
-    const requestClient = client as unknown as Partial<RequestCapableClient>
-    if (typeof requestClient.request === 'function') {
+    const requestClient = client as unknown as Partial<RequestCapableClient>;
+    if (typeof requestClient.request === "function") {
       return requestClient.request(
-        { method: 'tools/call', params: { name, arguments: args } },
+        { method: "tools/call", params: { name, arguments: args } },
         CallToolResultSchema,
-      )
+      );
     }
-    return client.callTool({ name, arguments: args })
-  }
+    return client.callTool({ name, arguments: args });
+  };
 
   return Promise.race([
     doCall(),
     new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error(`MCP tool "${name}" timed out after ${MCP_TOOL_TIMEOUT_MS / 1000}s`)),
+        () =>
+          reject(
+            new Error(
+              `MCP tool "${name}" timed out after ${MCP_TOOL_TIMEOUT_MS / 1000}s`,
+            ),
+          ),
         MCP_TOOL_TIMEOUT_MS,
       ),
     ),
-  ])
+  ]);
 }
 
 function extractTextContent(content: unknown): string {
@@ -136,13 +155,13 @@ function extractTextContent(content: unknown): string {
     return content
       .filter(
         (block: { type?: string }) =>
-          block && typeof block === 'object' && block.type === 'text',
+          block && typeof block === "object" && block.type === "text",
       )
-      .map((block: { text?: string }) => block.text ?? '')
-      .join('\n')
+      .map((block: { text?: string }) => block.text ?? "")
+      .join("\n");
   }
-  if (typeof content === 'string') return content
-  return JSON.stringify(content)
+  if (typeof content === "string") return content;
+  return JSON.stringify(content);
 }
 
 export function mcpToolToServerTool(
@@ -150,24 +169,30 @@ export function mcpToolToServerTool(
   client: Client,
   config: MCPServerConfig,
   options?: {
-    lazy?: boolean
+    lazy?: boolean;
   },
 ) {
-  const name = sanitizeToolName(`${config.name}__${mcpTool.name}`)
-  const schema = patchSchemaForOpenAI(mcpTool.inputSchema as Record<string, unknown>)
+  const name = sanitizeToolName(`${config.name}__${mcpTool.name}`);
+  const schema = patchSchemaForOpenAI(
+    mcpTool.inputSchema as Record<string, unknown>,
+  );
 
   return toolDefinition({
     name,
     description: `[${config.domain}] ${mcpTool.description ?? mcpTool.name}`,
-    inputSchema: schema as Tool['inputSchema'],
+    inputSchema: schema as Tool["inputSchema"],
     lazy: options?.lazy,
   }).server(async (args: unknown) => {
-    const result = await callToolWithTimeout(client, mcpTool.name, args as Record<string, unknown>)
+    const result = await callToolWithTimeout(
+      client,
+      mcpTool.name,
+      args as Record<string, unknown>,
+    );
     if (result.isError) {
       throw new Error(
-        extractTextContent(result.content) || 'MCP tool execution failed',
-      )
+        extractTextContent(result.content) || "MCP tool execution failed",
+      );
     }
-    return result.structuredContent ?? extractTextContent(result.content)
-  })
+    return result.structuredContent ?? extractTextContent(result.content);
+  });
 }

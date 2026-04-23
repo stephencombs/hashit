@@ -30,7 +30,7 @@ export function V2ChatThreadPage({
   const isThreadLoading =
     isExistingThread && (sessionQuery.isPending || messagesQuery.isPending);
   const title = threadId
-    ? sessionQuery.data?.thread.title ?? "Loading thread..."
+    ? (sessionQuery.data?.thread.title ?? "Loading thread...")
     : "New Thread";
   const initialResumeOffset = threadId
     ? sessionQuery.data?.initialResumeOffset
@@ -42,7 +42,7 @@ export function V2ChatThreadPage({
     <>
       <AppPageHeader title={<h1 className="text-sm font-medium">{title}</h1>} />
       {isThreadLoading ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center p-6 text-sm">
           Loading thread...
         </div>
       ) : (

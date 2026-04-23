@@ -49,7 +49,9 @@ export function DataSettingsPage() {
       const response = await fetch("/api/threads");
       const threads: Array<{ id: string }> = await response.json();
       await Promise.all(
-        threads.map((thread) => fetch(`/api/threads/${thread.id}`, { method: "DELETE" })),
+        threads.map((thread) =>
+          fetch(`/api/threads/${thread.id}`, { method: "DELETE" }),
+        ),
       );
       queryClient.invalidateQueries({ queryKey: ["threads"] });
       setDialogOpen(false);
@@ -63,7 +65,7 @@ export function DataSettingsPage() {
     <div className="mx-auto max-w-2xl space-y-8 p-8">
       <div>
         <h2 className="text-lg font-semibold">Data</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Export or delete your conversation data.
         </p>
       </div>
@@ -74,7 +76,7 @@ export function DataSettingsPage() {
         <div className="flex items-start justify-between gap-8 rounded-lg border p-4">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Export conversations</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Download all your conversations as a JSON file.
             </p>
           </div>
@@ -89,11 +91,12 @@ export function DataSettingsPage() {
           </Button>
         </div>
 
-        <div className="flex items-start justify-between gap-8 rounded-lg border border-destructive/30 p-4">
+        <div className="border-destructive/30 flex items-start justify-between gap-8 rounded-lg border p-4">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Delete all conversations</h3>
-            <p className="text-sm text-muted-foreground">
-              Permanently delete all conversations. This action cannot be undone.
+            <p className="text-muted-foreground text-sm">
+              Permanently delete all conversations. This action cannot be
+              undone.
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -105,13 +108,13 @@ export function DataSettingsPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <div className="flex size-10 items-center justify-center rounded-full bg-destructive/10">
-                  <TriangleAlertIcon className="size-5 text-destructive" />
+                <div className="bg-destructive/10 flex size-10 items-center justify-center rounded-full">
+                  <TriangleAlertIcon className="text-destructive size-5" />
                 </div>
                 <DialogTitle>Are you absolutely sure?</DialogTitle>
                 <DialogDescription>
-                  This will permanently delete all of your conversations and messages.
-                  This action cannot be undone.
+                  This will permanently delete all of your conversations and
+                  messages. This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>

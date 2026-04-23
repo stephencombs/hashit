@@ -1,4 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircleIcon,
@@ -17,7 +25,13 @@ import { HistorySheet } from "~/components/dashboard/history-sheet";
 import { VirtualGrid } from "~/components/virtual-grid";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import type { PersistedRecipe, PersistedWidget } from "~/db/schema";
 import {
@@ -45,7 +59,7 @@ type RenderableWidget = Omit<PersistedWidget, "spec"> & { spec: Spec };
 export const DASHBOARD_PERSONA = "HR Admin";
 
 function DashboardWidgetFallback() {
-  return <div className="h-full w-full animate-pulse rounded-md bg-muted/30" />;
+  return <div className="bg-muted/30 h-full w-full animate-pulse rounded-md" />;
 }
 
 function RegenerateStatusIcon({ isGenerating }: { isGenerating: boolean }) {
@@ -118,7 +132,7 @@ function DashboardHeader({
 
 function SkeletonCard() {
   return (
-    <Card className="flex h-[500px] min-h-[500px] max-h-[500px] flex-col overflow-hidden">
+    <Card className="flex h-[500px] max-h-[500px] min-h-[500px] flex-col overflow-hidden">
       <CardHeader className="shrink-0">
         <Skeleton className="h-4 w-2/5" />
         <Skeleton className="h-3 w-3/4" />
@@ -145,10 +159,12 @@ function DashboardEmptyState({
     <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
       {snapshotStatus === "failed" ? (
         <>
-          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <AlertCircleIcon className="text-muted-foreground size-12" />
           <div className="max-w-md space-y-2">
-            <h2 className="text-lg font-medium text-balance">Generation failed</h2>
-            <p className="text-sm text-pretty text-muted-foreground">
+            <h2 className="text-lg font-medium text-balance">
+              Generation failed
+            </h2>
+            <p className="text-muted-foreground text-sm text-pretty">
               {snapshotError ||
                 "An error occurred while generating the dashboard. Try regenerating."}
             </p>
@@ -156,10 +172,12 @@ function DashboardEmptyState({
         </>
       ) : isError ? (
         <>
-          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <AlertCircleIcon className="text-muted-foreground size-12" />
           <div className="max-w-md space-y-2">
-            <h2 className="text-lg font-medium text-balance">Could not load dashboard</h2>
-            <p className="text-sm text-pretty text-muted-foreground">
+            <h2 className="text-lg font-medium text-balance">
+              Could not load dashboard
+            </h2>
+            <p className="text-muted-foreground text-sm text-pretty">
               {queryError instanceof Error
                 ? queryError.message
                 : "Request failed. Try again or regenerate."}
@@ -168,12 +186,14 @@ function DashboardEmptyState({
         </>
       ) : (
         <>
-          <AlertCircleIcon className="size-12 text-muted-foreground" />
+          <AlertCircleIcon className="text-muted-foreground size-12" />
           <div className="max-w-md space-y-2">
-            <h2 className="text-lg font-medium text-balance">No data available</h2>
-            <p className="text-sm text-pretty text-muted-foreground">
-              All data sources returned empty results or errors. Try regenerating the
-              dashboard.
+            <h2 className="text-lg font-medium text-balance">
+              No data available
+            </h2>
+            <p className="text-muted-foreground text-sm text-pretty">
+              All data sources returned empty results or errors. Try
+              regenerating the dashboard.
             </p>
           </div>
         </>
@@ -199,7 +219,10 @@ function CollapsibleFade({
       return () => cancelAnimationFrame(id);
     }
     setVisible(false);
-    const id = window.setTimeout(() => setMounted(false), INLINE_STEPPER_TRANSITION_MS);
+    const id = window.setTimeout(
+      () => setMounted(false),
+      INLINE_STEPPER_TRANSITION_MS,
+    );
     return () => window.clearTimeout(id);
   }, [open]);
 
@@ -209,7 +232,9 @@ function CollapsibleFade({
     <div
       className={cn(
         "grid w-full min-w-0 transition-[grid-template-rows,opacity,margin] duration-500 ease-out motion-reduce:transition-none",
-        visible ? "mb-0 grid-rows-[1fr] opacity-100" : "-mb-6 grid-rows-[0fr] opacity-0",
+        visible
+          ? "mb-0 grid-rows-[1fr] opacity-100"
+          : "-mb-6 grid-rows-[0fr] opacity-0",
       )}
       aria-hidden={!visible}
     >
@@ -243,7 +268,10 @@ function GenerationProgressInline({
       setOpen(true);
       return;
     }
-    const id = window.setTimeout(() => setOpen(false), INLINE_STEPPER_LINGER_MS);
+    const id = window.setTimeout(
+      () => setOpen(false),
+      INLINE_STEPPER_LINGER_MS,
+    );
     return () => window.clearTimeout(id);
   }, [active]);
 
@@ -336,14 +364,20 @@ function DashboardContent({
             measureItems={false}
             lanes={(width) => (width >= 720 ? 2 : 1)}
             renderItem={(widget) => (
-              <Card className="flex h-[500px] min-h-[500px] max-h-[500px] flex-col overflow-hidden">
+              <Card className="flex h-[500px] max-h-[500px] min-h-[500px] flex-col overflow-hidden">
                 <CardHeader className="shrink-0">
                   <CardTitle className="line-clamp-1">{widget.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">{widget.insight}</CardDescription>
+                  <CardDescription className="line-clamp-2">
+                    {widget.insight}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="min-h-0 flex-1 overflow-hidden">
                   <Suspense fallback={<DashboardWidgetFallback />}>
-                    <JsonRenderDisplay spec={widget.spec} isStreaming={false} fill />
+                    <JsonRenderDisplay
+                      spec={widget.spec}
+                      isStreaming={false}
+                      fill
+                    />
                   </Suspense>
                 </CardContent>
               </Card>
@@ -377,9 +411,13 @@ export function DashboardPage() {
   const initDoneRef = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const { data, isFetched, isPending, isError, error: queryError } = useQuery(
-    dashboardSnapshotQuery(DASHBOARD_PERSONA),
-  );
+  const {
+    data,
+    isFetched,
+    isPending,
+    isError,
+    error: queryError,
+  } = useQuery(dashboardSnapshotQuery(DASHBOARD_PERSONA));
 
   const triggerGeneration = useMutation({
     mutationFn: ({ force }: { force: boolean }) =>
@@ -410,7 +448,8 @@ export function DashboardPage() {
   }, [triggerGeneration]);
 
   const snapshot = data?.snapshot ?? null;
-  const isGenerating = snapshot?.status === "generating" || triggerGeneration.isPending;
+  const isGenerating =
+    snapshot?.status === "generating" || triggerGeneration.isPending;
   const widgets = snapshot?.widgets ?? [];
   const recipes = snapshot?.recipes ?? [];
 

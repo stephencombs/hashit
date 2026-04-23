@@ -1,5 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -16,7 +20,8 @@ function getThreadIdFromPathname(pathname: string): string | undefined {
 
 function getNewChatNavNonce(state: unknown): number | undefined {
   if (!state || typeof state !== "object") return undefined;
-  const value = (state as { __newV2ChatNavNonce?: unknown }).__newV2ChatNavNonce;
+  const value = (state as { __newV2ChatNavNonce?: unknown })
+    .__newV2ChatNavNonce;
   return typeof value === "number" ? value : undefined;
 }
 

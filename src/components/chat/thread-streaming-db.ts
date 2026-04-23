@@ -107,10 +107,7 @@ export function useIsThreadStreaming(threadId: string): boolean {
  */
 export function useStreamingThreadIds(): ReadonlySet<string> {
   const { data } = useLiveQuery(streamingThreadsCollection);
-  return useMemo(
-    () => new Set(data?.map((row) => row.threadId) ?? []),
-    [data],
-  );
+  return useMemo(() => new Set(data?.map((row) => row.threadId) ?? []), [data]);
 }
 
 export function useStreamingThreadCount(): number {

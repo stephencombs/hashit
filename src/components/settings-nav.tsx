@@ -1,18 +1,13 @@
-import { Link } from "@tanstack/react-router"
-import {
-  BrainIcon,
-  DatabaseIcon,
-  PaletteIcon,
-  ServerIcon,
-} from "lucide-react"
-import { cn } from "~/lib/utils"
+import { Link } from "@tanstack/react-router";
+import { BrainIcon, DatabaseIcon, PaletteIcon, ServerIcon } from "lucide-react";
+import { cn } from "~/lib/utils";
 
 const sections = [
   { to: "/settings/appearance", label: "Appearance", icon: PaletteIcon },
   { to: "/settings/model", label: "Model", icon: BrainIcon },
   { to: "/settings/mcp", label: "MCP Servers", icon: ServerIcon },
   { to: "/settings/data", label: "Data", icon: DatabaseIcon },
-] as const
+] as const;
 
 export function SettingsNav() {
   return (
@@ -26,8 +21,7 @@ export function SettingsNav() {
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
           )}
           activeProps={{
-            className:
-              "bg-muted text-foreground",
+            className: "bg-muted text-foreground",
           }}
         >
           <Icon className="size-4" />
@@ -35,5 +29,5 @@ export function SettingsNav() {
         </Link>
       ))}
     </nav>
-  )
+  );
 }

@@ -1,51 +1,53 @@
-import { createError } from 'evlog'
-import { DurableStream } from '@durable-streams/client'
+import { createError } from "evlog";
+import { DurableStream } from "@durable-streams/client";
 import type {
   DurableChatSessionStreamTarget,
   DurableStreamTarget,
-} from '@durable-streams/tanstack-ai-transport'
+} from "@durable-streams/tanstack-ai-transport";
 
 function withProtocol(url: string): string {
-  return url.includes('://') ? url : `http://${url}`
+  return url.includes("://") ? url : `http://${url}`;
 }
 
 function stripTrailingSlash(url: string): string {
-  return url.replace(/\/+$/, '')
+  return url.replace(/\/+$/, "");
 }
 
 function assertConfigured(url: string | undefined, name: string): string {
   if (!url) {
     throw createError({
-      message: 'Durable Streams endpoint not configured',
+      message: "Durable Streams endpoint not configured",
       status: 503,
       why: `Missing ${name} (or DURABLE_STREAMS_URL fallback) — the durable session transport cannot resolve a write/read URL.`,
-      fix: 'Start the local reference server via `pnpm dev:streams` or set DURABLE_STREAMS_URL / DURABLE_STREAMS_WRITE_URL / DURABLE_STREAMS_READ_URL in your environment.',
-    })
+      fix: "Start the local reference server via `pnpm dev:streams` or set DURABLE_STREAMS_URL / DURABLE_STREAMS_WRITE_URL / DURABLE_STREAMS_READ_URL in your environment.",
+    });
   }
-  return stripTrailingSlash(withProtocol(url))
+  return stripTrailingSlash(withProtocol(url));
 }
 
-function authHeader(token: string | undefined): { Authorization: string } | undefined {
-  return token ? { Authorization: `Bearer ${token}` } : undefined
+function authHeader(
+  token: string | undefined,
+): { Authorization: string } | undefined {
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
 }
 
 function resolveWriteBase(): string {
-  const shared = process.env.DURABLE_STREAMS_URL
-  const write = process.env.DURABLE_STREAMS_WRITE_URL ?? shared
-  return assertConfigured(write, 'DURABLE_STREAMS_WRITE_URL')
+  const shared = process.env.DURABLE_STREAMS_URL;
+  const write = process.env.DURABLE_STREAMS_WRITE_URL ?? shared;
+  return assertConfigured(write, "DURABLE_STREAMS_WRITE_URL");
 }
 
 function resolveReadBase(): string {
-  const shared = process.env.DURABLE_STREAMS_URL
-  const read = process.env.DURABLE_STREAMS_READ_URL ?? shared
-  return assertConfigured(read, 'DURABLE_STREAMS_READ_URL')
+  const shared = process.env.DURABLE_STREAMS_URL;
+  const read = process.env.DURABLE_STREAMS_READ_URL ?? shared;
+  return assertConfigured(read, "DURABLE_STREAMS_READ_URL");
 }
 
 function resolveWriteHeaders(): { Authorization: string } | undefined {
   return authHeader(
     process.env.DURABLE_STREAMS_WRITE_TOKEN ??
       process.env.DURABLE_STREAMS_WRITE_BEARER_TOKEN,
-  )
+  );
 }
 
 function resolveReadHeaders(): { Authorization: string } | undefined {
@@ -54,7 +56,7 @@ function resolveReadHeaders(): { Authorization: string } | undefined {
       process.env.DURABLE_STREAMS_READ_TOKEN ??
         process.env.DURABLE_STREAMS_READ_BEARER_TOKEN,
     ) ?? resolveWriteHeaders()
-  )
+  );
 }
 
 /**
@@ -64,29 +66,29 @@ function resolveReadHeaders(): { Authorization: string } | undefined {
 export function isDurableStreamsConfigured(): boolean {
   return Boolean(
     process.env.DURABLE_STREAMS_URL ??
-      process.env.DURABLE_STREAMS_WRITE_URL ??
-      process.env.DURABLE_STREAMS_READ_URL,
-  )
+    process.env.DURABLE_STREAMS_WRITE_URL ??
+    process.env.DURABLE_STREAMS_READ_URL,
+  );
 }
 
 /** Canonical stream path for chat sessions: `chat/<threadId>`. */
 export function buildChatStreamPath(threadId: string): string {
-  return `chat/${threadId}`
+  return `chat/${threadId}`;
 }
 
 function joinStreamUrl(base: string, streamPath: string): string {
-  const cleanedPath = streamPath.replace(/^\/+/, '')
-  return new URL(cleanedPath, `${base}/`).toString()
+  const cleanedPath = streamPath.replace(/^\/+/, "");
+  return new URL(cleanedPath, `${base}/`).toString();
 }
 
 /** Write endpoint URL (server-side only) for a given stream path. */
 export function buildWriteStreamUrl(streamPath: string): string {
-  return joinStreamUrl(resolveWriteBase(), streamPath)
+  return joinStreamUrl(resolveWriteBase(), streamPath);
 }
 
 /** Read endpoint URL (server-side only) for a given stream path. */
 export function buildReadStreamUrl(streamPath: string): string {
-  return joinStreamUrl(resolveReadBase(), streamPath)
+  return joinStreamUrl(resolveReadBase(), streamPath);
 }
 
 /** `DurableStreamTarget` for generic low-level writes. */
@@ -95,7 +97,7 @@ export function getDurableWriteTarget(streamPath: string): DurableStreamTarget {
     writeUrl: buildWriteStreamUrl(streamPath),
     headers: resolveWriteHeaders(),
     createIfMissing: true,
-  }
+  };
 }
 
 /** Narrowed target used by `toDurableChatSessionResponse` / `ensureDurableChatSessionStream`. */
@@ -106,12 +108,12 @@ export function getDurableChatSessionTarget(
     writeUrl: buildWriteStreamUrl(streamPath),
     headers: resolveWriteHeaders(),
     createIfMissing: true,
-  }
+  };
 }
 
 /** Headers required to read from upstream durable streams (server-side only). */
 export function getDurableReadHeaders(): Record<string, string> | undefined {
-  return resolveReadHeaders()
+  return resolveReadHeaders();
 }
 
 /**
@@ -124,6 +126,6 @@ export async function readDurableStreamHeadOffset(
   const metadata = await DurableStream.head({
     url: buildReadStreamUrl(streamPath),
     headers: getDurableReadHeaders(),
-  })
-  return metadata.offset
+  });
+  return metadata.offset;
 }

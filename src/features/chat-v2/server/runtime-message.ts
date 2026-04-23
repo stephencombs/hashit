@@ -101,8 +101,9 @@ function buildRenderText(
   fallbackContent: string,
 ): string {
   const textContent = parts
-    .filter((part): part is Extract<V2RuntimePart, { type: "text" }> =>
-      part.type === "text",
+    .filter(
+      (part): part is Extract<V2RuntimePart, { type: "text" }> =>
+        part.type === "text",
     )
     .map((part) => part.content)
     .join("\n")

@@ -46,10 +46,7 @@ export const Route = createFileRoute("/api/chat-stream")({
         } catch (err) {
           const message =
             err instanceof Error ? err.message : "Durable Streams unavailable";
-          return Response.json(
-            { error: message },
-            { status: 503 },
-          );
+          return Response.json({ error: message }, { status: 503 });
         }
 
         for (const [key, value] of incomingUrl.searchParams.entries()) {

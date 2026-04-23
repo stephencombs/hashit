@@ -14,12 +14,12 @@ content.
 In dev, Azurite runs in `docker-compose.yml`. In production, point the
 following env vars at your Azure Storage account:
 
-| Env var                  | Default (dev)                                         | Notes                                       |
-| ------------------------ | ----------------------------------------------------- | ------------------------------------------- |
-| `AZURE_BLOB_ACCOUNT_NAME`| `devstoreaccount1`                                    | Azurite default                              |
-| `AZURE_BLOB_ACCOUNT_KEY` | Azurite well-known key                                | Use a real key in prod                       |
-| `AZURE_BLOB_ENDPOINT`    | `http://127.0.0.1:10000/devstoreaccount1`             | Use the cloud endpoint in prod               |
-| `AZURE_BLOB_CONTAINER`   | `prompt-attachments`                                  | Container is auto-created if missing         |
+| Env var                   | Default (dev)                             | Notes                                |
+| ------------------------- | ----------------------------------------- | ------------------------------------ |
+| `AZURE_BLOB_ACCOUNT_NAME` | `devstoreaccount1`                        | Azurite default                      |
+| `AZURE_BLOB_ACCOUNT_KEY`  | Azurite well-known key                    | Use a real key in prod               |
+| `AZURE_BLOB_ENDPOINT`     | `http://127.0.0.1:10000/devstoreaccount1` | Use the cloud endpoint in prod       |
+| `AZURE_BLOB_CONTAINER`    | `prompt-attachments`                      | Container is auto-created if missing |
 
 Constraints (enforced server-side in `src/routes/api/prompt-attachments.ts`):
 

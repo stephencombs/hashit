@@ -86,5 +86,8 @@ export function setThreadTitle(
 export function invalidateThreadList(queryClient: QueryClient): void {
   // Keep cache correctness while avoiding immediate list refetch churn in the
   // critical first-send paint window.
-  queryClient.invalidateQueries({ queryKey: THREADS_QUERY_KEY, refetchType: "none" });
+  queryClient.invalidateQueries({
+    queryKey: THREADS_QUERY_KEY,
+    refetchType: "none",
+  });
 }

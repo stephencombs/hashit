@@ -1,10 +1,10 @@
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions } from "@tanstack/react-query";
 import {
   dashboardHistoryResponseSchema,
   dashboardSnapshotDetailResponseSchema,
   postDashboardGenerationResultSchema,
   snapshotResponseSchema,
-} from '~/lib/dashboard-schemas'
+} from "~/lib/dashboard-schemas";
 
 export type {
   DashboardHistoryResponse,
@@ -12,15 +12,15 @@ export type {
   DashboardSnapshotSummary,
   PostDashboardGenerationResult,
   SnapshotResponse,
-} from '~/lib/dashboard-schemas'
+} from "~/lib/dashboard-schemas";
 
-const DEFAULT_HISTORY_LIMIT = 20
+const DEFAULT_HISTORY_LIMIT = 20;
 
-export const DASHBOARD_POLL_INTERVAL_MS = 3000
+export const DASHBOARD_POLL_INTERVAL_MS = 3000;
 
 /** Stable key prefix for invalidation: `['dashboard', 'snapshot', persona]` */
 export function dashboardSnapshotQueryKey(persona: string) {
-  return ['dashboard', 'snapshot', persona] as const
+  return ["dashboard", "snapshot", persona] as const;
 }
 
 export function dashboardSnapshotQuery(persona: string) {
@@ -30,42 +30,37 @@ export function dashboardSnapshotQuery(persona: string) {
       const res = await fetch(
         `/api/dashboard?persona=${encodeURIComponent(persona)}`,
         { signal },
-      )
+      );
       if (!res.ok) {
-        throw new Error(`Dashboard snapshot failed: ${res.status}`)
+        throw new Error(`Dashboard snapshot failed: ${res.status}`);
       }
-      return snapshotResponseSchema.parse(await res.json())
+      return snapshotResponseSchema.parse(await res.json());
     },
     refetchInterval: (query) =>
-      query.state.data?.snapshot?.status === 'generating'
+      query.state.data?.snapshot?.status === "generating"
         ? DASHBOARD_POLL_INTERVAL_MS
         : false,
     staleTime: 30_000,
     retry: 2,
-  })
+  });
 }
 
-export async function postDashboardGeneration(
-  persona: string,
-  force: boolean,
-) {
-  const url = force
-    ? `/api/dashboard?force=true`
-    : '/api/dashboard'
+export async function postDashboardGeneration(persona: string, force: boolean) {
+  const url = force ? `/api/dashboard?force=true` : "/api/dashboard";
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ persona }),
-  })
+  });
   if (!res.ok) {
-    throw new Error(`Dashboard generation request failed: ${res.status}`)
+    throw new Error(`Dashboard generation request failed: ${res.status}`);
   }
-  return postDashboardGenerationResultSchema.parse(await res.json())
+  return postDashboardGenerationResultSchema.parse(await res.json());
 }
 
 /** Stable key prefix: `['dashboard', 'history', persona]` */
 export function dashboardHistoryQueryKey(persona: string) {
-  return ['dashboard', 'history', persona] as const
+  return ["dashboard", "history", persona] as const;
 }
 
 export function dashboardHistoryQuery(
@@ -78,43 +73,43 @@ export function dashboardHistoryQuery(
       const params = new URLSearchParams({
         persona,
         limit: String(limit),
-      })
+      });
       const res = await fetch(`/api/dashboard/history?${params.toString()}`, {
         signal,
-      })
+      });
       if (!res.ok) {
-        throw new Error(`Dashboard history failed: ${res.status}`)
+        throw new Error(`Dashboard history failed: ${res.status}`);
       }
-      return dashboardHistoryResponseSchema.parse(await res.json())
+      return dashboardHistoryResponseSchema.parse(await res.json());
     },
     retry: 2,
     staleTime: 30_000,
-  })
+  });
 }
 
 /** Stable key: `['dashboard', 'snapshot-by-id', id]` */
 export function dashboardSnapshotByIdQueryKey(snapshotId: string) {
-  return ['dashboard', 'snapshot-by-id', snapshotId] as const
+  return ["dashboard", "snapshot-by-id", snapshotId] as const;
 }
 
 export function dashboardSnapshotByIdQuery(snapshotId: string | null) {
   return queryOptions({
-    queryKey: dashboardSnapshotByIdQueryKey(snapshotId ?? ''),
+    queryKey: dashboardSnapshotByIdQueryKey(snapshotId ?? ""),
     queryFn: async ({ signal }) => {
       if (!snapshotId) {
-        throw new Error('snapshotId is required')
+        throw new Error("snapshotId is required");
       }
       const res = await fetch(
         `/api/dashboard/snapshots/${encodeURIComponent(snapshotId)}`,
         { signal },
-      )
+      );
       if (!res.ok) {
-        throw new Error(`Dashboard snapshot failed: ${res.status}`)
+        throw new Error(`Dashboard snapshot failed: ${res.status}`);
       }
-      return dashboardSnapshotDetailResponseSchema.parse(await res.json())
+      return dashboardSnapshotDetailResponseSchema.parse(await res.json());
     },
     enabled: Boolean(snapshotId),
     retry: 2,
     staleTime: 60_000,
-  })
+  });
 }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircleIcon,
   CalendarClockIcon,
@@ -9,16 +9,16 @@ import {
   LayersIcon,
   SparklesIcon,
   TimerIcon,
-} from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
-import { Badge } from '~/components/ui/badge'
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '~/components/ui/empty'
+} from "~/components/ui/empty";
 import {
   Item,
   ItemActions,
@@ -27,25 +27,25 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from '~/components/ui/item'
+} from "~/components/ui/item";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '~/components/ui/sheet'
-import { Skeleton } from '~/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+} from "~/components/ui/sheet";
+import { Skeleton } from "~/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   dashboardHistoryQuery,
   dashboardSnapshotByIdQuery,
   type DashboardSnapshotSummary,
-} from '~/lib/dashboard-queries'
-import type { z } from 'zod'
-import type { dashboardSnapshotWireSchema } from '~/lib/dashboard-schemas'
+} from "~/lib/dashboard-queries";
+import type { z } from "zod";
+import type { dashboardSnapshotWireSchema } from "~/lib/dashboard-schemas";
 
-type DashboardSnapshotWire = z.infer<typeof dashboardSnapshotWireSchema>
+type DashboardSnapshotWire = z.infer<typeof dashboardSnapshotWireSchema>;
 import {
   formatDurationMs,
   formatSnapshotCompletedAt,
@@ -54,26 +54,27 @@ import {
   useGenerationProgressMetrics,
   type GenerationProgressMetrics,
   type RecipeStatus,
-} from '~/components/dashboard/generation-progress-views'
+} from "~/components/dashboard/generation-progress-views";
 import {
   KindIcon,
   StatusDot,
   StatTile,
-} from '~/components/dashboard/generation-shared'
-import {
-  useBuildEvents,
-  type BuildEvent,
-} from '~/lib/dashboard-build-events'
-import type { PersistedRecipe, PersistedWidget } from '~/db/schema'
-import { cn } from '~/lib/utils'
+} from "~/components/dashboard/generation-shared";
+import { useBuildEvents, type BuildEvent } from "~/lib/dashboard-build-events";
+import type { PersistedRecipe, PersistedWidget } from "~/db/schema";
+import { cn } from "~/lib/utils";
 
 type HistorySheetProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  persona: string
-}
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  persona: string;
+};
 
-export function HistorySheet({ open, onOpenChange, persona }: HistorySheetProps) {
+export function HistorySheet({
+  open,
+  onOpenChange,
+  persona,
+}: HistorySheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -87,34 +88,35 @@ export function HistorySheet({ open, onOpenChange, persona }: HistorySheetProps)
             Dashboard history
           </SheetTitle>
           <SheetDescription>
-            Browse past generations for {persona}. Select a run to inspect its plan, widgets, and timeline.
+            Browse past generations for {persona}. Select a run to inspect its
+            plan, widgets, and timeline.
           </SheetDescription>
         </SheetHeader>
         {open ? <HistorySheetBody persona={persona} /> : null}
       </SheetContent>
     </Sheet>
-  )
+  );
 }
 
 function HistorySheetBody({ persona }: { persona: string }) {
-  const historyQuery = useQuery(dashboardHistoryQuery(persona))
-  const snapshots = historyQuery.data?.snapshots ?? []
+  const historyQuery = useQuery(dashboardHistoryQuery(persona));
+  const snapshots = historyQuery.data?.snapshots ?? [];
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (snapshots.length === 0) {
-      if (selectedId !== null) setSelectedId(null)
-      return
+      if (selectedId !== null) setSelectedId(null);
+      return;
     }
     if (!selectedId || !snapshots.some((s) => s.id === selectedId)) {
-      setSelectedId(snapshots[0].id)
+      setSelectedId(snapshots[0].id);
     }
-  }, [snapshots, selectedId])
+  }, [snapshots, selectedId]);
 
   return (
-    <div className="flex w-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:w-[22rem] md:shrink-0 md:flex-none md:border-r md:border-border">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden md:flex-row">
+      <div className="md:border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:w-[22rem] md:flex-none md:shrink-0 md:border-r">
         <SnapshotsList
           snapshots={snapshots}
           isLoading={historyQuery.isLoading}
@@ -124,11 +126,11 @@ function HistorySheetBody({ persona }: { persona: string }) {
           onSelect={setSelectedId}
         />
       </div>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-border md:border-t-0 md:border-l md:border-border">
+      <div className="border-border md:border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t md:border-t-0 md:border-l">
         <SnapshotInspector snapshotId={selectedId} />
       </div>
     </div>
-  )
+  );
 }
 
 function SnapshotsList({
@@ -139,12 +141,12 @@ function SnapshotsList({
   selectedId,
   onSelect,
 }: {
-  snapshots: DashboardSnapshotSummary[]
-  isLoading: boolean
-  isError: boolean
-  error: unknown
-  selectedId: string | null
-  onSelect: (id: string) => void
+  snapshots: DashboardSnapshotSummary[];
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   if (isLoading) {
     return (
@@ -155,7 +157,7 @@ function SnapshotsList({
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (isError) {
@@ -165,11 +167,11 @@ function SnapshotsList({
           <AlertCircleIcon />
           <AlertTitle>Couldn’t load history</AlertTitle>
           <AlertDescription>
-            {error instanceof Error ? error.message : 'Request failed.'}
+            {error instanceof Error ? error.message : "Request failed."}
           </AlertDescription>
         </Alert>
       </div>
-    )
+    );
   }
 
   if (snapshots.length === 0) {
@@ -187,7 +189,7 @@ function SnapshotsList({
           </EmptyHeader>
         </Empty>
       </div>
-    )
+    );
   }
 
   return (
@@ -203,7 +205,7 @@ function SnapshotsList({
         ))}
       </ItemGroup>
     </div>
-  )
+  );
 }
 
 function SnapshotListItem({
@@ -211,31 +213,31 @@ function SnapshotListItem({
   selected,
   onSelect,
 }: {
-  snapshot: DashboardSnapshotSummary
-  selected: boolean
-  onSelect: (id: string) => void
+  snapshot: DashboardSnapshotSummary;
+  selected: boolean;
+  onSelect: (id: string) => void;
 }) {
-  const recipeStatus = recipeStatusFromSnapshotStatus(snapshot.status)
+  const recipeStatus = recipeStatusFromSnapshotStatus(snapshot.status);
   const when = formatSnapshotCompletedAt(
     snapshot.completedAt ?? snapshot.createdAt,
-  )
+  );
   const counts =
     snapshot.recipeCount > 0
       ? `${snapshot.completedCount}/${snapshot.recipeCount} rendered${
-          snapshot.skippedCount > 0 ? ` · ${snapshot.skippedCount} skipped` : ''
+          snapshot.skippedCount > 0 ? ` · ${snapshot.skippedCount} skipped` : ""
         }`
-      : snapshot.status === 'generating'
-        ? 'Planning…'
-        : '0 widgets'
+      : snapshot.status === "generating"
+        ? "Planning…"
+        : "0 widgets";
 
   return (
     <Item
       asChild
-      variant={selected ? 'muted' : 'outline'}
+      variant={selected ? "muted" : "outline"}
       size="sm"
       className={cn(
-        'cursor-pointer transition-colors',
-        selected && 'ring-1 ring-ring/50',
+        "cursor-pointer transition-colors",
+        selected && "ring-1 ring-ring/50",
       )}
     >
       <button
@@ -258,33 +260,33 @@ function SnapshotListItem({
         </ItemActions>
       </button>
     </Item>
-  )
+  );
 }
 
 function StatusBadge({
   status,
 }: {
-  status: DashboardSnapshotSummary['status']
+  status: DashboardSnapshotSummary["status"];
 }) {
-  if (status === 'complete') {
-    return <Badge variant="secondary">Complete</Badge>
+  if (status === "complete") {
+    return <Badge variant="secondary">Complete</Badge>;
   }
-  if (status === 'failed') {
-    return <Badge variant="destructive">Failed</Badge>
+  if (status === "failed") {
+    return <Badge variant="destructive">Failed</Badge>;
   }
-  return <Badge variant="outline">Generating</Badge>
+  return <Badge variant="outline">Generating</Badge>;
 }
 
 function recipeStatusFromSnapshotStatus(
-  status: DashboardSnapshotSummary['status'],
+  status: DashboardSnapshotSummary["status"],
 ): RecipeStatus {
-  if (status === 'complete') return 'done'
-  if (status === 'generating') return 'active'
-  return 'skipped'
+  if (status === "complete") return "done";
+  if (status === "generating") return "active";
+  return "skipped";
 }
 
 function SnapshotInspector({ snapshotId }: { snapshotId: string | null }) {
-  const detailQuery = useQuery(dashboardSnapshotByIdQuery(snapshotId))
+  const detailQuery = useQuery(dashboardSnapshotByIdQuery(snapshotId));
 
   if (!snapshotId) {
     return (
@@ -296,12 +298,13 @@ function SnapshotInspector({ snapshotId }: { snapshotId: string | null }) {
             </EmptyMedia>
             <EmptyTitle>Pick a run</EmptyTitle>
             <EmptyDescription>
-              Select a snapshot from the list to view its plan, widgets, and events.
+              Select a snapshot from the list to view its plan, widgets, and
+              events.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
       </div>
-    )
+    );
   }
 
   if (detailQuery.isLoading) {
@@ -311,7 +314,7 @@ function SnapshotInspector({ snapshotId }: { snapshotId: string | null }) {
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-40 w-full" />
       </div>
-    )
+    );
   }
 
   if (detailQuery.isError) {
@@ -323,42 +326,41 @@ function SnapshotInspector({ snapshotId }: { snapshotId: string | null }) {
           <AlertDescription>
             {detailQuery.error instanceof Error
               ? detailQuery.error.message
-              : 'Request failed.'}
+              : "Request failed."}
           </AlertDescription>
         </Alert>
       </div>
-    )
+    );
   }
 
-  const snapshot = detailQuery.data?.snapshot
-  if (!snapshot) return null
+  const snapshot = detailQuery.data?.snapshot;
+  if (!snapshot) return null;
 
-  return (
-    <SnapshotInspectorLoaded
-      snapshot={snapshot}
-    />
-  )
+  return <SnapshotInspectorLoaded snapshot={snapshot} />;
 }
 
 function SnapshotInspectorLoaded({
   snapshot,
 }: {
-  snapshot: DashboardSnapshotWire
+  snapshot: DashboardSnapshotWire;
 }) {
-  const recipes: PersistedRecipe[] = snapshot.recipes ?? []
-  const widgets: PersistedWidget[] = snapshot.widgets ?? []
-  const isGenerating = snapshot.status === 'generating'
-  const error = snapshot.status === 'failed' ? snapshot.error : null
+  const recipes: PersistedRecipe[] = snapshot.recipes ?? [];
+  const widgets: PersistedWidget[] = snapshot.widgets ?? [];
+  const isGenerating = snapshot.status === "generating";
+  const error = snapshot.status === "failed" ? snapshot.error : null;
   const metrics = useGenerationProgressMetrics(
     recipes,
     widgets,
     isGenerating,
     error,
-  )
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <Tabs defaultValue="summary" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <Tabs
+        defaultValue="summary"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
         <div className="shrink-0 border-b px-4 pt-3 pb-2">
           <TabsList>
             <TabsTrigger value="summary">Summary</TabsTrigger>
@@ -373,10 +375,20 @@ function SnapshotInspectorLoaded({
             <SummaryTab snapshot={snapshot} metrics={metrics} />
           </TabsContent>
           <TabsContent value="plan" className="mt-0">
-            <PlanTab recipes={recipes} widgets={widgets} metrics={metrics} isGenerating={isGenerating} />
+            <PlanTab
+              recipes={recipes}
+              widgets={widgets}
+              metrics={metrics}
+              isGenerating={isGenerating}
+            />
           </TabsContent>
           <TabsContent value="widgets" className="mt-0">
-            <WidgetsTab recipes={recipes} widgets={widgets} metrics={metrics} isGenerating={isGenerating} />
+            <WidgetsTab
+              recipes={recipes}
+              widgets={widgets}
+              metrics={metrics}
+              isGenerating={isGenerating}
+            />
           </TabsContent>
           <TabsContent value="events" className="mt-0">
             <EventsTab
@@ -392,7 +404,7 @@ function SnapshotInspectorLoaded({
         </div>
       </Tabs>
     </div>
-  )
+  );
 }
 
 function SummaryTab({
@@ -400,26 +412,26 @@ function SummaryTab({
   metrics,
 }: {
   snapshot: {
-    id: string
-    status: 'generating' | 'complete' | 'failed'
-    persona: string
-    createdAt: string
-    completedAt: string | null
-    error: string | null
-  }
-  metrics: GenerationProgressMetrics
+    id: string;
+    status: "generating" | "complete" | "failed";
+    persona: string;
+    createdAt: string;
+    completedAt: string | null;
+    error: string | null;
+  };
+  metrics: GenerationProgressMetrics;
 }) {
-  const { completedCount, skippedCount, processedCount, totalCount } = metrics
-  const pending = Math.max(0, totalCount - processedCount)
+  const { completedCount, skippedCount, processedCount, totalCount } = metrics;
+  const pending = Math.max(0, totalCount - processedCount);
   const durationMs = snapshot.completedAt
     ? Math.max(
         0,
         new Date(snapshot.completedAt).getTime() -
           new Date(snapshot.createdAt).getTime(),
       )
-    : null
-  const created = formatSnapshotCompletedAt(snapshot.createdAt)
-  const completed = formatSnapshotCompletedAt(snapshot.completedAt)
+    : null;
+  const created = formatSnapshotCompletedAt(snapshot.createdAt);
+  const completed = formatSnapshotCompletedAt(snapshot.completedAt);
 
   return (
     <>
@@ -429,7 +441,7 @@ function SummaryTab({
         <StatTile label="Pending" value={pending} tone="muted" />
         <StatTile
           label="Duration"
-          value={durationMs !== null ? formatDurationMs(durationMs) : '—'}
+          value={durationMs !== null ? formatDurationMs(durationMs) : "—"}
           tone="muted"
         />
       </dl>
@@ -460,7 +472,8 @@ function SummaryTab({
           <ItemContent>
             <ItemTitle>Completed</ItemTitle>
             <ItemDescription>
-              {completed ?? (snapshot.status === 'generating' ? 'In progress' : '—')}
+              {completed ??
+                (snapshot.status === "generating" ? "In progress" : "—")}
             </ItemDescription>
           </ItemContent>
         </Item>
@@ -488,7 +501,7 @@ function SummaryTab({
         </Alert>
       ) : null}
     </>
-  )
+  );
 }
 
 function PlanTab({
@@ -497,10 +510,10 @@ function PlanTab({
   metrics,
   isGenerating,
 }: {
-  recipes: PersistedRecipe[]
-  widgets: PersistedWidget[]
-  metrics: GenerationProgressMetrics
-  isGenerating: boolean
+  recipes: PersistedRecipe[];
+  widgets: PersistedWidget[];
+  metrics: GenerationProgressMetrics;
+  isGenerating: boolean;
 }) {
   if (recipes.length === 0) {
     return (
@@ -515,22 +528,22 @@ function PlanTab({
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
-    )
+    );
   }
 
   return (
     <ItemGroup>
       {recipes.map((recipe) => {
-        const widget = metrics.widgetsById.get(recipe.widgetId)
+        const widget = metrics.widgetsById.get(recipe.widgetId);
         const status = getRecipeStatus(
           recipe,
           widget,
           widgets.length,
           metrics.recipeIndexById,
           isGenerating,
-        )
+        );
         const sources =
-          recipe.dataSources?.map((ds) => ds.label).join(' · ') ?? ''
+          recipe.dataSources?.map((ds) => ds.label).join(" · ") ?? "";
         return (
           <Item key={recipe.widgetId} variant="outline" className="items-start">
             <ItemMedia>
@@ -547,20 +560,20 @@ function PlanTab({
                   </>
                 ) : null}
               </ItemDescription>
-              <details className="mt-3 w-full min-w-0 rounded-md border border-border bg-muted/25">
-                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground [&::-webkit-details-marker]:hidden">
+              <details className="border-border bg-muted/25 mt-3 w-full min-w-0 rounded-md border">
+                <summary className="text-muted-foreground hover:bg-muted/50 hover:text-foreground cursor-pointer list-none px-3 py-2 text-xs font-medium transition-colors [&::-webkit-details-marker]:hidden">
                   Render instructions
                 </summary>
-                <div className="max-h-56 overflow-y-auto overscroll-contain border-t border-border px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words text-foreground">
+                <div className="border-border text-foreground max-h-56 overflow-y-auto overscroll-contain border-t px-3 py-2.5 font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">
                   {recipe.render}
                 </div>
               </details>
             </ItemContent>
           </Item>
-        )
+        );
       })}
     </ItemGroup>
-  )
+  );
 }
 
 function WidgetsTab({
@@ -569,10 +582,10 @@ function WidgetsTab({
   metrics,
   isGenerating,
 }: {
-  recipes: PersistedRecipe[]
-  widgets: PersistedWidget[]
-  metrics: GenerationProgressMetrics
-  isGenerating: boolean
+  recipes: PersistedRecipe[];
+  widgets: PersistedWidget[];
+  metrics: GenerationProgressMetrics;
+  isGenerating: boolean;
 }) {
   if (recipes.length === 0 && widgets.length === 0) {
     return (
@@ -587,22 +600,22 @@ function WidgetsTab({
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
-    )
+    );
   }
 
   return (
     <ItemGroup>
       {recipes.map((recipe) => {
-        const widget = metrics.widgetsById.get(recipe.widgetId)
+        const widget = metrics.widgetsById.get(recipe.widgetId);
         const status = getRecipeStatus(
           recipe,
           widget,
           widgets.length,
           metrics.recipeIndexById,
           isGenerating,
-        )
-        const title = widget?.title ?? recipeDisplayTitle(recipe)
-        const insight = widget?.insight ?? recipe.insight
+        );
+        const title = widget?.title ?? recipeDisplayTitle(recipe);
+        const insight = widget?.insight ?? recipe.insight;
 
         return (
           <Item key={recipe.widgetId} variant="outline">
@@ -627,17 +640,17 @@ function WidgetsTab({
               <WidgetStatusBadge status={status} />
             </ItemActions>
           </Item>
-        )
+        );
       })}
     </ItemGroup>
-  )
+  );
 }
 
 function WidgetStatusBadge({ status }: { status: RecipeStatus }) {
-  if (status === 'done') return <Badge variant="secondary">Rendered</Badge>
-  if (status === 'skipped') return <Badge variant="outline">Skipped</Badge>
-  if (status === 'active') return <Badge variant="outline">Rendering</Badge>
-  return <Badge variant="outline">Queued</Badge>
+  if (status === "done") return <Badge variant="secondary">Rendered</Badge>;
+  if (status === "skipped") return <Badge variant="outline">Skipped</Badge>;
+  if (status === "active") return <Badge variant="outline">Rendering</Badge>;
+  return <Badge variant="outline">Queued</Badge>;
 }
 
 function EventsTab({
@@ -649,13 +662,13 @@ function EventsTab({
   snapshotCreatedAt,
   snapshotCompletedAt,
 }: {
-  recipes: PersistedRecipe[]
-  widgets: PersistedWidget[]
-  metrics: GenerationProgressMetrics
-  isGenerating: boolean
-  error: string | null | undefined
-  snapshotCreatedAt: string
-  snapshotCompletedAt: string | null
+  recipes: PersistedRecipe[];
+  widgets: PersistedWidget[];
+  metrics: GenerationProgressMetrics;
+  isGenerating: boolean;
+  error: string | null | undefined;
+  snapshotCreatedAt: string;
+  snapshotCompletedAt: string | null;
 }) {
   const events = useBuildEvents({
     recipes,
@@ -665,9 +678,9 @@ function EventsTab({
     metrics,
     snapshotCreatedAt,
     snapshotCompletedAt,
-  })
+  });
 
-  const rows: BuildEvent[] = useMemo(() => events, [events])
+  const rows: BuildEvent[] = useMemo(() => events, [events]);
 
   if (rows.length === 0) {
     return (
@@ -682,7 +695,7 @@ function EventsTab({
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
-    )
+    );
   }
 
   return (
@@ -702,7 +715,7 @@ function EventsTab({
           </ItemContent>
           {event.time ? (
             <ItemActions>
-              <span className="text-[10px] tabular-nums text-muted-foreground">
+              <span className="text-muted-foreground text-[10px] tabular-nums">
                 {event.time}
               </span>
             </ItemActions>
@@ -710,13 +723,13 @@ function EventsTab({
         </Item>
       ))}
     </ItemGroup>
-  )
+  );
 }
 
-function toneToClass(tone: BuildEvent['tone']): string {
-  if (tone === 'ok') return 'text-foreground'
-  if (tone === 'warn') return 'text-amber-700 dark:text-amber-300'
-  if (tone === 'err') return 'text-destructive'
-  if (tone === 'muted') return 'text-muted-foreground'
-  return 'text-primary'
+function toneToClass(tone: BuildEvent["tone"]): string {
+  if (tone === "ok") return "text-foreground";
+  if (tone === "warn") return "text-amber-700 dark:text-amber-300";
+  if (tone === "err") return "text-destructive";
+  if (tone === "muted") return "text-muted-foreground";
+  return "text-primary";
 }

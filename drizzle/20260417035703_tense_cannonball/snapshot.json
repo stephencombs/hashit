@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "07bbe35f-82fa-4a60-b674-a80d2bfc2fe9",
-  "prevIds": [
-    "3dd6a57e-e494-49fc-b232-13e74650253b"
-  ],
+  "prevIds": ["3dd6a57e-e494-49fc-b232-13e74650253b"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -1482,14 +1480,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "thread_id"
-      ],
+      "columns": ["thread_id"],
       "schemaTo": "public",
       "tableTo": "threads",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "artifacts_thread_id_threads_id_fkey",
@@ -1499,14 +1493,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "automation_id"
-      ],
+      "columns": ["automation_id"],
       "schemaTo": "public",
       "tableTo": "automations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "automation_runs_automation_id_automations_id_fkey",
@@ -1516,14 +1506,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "canvas_id"
-      ],
+      "columns": ["canvas_id"],
       "schemaTo": "public",
       "tableTo": "canvases",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "canvas_edges_canvas_id_canvases_id_fkey",
@@ -1533,14 +1519,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "source_node_id"
-      ],
+      "columns": ["source_node_id"],
       "schemaTo": "public",
       "tableTo": "canvas_nodes",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "canvas_edges_source_node_id_canvas_nodes_id_fkey",
@@ -1550,14 +1532,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "target_node_id"
-      ],
+      "columns": ["target_node_id"],
       "schemaTo": "public",
       "tableTo": "canvas_nodes",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "canvas_edges_target_node_id_canvas_nodes_id_fkey",
@@ -1567,14 +1545,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "canvas_id"
-      ],
+      "columns": ["canvas_id"],
       "schemaTo": "public",
       "tableTo": "canvases",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "canvas_nodes_canvas_id_canvases_id_fkey",
@@ -1584,14 +1558,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "thread_id"
-      ],
+      "columns": ["thread_id"],
       "schemaTo": "public",
       "tableTo": "threads",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "messages_thread_id_threads_id_fkey",
@@ -1601,14 +1571,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "node_id"
-      ],
+      "columns": ["node_id"],
       "schemaTo": "public",
       "tableTo": "canvas_nodes",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "node_versions_node_id_canvas_nodes_id_fkey",
@@ -1617,9 +1583,7 @@
       "table": "node_versions"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "ai_events_pkey",
       "schema": "public",
@@ -1627,9 +1591,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "request_id"
-      ],
+      "columns": ["request_id"],
       "nameExplicit": false,
       "name": "ai_requests_pkey",
       "schema": "public",
@@ -1637,9 +1599,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nameExplicit": false,
       "name": "app_settings_pkey",
       "schema": "public",
@@ -1647,9 +1607,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "artifacts_pkey",
       "schema": "public",
@@ -1657,9 +1615,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "automation_runs_pkey",
       "schema": "public",
@@ -1667,9 +1623,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "automations_pkey",
       "schema": "public",
@@ -1677,9 +1631,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "canvas_edges_pkey",
       "schema": "public",
@@ -1687,9 +1639,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "canvas_nodes_pkey",
       "schema": "public",
@@ -1697,9 +1647,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "canvases_pkey",
       "schema": "public",
@@ -1707,9 +1655,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "dashboard_snapshots_pkey",
       "schema": "public",
@@ -1717,9 +1663,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "messages_pkey",
       "schema": "public",
@@ -1727,9 +1671,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "node_versions_pkey",
       "schema": "public",
@@ -1737,9 +1679,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "threads_pkey",
       "schema": "public",

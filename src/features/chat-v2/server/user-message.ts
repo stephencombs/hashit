@@ -33,7 +33,9 @@ export function extractTextContent(parts: Array<unknown>): string {
 export function extractV2UserMessage(
   messages: Array<V2IncomingChatMessage>,
 ): ExtractedV2UserMessage {
-  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "user");
   if (!lastUserMessage) {
     return {
       id: undefined,
@@ -42,7 +44,8 @@ export function extractV2UserMessage(
     };
   }
 
-  const id = typeof lastUserMessage.id === "string" ? lastUserMessage.id : undefined;
+  const id =
+    typeof lastUserMessage.id === "string" ? lastUserMessage.id : undefined;
 
   if (
     typeof lastUserMessage.content === "string" &&

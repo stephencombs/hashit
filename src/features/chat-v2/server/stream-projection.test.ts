@@ -2,12 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const mockMaterializeSnapshotFromDurableStream = vi.fn();
-  const mockBuildReadStreamUrl = vi.fn((path: string) => `http://durable.local/${path}`);
-  const mockGetDurableReadHeaders = vi.fn(() => ({ Authorization: "Bearer test" }));
+  const mockBuildReadStreamUrl = vi.fn(
+    (path: string) => `http://durable.local/${path}`,
+  );
+  const mockGetDurableReadHeaders = vi.fn(() => ({
+    Authorization: "Bearer test",
+  }));
   const mockReadDurableStreamHeadOffset = vi.fn(async () => undefined);
   const mockSelect = vi.fn();
   const mockInsertOnConflictDoNothing = vi.fn(async () => undefined);
-  const mockInsertValues = vi.fn(() => ({ onConflictDoNothing: mockInsertOnConflictDoNothing }));
+  const mockInsertValues = vi.fn(() => ({
+    onConflictDoNothing: mockInsertOnConflictDoNothing,
+  }));
   const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
   const mockUpdateWhere = vi.fn(async () => undefined);
   const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
@@ -31,7 +37,8 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@durable-streams/tanstack-ai-transport", () => ({
-  materializeSnapshotFromDurableStream: mocks.mockMaterializeSnapshotFromDurableStream,
+  materializeSnapshotFromDurableStream:
+    mocks.mockMaterializeSnapshotFromDurableStream,
 }));
 
 vi.mock("~/lib/durable-streams", () => ({

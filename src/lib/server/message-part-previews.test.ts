@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildArgsPreview,
-  buildResultSummary,
-} from "./message-part-previews";
+import { buildArgsPreview, buildResultSummary } from "./message-part-previews";
 
 // ---------------------------------------------------------------------------
 // buildArgsPreview
@@ -79,15 +76,15 @@ describe("buildResultSummary", () => {
   });
 
   it("lists keys when the object has 3 or fewer keys", () => {
-    expect(
-      buildResultSummary(JSON.stringify({ name: "Alice", age: 30 })),
-    ).toBe("name, age");
+    expect(buildResultSummary(JSON.stringify({ name: "Alice", age: 30 }))).toBe(
+      "name, age",
+    );
   });
 
   it("returns '{n} fields' when the object has more than 3 keys", () => {
-    expect(
-      buildResultSummary(JSON.stringify({ a: 1, b: 2, c: 3, d: 4 })),
-    ).toBe("4 fields");
+    expect(buildResultSummary(JSON.stringify({ a: 1, b: 2, c: 3, d: 4 }))).toBe(
+      "4 fields",
+    );
   });
 
   it("returns the plain string when it is 80 chars or shorter", () => {

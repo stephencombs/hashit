@@ -34,7 +34,8 @@ export async function getV2ThreadSessionServer(
 ): Promise<V2ThreadSession> {
   const thread = await getV2ThreadByIdServer(threadId);
 
-  let initialResumeOffset: string | undefined = thread.resumeOffset ?? undefined;
+  let initialResumeOffset: string | undefined =
+    thread.resumeOffset ?? undefined;
   if (!initialResumeOffset && isDurableStreamsConfigured()) {
     if (isThreadRunActive(toV2RunStateKey(threadId))) {
       initialResumeOffset = "-1";

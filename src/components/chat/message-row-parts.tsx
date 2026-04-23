@@ -14,7 +14,7 @@ export function ImagePartView({ part }: { part: ImagePart }) {
       href={src}
       target="_blank"
       rel="noreferrer"
-      className="block max-w-sm overflow-hidden rounded-md border border-border bg-muted/20"
+      className="border-border bg-muted/20 block max-w-sm overflow-hidden rounded-md border"
     >
       <img
         src={src}
@@ -40,14 +40,14 @@ export function MediaPartView({
       controls
       preload="metadata"
       src={src}
-      className="w-full max-w-sm rounded-md border border-border bg-muted/20"
+      className="border-border bg-muted/20 w-full max-w-sm rounded-md border"
     />
   ) : (
     <video
       controls
       preload="metadata"
       src={src}
-      className="w-full max-w-sm rounded-md border border-border bg-muted/20"
+      className="border-border bg-muted/20 w-full max-w-sm rounded-md border"
     />
   );
 }
@@ -60,7 +60,7 @@ export function DocumentPartView({ part }: { part: DocumentPart }) {
       href={src}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex max-w-sm items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-foreground hover:bg-muted/30"
+      className="border-border bg-muted/20 text-foreground hover:bg-muted/30 inline-flex max-w-sm items-center gap-2 rounded-md border px-3 py-2 text-sm"
     >
       <FileIcon className="size-4 shrink-0" aria-hidden />
       <span className="truncate">Open {label}</span>
@@ -68,13 +68,9 @@ export function DocumentPartView({ part }: { part: DocumentPart }) {
   );
 }
 
-export function InteractiveToolFallback({
-  message,
-}: {
-  message: string;
-}) {
+export function InteractiveToolFallback({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+    <div className="border-border bg-muted/20 text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
       {message}
     </div>
   );

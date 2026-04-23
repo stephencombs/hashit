@@ -6,14 +6,19 @@ import {
 
 export function getPendingInteractiveTarget(
   messages: Array<{ id: string; role: string; parts: Array<AppMessagePart> }>,
-): { messageId: string; toolCallId: string; toolName: InteractiveToolName } | null {
+): {
+  messageId: string;
+  toolCallId: string;
+  toolName: InteractiveToolName;
+} | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
     if (message.role !== "assistant") continue;
 
-    let latestPending:
-      | { toolCallId: string; toolName: InteractiveToolName }
-      | null = null;
+    let latestPending: {
+      toolCallId: string;
+      toolName: InteractiveToolName;
+    } | null = null;
     for (const part of message.parts) {
       if ((part as { type?: string }).type !== "tool-call") continue;
       const toolCall = part as {

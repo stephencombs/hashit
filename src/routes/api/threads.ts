@@ -1,17 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { ensureDurableChatSessionStream } from '@durable-streams/tanstack-ai-transport'
-import { db } from '~/db'
-import { threads } from '~/db/schema'
-import { desc, isNull, sql } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import { createThreadBodySchema } from '~/lib/schemas'
+import { createFileRoute } from "@tanstack/react-router";
+import { ensureDurableChatSessionStream } from "@durable-streams/tanstack-ai-transport";
+import { db } from "~/db";
+import { threads } from "~/db/schema";
+import { desc, isNull, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { createThreadBodySchema } from "~/lib/schemas";
 import {
   buildChatStreamPath,
   getDurableChatSessionTarget,
   isDurableStreamsConfigured,
-} from '~/lib/durable-streams'
+} from "~/lib/durable-streams";
 
-export const Route = createFileRoute('/api/threads')({
+export const Route = createFileRoute("/api/threads")({
   server: {
     handlers: {
       GET: async () => {
@@ -22,23 +22,25 @@ export const Route = createFileRoute('/api/threads')({
           .orderBy(
             sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
             desc(threads.updatedAt),
-          )
+          );
 
-        return Response.json(allThreads)
+        return Response.json(allThreads);
       },
 
       POST: async ({ request }) => {
-        const { id, title } = createThreadBodySchema.parse(await request.json())
-        const now = new Date()
+        const { id, title } = createThreadBodySchema.parse(
+          await request.json(),
+        );
+        const now = new Date();
 
         const thread = {
           id: id || nanoid(),
-          title: title || 'Untitled',
+          title: title || "Untitled",
           createdAt: now,
           updatedAt: now,
-        }
+        };
 
-        await db.insert(threads).values(thread)
+        await db.insert(threads).values(thread);
 
         // Pre-create the durable session stream so the client's durable
         // connection can subscribe immediately with a stable id. Idempotent.
@@ -46,14 +48,17 @@ export const Route = createFileRoute('/api/threads')({
           try {
             await ensureDurableChatSessionStream(
               getDurableChatSessionTarget(buildChatStreamPath(thread.id)),
-            )
+            );
           } catch (err) {
-            console.error('[threads] ensureDurableChatSessionStream failed', err)
+            console.error(
+              "[threads] ensureDurableChatSessionStream failed",
+              err,
+            );
           }
         }
 
-        return Response.json(thread, { status: 201 })
+        return Response.json(thread, { status: 201 });
       },
     },
   },
-})
+});

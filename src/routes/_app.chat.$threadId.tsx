@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChatThreadPage, ChatThreadPending } from "~/features/routes/chat-thread-page";
+import {
+  ChatThreadPage,
+  ChatThreadPending,
+} from "~/features/routes/chat-thread-page";
 import { artifactsByThreadQuery, threadDetailQuery } from "~/lib/queries";
 
 export const Route = createFileRoute("/_app/chat/$threadId")({
@@ -9,7 +12,10 @@ export const Route = createFileRoute("/_app/chat/$threadId")({
     abortController.signal.addEventListener(
       "abort",
       () => {
-        context.queryClient.cancelQueries({ queryKey: threadQuery.queryKey, exact: true });
+        context.queryClient.cancelQueries({
+          queryKey: threadQuery.queryKey,
+          exact: true,
+        });
         context.queryClient.cancelQueries({
           queryKey: artifactsQuery.queryKey,
           exact: true,

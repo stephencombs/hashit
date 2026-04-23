@@ -1,9 +1,9 @@
-import type { ContentPart, ImagePart } from '@tanstack/ai'
+import type { ContentPart, ImagePart } from "@tanstack/ai";
 
 export interface AttachmentDescriptor {
-  url: string
-  mimeType: string
-  filename?: string
+  url: string;
+  mimeType: string;
+  filename?: string;
 }
 
 /**
@@ -14,23 +14,25 @@ export interface AttachmentDescriptor {
  * else falls back to a `document` part so the agent at least knows a file
  * was attached.
  */
-export function attachmentToContentPart(attachment: AttachmentDescriptor): ContentPart {
+export function attachmentToContentPart(
+  attachment: AttachmentDescriptor,
+): ContentPart {
   const source = {
-    type: 'url' as const,
+    type: "url" as const,
     value: attachment.url,
     mimeType: attachment.mimeType,
-  }
+  };
 
-  if (attachment.mimeType.startsWith('image/')) {
-    return { type: 'image', source } satisfies ImagePart
+  if (attachment.mimeType.startsWith("image/")) {
+    return { type: "image", source } satisfies ImagePart;
   }
-  if (attachment.mimeType.startsWith('audio/')) {
-    return { type: 'audio', source }
+  if (attachment.mimeType.startsWith("audio/")) {
+    return { type: "audio", source };
   }
-  if (attachment.mimeType.startsWith('video/')) {
-    return { type: 'video', source }
+  if (attachment.mimeType.startsWith("video/")) {
+    return { type: "video", source };
   }
-  return { type: 'document', source }
+  return { type: "document", source };
 }
 
 /**
@@ -38,18 +40,18 @@ export function attachmentToContentPart(attachment: AttachmentDescriptor): Conte
  * placed first so the model reads the prompt context before the media.
  */
 export function buildPromptContentParts(options: {
-  text: string
-  attachments: AttachmentDescriptor[]
+  text: string;
+  attachments: AttachmentDescriptor[];
 }): Array<ContentPart> {
-  const parts: Array<ContentPart> = []
-  const trimmedText = options.text.trim()
+  const parts: Array<ContentPart> = [];
+  const trimmedText = options.text.trim();
   if (trimmedText.length > 0) {
-    parts.push({ type: 'text', content: trimmedText })
+    parts.push({ type: "text", content: trimmedText });
   }
   for (const attachment of options.attachments) {
-    parts.push(attachmentToContentPart(attachment))
+    parts.push(attachmentToContentPart(attachment));
   }
-  return parts
+  return parts;
 }
 
 /**
@@ -62,13 +64,13 @@ export function buildPromptContentParts(options: {
  * name so users still get a meaningful guard.
  */
 export function isVisionCapableModel(model: string | undefined): boolean {
-  if (!model) return false
-  const normalized = model.toLowerCase()
-  if (normalized.includes('gpt-4o')) return true
-  if (normalized.includes('gpt-4.1')) return true
-  if (normalized.includes('gpt-4-turbo')) return true
-  if (/gpt-5(?:[.-]|$)/.test(normalized)) return true
-  return false
+  if (!model) return false;
+  const normalized = model.toLowerCase();
+  if (normalized.includes("gpt-4o")) return true;
+  if (normalized.includes("gpt-4.1")) return true;
+  if (normalized.includes("gpt-4-turbo")) return true;
+  if (/gpt-5(?:[.-]|$)/.test(normalized)) return true;
+  return false;
 }
 
 /**
@@ -78,28 +80,30 @@ export function isVisionCapableModel(model: string | undefined): boolean {
  */
 export function userMessagesContainMedia(messages: Array<unknown>): boolean {
   for (const message of messages) {
-    if (!isMessageRecord(message)) continue
-    if (message.role !== 'user') continue
-    const parts = Array.isArray(message.parts) ? message.parts : []
+    if (!isMessageRecord(message)) continue;
+    if (message.role !== "user") continue;
+    const parts = Array.isArray(message.parts) ? message.parts : [];
     for (const part of parts) {
-      if (!isPartRecord(part)) continue
+      if (!isPartRecord(part)) continue;
       if (
-        part.type === 'image' ||
-        part.type === 'audio' ||
-        part.type === 'video' ||
-        part.type === 'document'
+        part.type === "image" ||
+        part.type === "audio" ||
+        part.type === "video" ||
+        part.type === "document"
       ) {
-        return true
+        return true;
       }
     }
   }
-  return false
+  return false;
 }
 
-function isMessageRecord(value: unknown): value is { role?: unknown; parts?: unknown } {
-  return typeof value === 'object' && value !== null
+function isMessageRecord(
+  value: unknown,
+): value is { role?: unknown; parts?: unknown } {
+  return typeof value === "object" && value !== null;
 }
 
 function isPartRecord(value: unknown): value is { type?: string } {
-  return typeof value === 'object' && value !== null
+  return typeof value === "object" && value !== null;
 }

@@ -1,7 +1,11 @@
-import { memo, useEffect, useMemo, useState } from 'react'
-import { AllCommunityModule, colorSchemeDarkBlue, themeQuartz } from 'ag-grid-community'
-import type { GridReadyEvent } from 'ag-grid-community'
-import { AgGridProvider, AgGridReact } from 'ag-grid-react'
+import { memo, useEffect, useMemo, useState } from "react";
+import {
+  AllCommunityModule,
+  colorSchemeDarkBlue,
+  themeQuartz,
+} from "ag-grid-community";
+import type { GridReadyEvent } from "ag-grid-community";
+import { AgGridProvider, AgGridReact } from "ag-grid-react";
 import {
   Area,
   AreaChart as RechartsAreaChart,
@@ -21,7 +25,7 @@ import {
   RadialBarChart as RechartsRadialBarChart,
   XAxis,
   YAxis,
-} from 'recharts'
+} from "recharts";
 import {
   ChartContainer,
   ChartLegend,
@@ -29,64 +33,65 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from '~/components/ui/chart'
+} from "~/components/ui/chart";
 
-const AG_GRID_MODULES = [AllCommunityModule]
-const AG_GRID_THEME_LIGHT = themeQuartz
-const AG_GRID_THEME_DARK = themeQuartz.withPart(colorSchemeDarkBlue)
-const AG_GRID_DEFAULT_COL_DEF = { resizable: true }
+const AG_GRID_MODULES = [AllCommunityModule];
+const AG_GRID_THEME_LIGHT = themeQuartz;
+const AG_GRID_THEME_DARK = themeQuartz.withPart(colorSchemeDarkBlue);
+const AG_GRID_DEFAULT_COL_DEF = { resizable: true };
 
 const COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-]
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
 
 type RegistryComponentProps = {
-  props: Record<string, unknown>
-  fill: boolean
-}
+  props: Record<string, unknown>;
+  fill: boolean;
+};
 
 interface DataGridColumnSpec {
-  field: string
-  headerName?: string | null
-  sortable?: boolean | null
-  filter?: boolean | null
+  field: string;
+  headerName?: string | null;
+  sortable?: boolean | null;
+  filter?: boolean | null;
 }
 
 interface DataGridInnerProps {
-  items: Array<Record<string, unknown>>
-  columns?: DataGridColumnSpec[] | null
-  title?: string | null
-  height?: number | null
-  pagination?: boolean | null
-  pageSize?: number | null
-  fill: boolean
+  items: Array<Record<string, unknown>>;
+  columns?: DataGridColumnSpec[] | null;
+  title?: string | null;
+  height?: number | null;
+  pagination?: boolean | null;
+  pageSize?: number | null;
+  fill: boolean;
 }
 
 function useIsDarkMode() {
-  const [isDark, setIsDark] = useState(() =>
-    typeof document !== 'undefined'
-      && document.documentElement.classList.contains('dark'),
-  )
+  const [isDark, setIsDark] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"),
+  );
 
   useEffect(() => {
-    if (typeof document === 'undefined') return
-    const el = document.documentElement
+    if (typeof document === "undefined") return;
+    const el = document.documentElement;
     const observer = new MutationObserver(() => {
-      setIsDark(el.classList.contains('dark'))
-    })
-    observer.observe(el, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
+      setIsDark(el.classList.contains("dark"));
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
-  return isDark
+  return isDark;
 }
 
 function chartWrapperClass(fill: boolean): string | undefined {
-  return fill ? 'flex h-full w-full flex-col' : undefined
+  return fill ? "flex h-full w-full flex-col" : undefined;
 }
 
 function chartContainerProps(
@@ -94,46 +99,51 @@ function chartContainerProps(
   height: number | null | undefined,
 ): { className?: string; style?: React.CSSProperties } {
   if (fill) {
-    return { className: 'aspect-auto w-full flex-1 min-h-[200px]' }
+    return { className: "aspect-auto w-full flex-1 min-h-[200px]" };
   }
-  const minHeight = Math.max(200, height ?? 250)
-  return { style: { minHeight, width: '100%' } }
+  const minHeight = Math.max(200, height ?? 250);
+  return { style: { minHeight, width: "100%" } };
 }
 
 function dataGridInnerProps(
   fill: boolean,
   height: number | null | undefined,
 ): { className?: string; style?: React.CSSProperties } {
-  if (fill) return { className: 'flex-1 min-h-[320px] w-full' }
-  if (typeof height === 'number') return { style: { height } }
-  return { className: 'w-full' }
+  if (fill) return { className: "flex-1 min-h-[320px] w-full" };
+  if (typeof height === "number") return { style: { height } };
+  return { className: "w-full" };
 }
 
 function cssKey(key: string): string {
-  return key.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase()
+  return key.replace(/[^a-zA-Z0-9-]/g, "-").toLowerCase();
 }
 
 function buildChartConfig(keys: string[]): ChartConfig {
-  const config: ChartConfig = {}
+  const config: ChartConfig = {};
   keys.forEach((key, i) => {
-    config[cssKey(key)] = { label: key, color: COLORS[i % COLORS.length] }
-  })
-  return config
+    config[cssKey(key)] = { label: key, color: COLORS[i % COLORS.length] };
+  });
+  return config;
 }
 
 function rowHas(items: Array<Record<string, unknown>>, key: string): boolean {
-  if (!key) return false
-  return items.some((row) => row != null && typeof row === 'object' && key in row)
+  if (!key) return false;
+  return items.some(
+    (row) => row != null && typeof row === "object" && key in row,
+  );
 }
 
-function missingKeys(items: Array<Record<string, unknown>>, keys: string[]): string[] {
-  return keys.filter((k) => !rowHas(items, k))
+function missingKeys(
+  items: Array<Record<string, unknown>>,
+  keys: string[],
+): string[] {
+  return keys.filter((k) => !rowHas(items, k));
 }
 
 function FallbackMessage({ children }: { children: React.ReactNode }) {
   return (
-    <p className="py-4 text-center text-sm text-muted-foreground">{children}</p>
-  )
+    <p className="text-muted-foreground py-4 text-center text-sm">{children}</p>
+  );
 }
 
 const DataGridInner = memo(function DataGridInner({
@@ -147,11 +157,16 @@ const DataGridInner = memo(function DataGridInner({
 }: DataGridInnerProps) {
   const columnKeys = useMemo(() => {
     if (columns && columns.length > 0) {
-      return columns.map((c) => `${c.field}|${c.headerName ?? ''}|${c.sortable ?? ''}|${c.filter ?? ''}`).join(',')
+      return columns
+        .map(
+          (c) =>
+            `${c.field}|${c.headerName ?? ""}|${c.sortable ?? ""}|${c.filter ?? ""}`,
+        )
+        .join(",");
     }
-    if (items[0]) return Object.keys(items[0]).join(',')
-    return ''
-  }, [columns, items])
+    if (items[0]) return Object.keys(items[0]).join(",");
+    return "";
+  }, [columns, items]);
 
   const columnDefs = useMemo(() => {
     if (columns && columns.length > 0) {
@@ -160,23 +175,23 @@ const DataGridInner = memo(function DataGridInner({
         headerName: col.headerName ?? col.field,
         sortable: col.sortable ?? true,
         filter: col.filter ?? true,
-      }))
+      }));
     }
-    if (!items[0]) return []
+    if (!items[0]) return [];
     return Object.keys(items[0]).map((key) => ({
       field: key,
       headerName: key,
       sortable: true,
       filter: true,
-    }))
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnKeys])
+  }, [columnKeys]);
 
-  const usePagination = pagination ?? items.length > 50
-  const isDark = useIsDarkMode()
-  const gridTheme = isDark ? AG_GRID_THEME_DARK : AG_GRID_THEME_LIGHT
+  const usePagination = pagination ?? items.length > 50;
+  const isDark = useIsDarkMode();
+  const gridTheme = isDark ? AG_GRID_THEME_DARK : AG_GRID_THEME_LIGHT;
   const domLayout =
-    fill || typeof height === 'number' ? 'normal' : 'autoHeight'
+    fill || typeof height === "number" ? "normal" : "autoHeight";
 
   return (
     <div className={chartWrapperClass(fill)}>
@@ -192,56 +207,71 @@ const DataGridInner = memo(function DataGridInner({
             paginationPageSize={pageSize ?? 10}
             defaultColDef={AG_GRID_DEFAULT_COL_DEF}
             onGridReady={(params: GridReadyEvent) => {
-              params.api.autoSizeAllColumns()
-              const cols = params.api.getColumns() ?? []
+              params.api.autoSizeAllColumns();
+              const cols = params.api.getColumns() ?? [];
               const columnLimits = cols.map((c) => ({
                 key: c.getColId(),
                 minWidth: c.getActualWidth(),
-              }))
-              params.api.sizeColumnsToFit({ columnLimits })
+              }));
+              params.api.sizeColumnsToFit({ columnLimits });
             }}
           />
         </div>
       </AgGridProvider>
     </div>
-  )
-})
+  );
+});
 
 export function AreaChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    yKeys?: string[]
-    xKey?: string
-    title?: string | null
-    height?: number | null
-    curveType?: 'monotone' | 'linear' | 'step' | 'natural' | null
-    stacked?: boolean | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
-  const keys = chartProps.yKeys ?? []
-  const config = buildChartConfig(keys)
-  const curve = chartProps.curveType ?? 'monotone'
+    data?: Array<Record<string, unknown>>;
+    yKeys?: string[];
+    xKey?: string;
+    title?: string | null;
+    height?: number | null;
+    curveType?: "monotone" | "linear" | "step" | "natural" | null;
+    stacked?: boolean | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
+  const keys = chartProps.yKeys ?? [];
+  const config = buildChartConfig(keys);
+  const curve = chartProps.curveType ?? "monotone";
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
   if (keys.length === 0) {
-    return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
-  }
-  const missing = missingKeys(items, keys)
-  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? '')) {
     return (
       <FallbackMessage>
-        Unable to plot: series fields ({[chartProps.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+        Unable to plot: no series specified (yKeys empty).
       </FallbackMessage>
-    )
+    );
+  }
+  const missing = missingKeys(items, keys);
+  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? "")) {
+    return (
+      <FallbackMessage>
+        Unable to plot: series fields (
+        {[chartProps.xKey, ...missing].filter(Boolean).join(", ")}) not found in
+        data.
+      </FallbackMessage>
+    );
   }
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
-        <RechartsAreaChart data={items} accessibilityLayer isAnimationActive={false}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
+        <RechartsAreaChart
+          data={items}
+          accessibilityLayer
+          isAnimationActive={false}
+        >
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey={chartProps.xKey}
@@ -249,7 +279,10 @@ export function AreaChartRenderer({ props, fill }: RegistryComponentProps) {
             axisLine={false}
             tickMargin={8}
           />
-          <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
+          <ChartTooltip
+            content={<ChartTooltipContent />}
+            isAnimationActive={false}
+          />
           {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
           <defs>
             {keys.map((key, i) => (
@@ -282,64 +315,75 @@ export function AreaChartRenderer({ props, fill }: RegistryComponentProps) {
               fill={`url(#fill-${cssKey(key)})`}
               stroke={`var(--color-${cssKey(key)})`}
               strokeWidth={2}
-              stackId={chartProps.stacked ? 'a' : undefined}
+              stackId={chartProps.stacked ? "a" : undefined}
               isAnimationActive={false}
             />
           ))}
         </RechartsAreaChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function BarChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    yKeys?: string[]
-    xKey?: string
-    title?: string | null
-    height?: number | null
-    horizontal?: boolean | null
-    stacked?: boolean | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
-  const keys = chartProps.yKeys ?? []
-  const isHorizontal = chartProps.horizontal ?? false
-  const singleSeries = keys.length === 1
+    data?: Array<Record<string, unknown>>;
+    yKeys?: string[];
+    xKey?: string;
+    title?: string | null;
+    height?: number | null;
+    horizontal?: boolean | null;
+    stacked?: boolean | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
+  const keys = chartProps.yKeys ?? [];
+  const isHorizontal = chartProps.horizontal ?? false;
+  const singleSeries = keys.length === 1;
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
   if (keys.length === 0) {
-    return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
-  }
-  const missing = missingKeys(items, keys)
-  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? '')) {
     return (
       <FallbackMessage>
-        Unable to plot: series fields ({[chartProps.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+        Unable to plot: no series specified (yKeys empty).
       </FallbackMessage>
-    )
+    );
+  }
+  const missing = missingKeys(items, keys);
+  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? "")) {
+    return (
+      <FallbackMessage>
+        Unable to plot: series fields (
+        {[chartProps.xKey, ...missing].filter(Boolean).join(", ")}) not found in
+        data.
+      </FallbackMessage>
+    );
   }
 
   const config = singleSeries
     ? (() => {
-        const c: ChartConfig = {}
+        const c: ChartConfig = {};
         items.forEach((item, i) => {
-          const label = String(item[chartProps.xKey ?? ''] ?? `Item ${i + 1}`)
-          c[cssKey(label)] = { label, color: COLORS[i % COLORS.length] }
-        })
-        return c
+          const label = String(item[chartProps.xKey ?? ""] ?? `Item ${i + 1}`);
+          c[cssKey(label)] = { label, color: COLORS[i % COLORS.length] };
+        });
+        return c;
       })()
-    : buildChartConfig(keys)
+    : buildChartConfig(keys);
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
         <RechartsBarChart
           data={items}
-          layout={isHorizontal ? 'vertical' : 'horizontal'}
+          layout={isHorizontal ? "vertical" : "horizontal"}
           accessibilityLayer
           isAnimationActive={false}
         >
@@ -363,7 +407,10 @@ export function BarChartRenderer({ props, fill }: RegistryComponentProps) {
               tickMargin={8}
             />
           )}
-          <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
+          <ChartTooltip
+            content={<ChartTooltipContent />}
+            isAnimationActive={false}
+          />
           {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
           {keys.map((key) => (
             <Bar
@@ -371,13 +418,13 @@ export function BarChartRenderer({ props, fill }: RegistryComponentProps) {
               dataKey={key}
               fill={singleSeries ? undefined : `var(--color-${cssKey(key)})`}
               radius={4}
-              stackId={chartProps.stacked ? 'a' : undefined}
+              stackId={chartProps.stacked ? "a" : undefined}
               isAnimationActive={false}
             >
-              {singleSeries
-                && items.map((item, i) => (
+              {singleSeries &&
+                items.map((item, i) => (
                   <Cell
-                    key={`${String(item[chartProps.xKey ?? ''] ?? i)}-${i}`}
+                    key={`${String(item[chartProps.xKey ?? ""] ?? i)}-${i}`}
                     fill={COLORS[i % COLORS.length]}
                   />
                 ))}
@@ -386,43 +433,58 @@ export function BarChartRenderer({ props, fill }: RegistryComponentProps) {
         </RechartsBarChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function LineChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    yKeys?: string[]
-    xKey?: string
-    title?: string | null
-    height?: number | null
-    curveType?: 'monotone' | 'linear' | 'step' | 'natural' | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
-  const keys = chartProps.yKeys ?? []
-  const config = buildChartConfig(keys)
-  const curve = chartProps.curveType ?? 'monotone'
+    data?: Array<Record<string, unknown>>;
+    yKeys?: string[];
+    xKey?: string;
+    title?: string | null;
+    height?: number | null;
+    curveType?: "monotone" | "linear" | "step" | "natural" | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
+  const keys = chartProps.yKeys ?? [];
+  const config = buildChartConfig(keys);
+  const curve = chartProps.curveType ?? "monotone";
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
   if (keys.length === 0) {
-    return <FallbackMessage>Unable to plot: no series specified (yKeys empty).</FallbackMessage>
-  }
-  const missing = missingKeys(items, keys)
-  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? '')) {
     return (
       <FallbackMessage>
-        Unable to plot: series fields ({[chartProps.xKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+        Unable to plot: no series specified (yKeys empty).
       </FallbackMessage>
-    )
+    );
+  }
+  const missing = missingKeys(items, keys);
+  if (missing.length === keys.length || !rowHas(items, chartProps.xKey ?? "")) {
+    return (
+      <FallbackMessage>
+        Unable to plot: series fields (
+        {[chartProps.xKey, ...missing].filter(Boolean).join(", ")}) not found in
+        data.
+      </FallbackMessage>
+    );
   }
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
-        <RechartsLineChart data={items} accessibilityLayer isAnimationActive={false}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
+        <RechartsLineChart
+          data={items}
+          accessibilityLayer
+          isAnimationActive={false}
+        >
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey={chartProps.xKey}
@@ -430,7 +492,10 @@ export function LineChartRenderer({ props, fill }: RegistryComponentProps) {
             axisLine={false}
             tickMargin={8}
           />
-          <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
+          <ChartTooltip
+            content={<ChartTooltipContent />}
+            isAnimationActive={false}
+          />
           {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
           {keys.map((key) => (
             <Line
@@ -446,48 +511,57 @@ export function LineChartRenderer({ props, fill }: RegistryComponentProps) {
         </RechartsLineChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function PieChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    nameKey?: string
-    valueKey?: string
-    title?: string | null
-    height?: number | null
-    donut?: boolean | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
-  const isDonut = chartProps.donut ?? false
+    data?: Array<Record<string, unknown>>;
+    nameKey?: string;
+    valueKey?: string;
+    title?: string | null;
+    height?: number | null;
+    donut?: boolean | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
+  const isDonut = chartProps.donut ?? false;
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
-  if (!rowHas(items, chartProps.nameKey ?? '') || !rowHas(items, chartProps.valueKey ?? '')) {
+  if (
+    !rowHas(items, chartProps.nameKey ?? "") ||
+    !rowHas(items, chartProps.valueKey ?? "")
+  ) {
     return (
       <FallbackMessage>
-        Unable to plot: fields ({chartProps.nameKey}, {chartProps.valueKey}) not found in data.
+        Unable to plot: fields ({chartProps.nameKey}, {chartProps.valueKey}) not
+        found in data.
       </FallbackMessage>
-    )
+    );
   }
 
-  const config: ChartConfig = {}
+  const config: ChartConfig = {};
   const pieData = items.map((item, i) => {
-    const name = String(item[chartProps.nameKey ?? ''] ?? `Segment ${i + 1}`)
+    const name = String(item[chartProps.nameKey ?? ""] ?? `Segment ${i + 1}`);
     const value =
-      typeof item[chartProps.valueKey ?? ''] === 'number'
-        ? (item[chartProps.valueKey ?? ''] as number)
-        : parseFloat(String(item[chartProps.valueKey ?? ''])) || 0
-    const fillColor = COLORS[i % COLORS.length]
-    config[cssKey(name)] = { label: name, color: fillColor }
-    return { name: cssKey(name), label: name, value, fill: fillColor }
-  })
+      typeof item[chartProps.valueKey ?? ""] === "number"
+        ? (item[chartProps.valueKey ?? ""] as number)
+        : parseFloat(String(item[chartProps.valueKey ?? ""])) || 0;
+    const fillColor = COLORS[i % COLORS.length];
+    config[cssKey(name)] = { label: name, color: fillColor };
+    return { name: cssKey(name), label: name, value, fill: fillColor };
+  });
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
         <RechartsPieChart accessibilityLayer isAnimationActive={false}>
           <ChartTooltip
             content={<ChartTooltipContent nameKey="name" />}
@@ -498,7 +572,7 @@ export function PieChartRenderer({ props, fill }: RegistryComponentProps) {
             data={pieData}
             dataKey="value"
             nameKey="name"
-            innerRadius={isDonut ? '40%' : undefined}
+            innerRadius={isDonut ? "40%" : undefined}
             outerRadius="70%"
             paddingAngle={2}
             isAnimationActive={false}
@@ -506,44 +580,65 @@ export function PieChartRenderer({ props, fill }: RegistryComponentProps) {
         </RechartsPieChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function RadarChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    dataKeys?: string[]
-    axisKey?: string
-    title?: string | null
-    height?: number | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
-  const keys = chartProps.dataKeys ?? []
-  const config = buildChartConfig(keys)
+    data?: Array<Record<string, unknown>>;
+    dataKeys?: string[];
+    axisKey?: string;
+    title?: string | null;
+    height?: number | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
+  const keys = chartProps.dataKeys ?? [];
+  const config = buildChartConfig(keys);
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
   if (keys.length === 0) {
-    return <FallbackMessage>Unable to plot: no series specified (dataKeys empty).</FallbackMessage>
-  }
-  const missing = missingKeys(items, keys)
-  if (missing.length === keys.length || !rowHas(items, chartProps.axisKey ?? '')) {
     return (
       <FallbackMessage>
-        Unable to plot: fields ({[chartProps.axisKey, ...missing].filter(Boolean).join(', ')}) not found in data.
+        Unable to plot: no series specified (dataKeys empty).
       </FallbackMessage>
-    )
+    );
+  }
+  const missing = missingKeys(items, keys);
+  if (
+    missing.length === keys.length ||
+    !rowHas(items, chartProps.axisKey ?? "")
+  ) {
+    return (
+      <FallbackMessage>
+        Unable to plot: fields (
+        {[chartProps.axisKey, ...missing].filter(Boolean).join(", ")}) not found
+        in data.
+      </FallbackMessage>
+    );
   }
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
-        <RechartsRadarChart data={items} accessibilityLayer isAnimationActive={false}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
+        <RechartsRadarChart
+          data={items}
+          accessibilityLayer
+          isAnimationActive={false}
+        >
           <PolarGrid />
           <PolarAngleAxis dataKey={chartProps.axisKey} />
-          <ChartTooltip content={<ChartTooltipContent />} isAnimationActive={false} />
+          <ChartTooltip
+            content={<ChartTooltipContent />}
+            isAnimationActive={false}
+          />
           {keys.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
           {keys.map((key) => (
             <Radar
@@ -559,46 +654,55 @@ export function RadarChartRenderer({ props, fill }: RegistryComponentProps) {
         </RechartsRadarChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function RadialChartRenderer({ props, fill }: RegistryComponentProps) {
   const chartProps = props as {
-    data?: Array<Record<string, unknown>>
-    nameKey?: string
-    valueKey?: string
-    title?: string | null
-    height?: number | null
-  }
-  const items = Array.isArray(chartProps.data) ? chartProps.data : []
+    data?: Array<Record<string, unknown>>;
+    nameKey?: string;
+    valueKey?: string;
+    title?: string | null;
+    height?: number | null;
+  };
+  const items = Array.isArray(chartProps.data) ? chartProps.data : [];
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
-  if (!rowHas(items, chartProps.nameKey ?? '') || !rowHas(items, chartProps.valueKey ?? '')) {
+  if (
+    !rowHas(items, chartProps.nameKey ?? "") ||
+    !rowHas(items, chartProps.valueKey ?? "")
+  ) {
     return (
       <FallbackMessage>
-        Unable to plot: fields ({chartProps.nameKey}, {chartProps.valueKey}) not found in data.
+        Unable to plot: fields ({chartProps.nameKey}, {chartProps.valueKey}) not
+        found in data.
       </FallbackMessage>
-    )
+    );
   }
 
-  const config: ChartConfig = {}
+  const config: ChartConfig = {};
   const barData = items.map((item, i) => {
-    const name = String(item[chartProps.nameKey ?? ''] ?? `Segment ${i + 1}`)
+    const name = String(item[chartProps.nameKey ?? ""] ?? `Segment ${i + 1}`);
     const value =
-      typeof item[chartProps.valueKey ?? ''] === 'number'
-        ? (item[chartProps.valueKey ?? ''] as number)
-        : parseFloat(String(item[chartProps.valueKey ?? ''])) || 0
-    const fillColor = COLORS[i % COLORS.length]
-    config[cssKey(name)] = { label: name, color: fillColor }
-    return { name: cssKey(name), label: name, value, fill: fillColor }
-  })
+      typeof item[chartProps.valueKey ?? ""] === "number"
+        ? (item[chartProps.valueKey ?? ""] as number)
+        : parseFloat(String(item[chartProps.valueKey ?? ""])) || 0;
+    const fillColor = COLORS[i % COLORS.length];
+    config[cssKey(name)] = { label: name, color: fillColor };
+    return { name: cssKey(name), label: name, value, fill: fillColor };
+  });
 
   return (
     <div className={chartWrapperClass(fill)}>
-      {chartProps.title && <p className="mb-2 text-sm font-medium">{chartProps.title}</p>}
-      <ChartContainer config={config} {...chartContainerProps(fill, chartProps.height)}>
+      {chartProps.title && (
+        <p className="mb-2 text-sm font-medium">{chartProps.title}</p>
+      )}
+      <ChartContainer
+        config={config}
+        {...chartContainerProps(fill, chartProps.height)}
+      >
         <RechartsRadialBarChart
           data={barData}
           startAngle={180}
@@ -617,22 +721,22 @@ export function RadialChartRenderer({ props, fill }: RegistryComponentProps) {
         </RechartsRadialBarChart>
       </ChartContainer>
     </div>
-  )
+  );
 }
 
 export function DataGridRenderer({ props, fill }: RegistryComponentProps) {
   const gridProps = props as {
-    data?: Array<Record<string, unknown>>
-    columns?: DataGridColumnSpec[] | null
-    title?: string | null
-    height?: number | null
-    pagination?: boolean | null
-    pageSize?: number | null
-  }
-  const items = Array.isArray(gridProps.data) ? gridProps.data : []
+    data?: Array<Record<string, unknown>>;
+    columns?: DataGridColumnSpec[] | null;
+    title?: string | null;
+    height?: number | null;
+    pagination?: boolean | null;
+    pageSize?: number | null;
+  };
+  const items = Array.isArray(gridProps.data) ? gridProps.data : [];
 
   if (items.length === 0) {
-    return <FallbackMessage>No data available</FallbackMessage>
+    return <FallbackMessage>No data available</FallbackMessage>;
   }
 
   return (
@@ -645,5 +749,5 @@ export function DataGridRenderer({ props, fill }: RegistryComponentProps) {
       pageSize={gridProps.pageSize}
       fill={fill}
     />
-  )
+  );
 }

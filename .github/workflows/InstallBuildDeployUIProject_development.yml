@@ -27,9 +27,9 @@ jobs:
     with:
       octopus-release-number: ${{ needs.build-and-package.outputs.octopus-release-number }}
       octopus-operation-type: ${{ vars.OCTOPUS_CREATEANDDEPLOY_OPERATION }}
-      octopus-project-name: ${{ vars.OCTOPUS_PROJECT_NAME }} #repo var 
-      octopus-package-name: ${{ vars.OCTOPUS_PACKAGE_NAME }} #repo var 
-      deploy-step-name: ${{ vars.DEPLOY_STEP_NAME }} #repo var 
+      octopus-project-name: ${{ vars.OCTOPUS_PROJECT_NAME }} #repo var
+      octopus-package-name: ${{ vars.OCTOPUS_PACKAGE_NAME }} #repo var
+      deploy-step-name: ${{ vars.DEPLOY_STEP_NAME }} #repo var
       octopus-environment-name: ${{ vars.OCTOPUS_ENVIRONMENTS_QUARTERLY }}
       github-commit-sha: ${{ github.sha }}
       github-branch-name: ${{ github.ref_name }}

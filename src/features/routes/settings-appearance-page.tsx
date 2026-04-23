@@ -25,7 +25,7 @@ export function AppearanceSettingsPage() {
     <div className="mx-auto max-w-2xl space-y-8 p-8">
       <div>
         <h2 className="text-lg font-semibold">Appearance</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Customize how the app looks and feels.
         </p>
       </div>
@@ -35,7 +35,7 @@ export function AppearanceSettingsPage() {
       <div className="space-y-6">
         <div className="grid gap-2">
           <Label htmlFor="theme">Theme</Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Choose between light and dark mode.
           </p>
           <ButtonGroup>
@@ -55,7 +55,7 @@ export function AppearanceSettingsPage() {
 
         <div className="grid gap-2">
           <Label htmlFor="font-size">Font size</Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Adjust the base font size for the interface.
           </p>
           <Select defaultValue="14">

@@ -25,7 +25,10 @@ import {
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { artifactsListQuery, type ArtifactListItem } from "~/lib/artifact-queries";
+import {
+  artifactsListQuery,
+  type ArtifactListItem,
+} from "~/lib/artifact-queries";
 
 type ArtifactType = "chart" | "grid" | "other";
 type ViewMode = "gallery" | "list";
@@ -39,7 +42,9 @@ const JsonRenderDisplay = lazy(() =>
 const CARD_HEIGHT = 360;
 
 function getArtifactType(spec: Record<string, unknown>): ArtifactType {
-  const elements = spec.elements as Record<string, { type?: string }> | undefined;
+  const elements = spec.elements as
+    | Record<string, { type?: string }>
+    | undefined;
   const root = spec.root as string | undefined;
   if (!elements || !root) return "other";
   const component = elements[root]?.type;
@@ -54,7 +59,13 @@ function typeLabel(type: ArtifactType) {
   return "Visualization";
 }
 
-function TypeIcon({ type, className }: { type: ArtifactType; className?: string }) {
+function TypeIcon({
+  type,
+  className,
+}: {
+  type: ArtifactType;
+  className?: string;
+}) {
   if (type === "grid") return <TableIcon className={className} />;
   return <BarChart3Icon className={className} />;
 }
@@ -71,17 +82,17 @@ function ArtifactListRow({
   const artType = getArtifactType(artifact.spec);
   return (
     <div
-      className="group relative flex cursor-pointer items-center gap-4 border-b px-4 py-3 transition-colors hover:bg-accent/30 last:border-b-0"
+      className="group hover:bg-accent/30 relative flex cursor-pointer items-center gap-4 border-b px-4 py-3 transition-colors last:border-b-0"
       onClick={onSelect}
     >
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+      <div className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
         <TypeIcon type={artType} className="size-4" />
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-sm font-medium">{artifact.title}</h3>
-        <p className="text-xs text-muted-foreground">{typeLabel(artType)}</p>
+        <p className="text-muted-foreground text-xs">{typeLabel(artType)}</p>
       </div>
-      <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+      <span className="text-muted-foreground hidden shrink-0 text-xs sm:block">
         {new Date(artifact.createdAt).toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
@@ -95,7 +106,7 @@ function ArtifactListRow({
             params={{ threadId: artifact.threadId }}
             hash={`msg-${artifact.messageId}`}
             onClick={(event) => event.stopPropagation()}
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-1.5 transition-colors"
             aria-label="Open in chat"
           >
             <ExternalLinkIcon className="size-4" />
@@ -105,7 +116,7 @@ function ArtifactListRow({
           type="button"
           variant="ghost"
           size="sm"
-          className="size-8 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+          className="text-muted-foreground hover:text-destructive size-8 p-0 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={(event) => {
             event.stopPropagation();
             onDelete();
@@ -129,10 +140,10 @@ function ArtifactGalleryCard({
   const artType = getArtifactType(artifact.spec);
   return (
     <div
-      className="group relative flex h-[360px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-card transition-colors hover:bg-accent/30"
+      className="group bg-card hover:bg-accent/30 relative flex h-[360px] cursor-pointer flex-col overflow-hidden rounded-xl border transition-colors"
       onClick={onSelect}
     >
-      <div className="pointer-events-none flex min-h-0 h-[308px] flex-col overflow-hidden p-4">
+      <div className="pointer-events-none flex h-[308px] min-h-0 flex-col overflow-hidden p-4">
         <Suspense fallback={<ArtifactRenderFallback fill />}>
           <JsonRenderDisplay
             spec={artifact.spec as unknown as Spec}
@@ -149,7 +160,7 @@ function ArtifactGalleryCard({
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-medium">{artifact.title}</h3>
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="text-muted-foreground shrink-0 text-xs">
           {new Date(artifact.createdAt).toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",
@@ -165,8 +176,8 @@ function ArtifactRenderFallback({ fill = false }: { fill?: boolean }) {
     <div
       className={
         fill
-          ? "h-full w-full animate-pulse rounded-md bg-muted/30"
-          : "h-[240px] w-full animate-pulse rounded-md bg-muted/30"
+          ? "bg-muted/30 h-full w-full animate-pulse rounded-md"
+          : "bg-muted/30 h-[240px] w-full animate-pulse rounded-md"
       }
     />
   );
@@ -174,7 +185,7 @@ function ArtifactRenderFallback({ fill = false }: { fill?: boolean }) {
 
 function ArtifactsSkeleton() {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+    <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -221,7 +232,10 @@ export function ArtifactsPage() {
   const filtered = useMemo(
     () =>
       artifacts.filter((artifact) => {
-        if (search && !artifact.title.toLowerCase().includes(search.toLowerCase())) {
+        if (
+          search &&
+          !artifact.title.toLowerCase().includes(search.toLowerCase())
+        ) {
           return false;
         }
         if (typeFilter === "all") return true;
@@ -235,19 +249,21 @@ export function ArtifactsPage() {
 
   return (
     <>
-      <AppPageHeader title={<h1 className="text-sm font-medium">Artifacts</h1>} />
+      <AppPageHeader
+        title={<h1 className="text-sm font-medium">Artifacts</h1>}
+      />
 
       {isPending ? (
         <ArtifactsSkeleton />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-stable p-6">
+        <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-balance">
                   Gallery
                 </h2>
-                <p className="text-sm text-pretty text-muted-foreground">
+                <p className="text-muted-foreground text-sm text-pretty">
                   {filtered.length === artifacts.length
                     ? `${artifacts.length} saved artifact${artifacts.length === 1 ? "" : "s"}`
                     : `${filtered.length} of ${artifacts.length} artifacts`}
@@ -255,7 +271,7 @@ export function ArtifactsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
                   <Input
                     placeholder="Search artifacts..."
                     value={search}
@@ -314,22 +330,23 @@ export function ArtifactsPage() {
 
             {artifacts.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-16 text-center">
-                <LayersIcon className="mb-4 size-12 text-muted-foreground/40" />
+                <LayersIcon className="text-muted-foreground/40 mb-4 size-12" />
                 <h3 className="text-lg font-medium">No artifacts yet</h3>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Save a chart or data grid from any chat conversation to see it here
+                <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                  Save a chart or data grid from any chat conversation to see it
+                  here
                 </p>
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-16 text-center">
-                <SearchIcon className="mb-4 size-12 text-muted-foreground/40" />
+                <SearchIcon className="text-muted-foreground/40 mb-4 size-12" />
                 <h3 className="text-lg font-medium">No matches</h3>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-1 max-w-sm text-sm">
                   Try a different search term or filter
                 </p>
               </div>
             ) : viewMode === "list" ? (
-              <div className="overflow-hidden rounded-xl border bg-card">
+              <div className="bg-card overflow-hidden rounded-xl border">
                 <VirtualGrid
                   items={filtered}
                   getKey={(artifact) => artifact.id}
@@ -349,7 +366,7 @@ export function ArtifactsPage() {
               <>
                 {featured && (
                   <div
-                    className="group relative cursor-pointer rounded-xl border bg-card p-6 transition-colors hover:bg-accent/30"
+                    className="group bg-card hover:bg-accent/30 relative cursor-pointer rounded-xl border p-6 transition-colors"
                     onClick={() => setSelected(featured)}
                   >
                     <div className="mb-4 flex items-start justify-between">
@@ -362,12 +379,15 @@ export function ArtifactsPage() {
                             />
                             {typeLabel(getArtifactType(featured.spec))}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(featured.createdAt).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                          <span className="text-muted-foreground text-xs">
+                            {new Date(featured.createdAt).toLocaleDateString(
+                              undefined,
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
                           </span>
                         </div>
                         <h3 className="mt-2 text-lg font-semibold tracking-tight">
@@ -380,7 +400,7 @@ export function ArtifactsPage() {
                           params={{ threadId: featured.threadId }}
                           hash={`msg-${featured.messageId}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-md p-1.5 transition-colors"
                         >
                           <ExternalLinkIcon className="size-4" />
                         </Link>
@@ -428,7 +448,7 @@ export function ArtifactsPage() {
         }}
       >
         {selected && (
-          <DialogContent className="sm:max-w-[min(90vw,72rem)] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[min(90vw,72rem)]">
             <DialogTitle className="sr-only">{selected.title}</DialogTitle>
             <DialogDescription className="sr-only">
               Full-size preview of {selected.title}
@@ -444,10 +464,13 @@ export function ArtifactsPage() {
             <div className="flex items-center justify-between border-t pt-4">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary">
-                  <TypeIcon type={getArtifactType(selected.spec)} className="size-3" />
+                  <TypeIcon
+                    type={getArtifactType(selected.spec)}
+                    className="size-3"
+                  />
                   {typeLabel(getArtifactType(selected.spec))}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {new Date(selected.createdAt).toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -470,7 +493,7 @@ export function ArtifactsPage() {
                     to="/chat/$threadId"
                     params={{ threadId: selected.threadId }}
                     hash={`msg-${selected.messageId}`}
-                    className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+                    className="hover:bg-accent inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"
                   >
                     <ExternalLinkIcon className="size-4" />
                     View in Chat

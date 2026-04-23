@@ -6,15 +6,14 @@ import {
   type DurableSessionMessage,
 } from "@durable-streams/tanstack-ai-transport";
 import type { RequestLogger } from "evlog";
-import {
-  getDurableChatSessionTarget,
-} from "~/lib/durable-streams";
+import { getDurableChatSessionTarget } from "~/lib/durable-streams";
 import { beginThreadRun, endThreadRun } from "~/lib/server/thread-run-state";
 import { createV2AgentRun } from "~/features/chat-v2/server/agent-runner";
+import { v2ChatRequestSchema } from "~/features/chat-v2/server/chat-contract";
 import {
-  v2ChatRequestSchema,
-} from "~/features/chat-v2/server/chat-contract";
-import { buildV2ChatStreamPath, toV2RunStateKey } from "~/features/chat-v2/server/keys";
+  buildV2ChatStreamPath,
+  toV2RunStateKey,
+} from "~/features/chat-v2/server/keys";
 import {
   appendV2CustomEvents,
   buildV2TerminalEvents,
@@ -46,7 +45,8 @@ function extractLatestUserMessage(
 }
 
 function hasUsablePayload(message: MinimalMessage): boolean {
-  const hasContent = typeof message.content === "string" && message.content.trim().length > 0;
+  const hasContent =
+    typeof message.content === "string" && message.content.trim().length > 0;
   const hasParts = Array.isArray(message.parts) && message.parts.length > 0;
   return hasContent || hasParts;
 }
@@ -81,7 +81,9 @@ export const Route = createFileRoute("/api/v2/chat")({
           throw createError({
             message: "Invalid V2 chat request payload",
             status: 400,
-            why: parsedBody.error.issues[0]?.message ?? "Request body does not match schema",
+            why:
+              parsedBody.error.issues[0]?.message ??
+              "Request body does not match schema",
             fix: "Send a payload with `messages` and optional `data` fields matching the V2 chat contract.",
           });
         }

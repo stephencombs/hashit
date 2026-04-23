@@ -67,9 +67,10 @@ export function Chat({
   const hasCommittedUserMessage = session.messages.some(
     (message) => message.role === "user",
   );
-  const displayedMessages = !hasCommittedUserMessage && session.optimisticUserMessage
-    ? [...session.messages, session.optimisticUserMessage]
-    : session.messages;
+  const displayedMessages =
+    !hasCommittedUserMessage && session.optimisticUserMessage
+      ? [...session.messages, session.optimisticUserMessage]
+      : session.messages;
   const hasMessages = displayedMessages.length > 0;
   const showConversation =
     hasMessages || session.isStreaming || session.isBootstrappingThread;

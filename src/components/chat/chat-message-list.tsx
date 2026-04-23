@@ -1,8 +1,5 @@
 import type { Spec } from "@json-render/core";
-import {
-  MessageRow,
-  type ChatMessage,
-} from "~/components/chat/message-row";
+import { MessageRow, type ChatMessage } from "~/components/chat/message-row";
 import { PendingAssistantMessage } from "~/components/chat/pending-assistant-message";
 import {
   useLiveSpecsSnapshot,
@@ -25,11 +22,7 @@ export interface ChatMessageListProps {
     output: unknown,
   ) => void;
   onBottomSpecPendingChange?: (specKey: string, pending: boolean) => void;
-  onSaveArtifact: (
-    spec: Spec,
-    messageId?: string,
-    specIndex?: number,
-  ) => void;
+  onSaveArtifact: (spec: Spec, messageId?: string, specIndex?: number) => void;
 }
 
 /**
