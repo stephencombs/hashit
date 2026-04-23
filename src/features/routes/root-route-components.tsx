@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { Toaster } from "~/components/ui/sonner";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { McpSettingsProvider } from "~/hooks/use-mcp-settings";
 import { ModelSettingsProvider } from "~/hooks/use-model-settings";
@@ -49,6 +50,7 @@ export function RootComponent() {
                 {import.meta.env.DEV ? (
                   <ReactQueryDevtools initialIsOpen={false} />
                 ) : null}
+                <Toaster />
               </HotkeysProvider>
             </TooltipProvider>
           </McpSettingsProvider>

@@ -6,6 +6,7 @@ import {
   deleteV2ThreadServer,
   listV2ThreadsServer,
   setV2ThreadPinnedServer,
+  setV2ThreadTitleServer,
 } from "./threads.server";
 
 const createV2ThreadInputSchema = z.object({
@@ -16,6 +17,11 @@ const createV2ThreadInputSchema = z.object({
 const setV2ThreadPinnedInputSchema = z.object({
   threadId: z.string().min(1).max(128),
   pinned: z.boolean(),
+});
+
+const setV2ThreadTitleInputSchema = z.object({
+  threadId: z.string().min(1).max(128),
+  title: z.string().trim().min(1).max(200),
 });
 
 const deleteV2ThreadInputSchema = z.object({
@@ -33,6 +39,10 @@ export const createV2Thread = createServerFn({ method: "POST" })
 export const setV2ThreadPinned = createServerFn({ method: "POST" })
   .inputValidator(zodValidator(setV2ThreadPinnedInputSchema))
   .handler(async ({ data }) => setV2ThreadPinnedServer(data));
+
+export const setV2ThreadTitle = createServerFn({ method: "POST" })
+  .inputValidator(zodValidator(setV2ThreadTitleInputSchema))
+  .handler(async ({ data }) => setV2ThreadTitleServer(data));
 
 export const deleteV2Thread = createServerFn({ method: "POST" })
   .inputValidator(zodValidator(deleteV2ThreadInputSchema))

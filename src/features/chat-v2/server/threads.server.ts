@@ -27,6 +27,11 @@ type SetV2ThreadPinnedInput = {
   pinned: boolean;
 };
 
+type SetV2ThreadTitleInput = {
+  threadId: string;
+  title: string;
+};
+
 export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
   const rows = await db
     .select()
@@ -110,6 +115,33 @@ export async function setV2ThreadPinnedServer(
     .update(v2Threads)
     .set({
       pinnedAt: input.pinned ? new Date() : null,
+    })
+    .where(and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)))
+    .returning();
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
+
+  return v2ThreadSchema.parse({
+    ...row,
+    isStreaming: await isV2ThreadRunActive(row.id),
+  });
+}
+
+export async function setV2ThreadTitleServer(
+  input: SetV2ThreadTitleInput,
+): Promise<V2Thread> {
+  const nextTitle = input.title.trim();
+  if (!nextTitle) {
+    throw new Error("Thread title is required");
+  }
+
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      title: nextTitle,
+      updatedAt: new Date(),
     })
     .where(and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)))
     .returning();
