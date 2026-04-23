@@ -3,7 +3,15 @@ import { useChat } from "@tanstack/ai-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Spec } from "@json-render/core";
 import { CopyIcon, RotateCcwIcon } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ChatConversation } from "~/components/chat/chat-conversation";
 import {
   MessageAction,
@@ -38,6 +46,7 @@ type RuntimeUiSpecPart = Extract<
   V2RuntimeMessage["parts"][number],
   { type: "ui-spec" }
 >;
+type RuntimeTextPart = Extract<V2RuntimeMessage["parts"][number], { type: "text" }>;
 
 function getMessageFromRole(role: V2RuntimeMessage["role"]): "user" | "assistant" {
   return role === "user" ? "user" : "assistant";
@@ -46,6 +55,19 @@ function getMessageFromRole(role: V2RuntimeMessage["role"]): "user" | "assistant
 function copyMessageText(text: string): void {
   if (!text.trim()) return;
   void navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function resolveRenderText(message: V2RuntimeMessage): string {
+  if (typeof message.renderText === "string") {
+    return message.renderText.trim();
+  }
+
+  const textParts: string[] = [];
+  for (const part of message.parts) {
+    if (part.type !== "text") continue;
+    textParts.push(part.content);
+  }
+  return textParts.join("\n").trim();
 }
 
 type V2ChatSurfaceProps = {
@@ -199,13 +221,13 @@ export function V2ChatSurface({
         liveSpecs,
         message,
         persistedSpecs,
-        renderText: message.renderText.trim(),
+        renderText: resolveRenderText(message),
         shouldShowLiveSpecs: persistedSpecs.length === 0 && Boolean(liveSpecs),
       };
     });
   }, [displayMessages, liveSpecsByMessageId]);
 
-  async function ensureDraftThreadReady(): Promise<void> {
+  const ensureDraftThreadReady = useCallback(async (): Promise<void> => {
     if (!isDraftThread) return;
 
     setCreationError(null);
@@ -219,7 +241,23 @@ export function V2ChatSurface({
       setCreationError((error as Error).message);
       throw error;
     }
-  }
+  }, [isDraftThread, onThreadReady, queryClient, threadId]);
+
+  const handleComposerSubmit = useCallback(
+    async (text: string) => {
+      try {
+        await ensureDraftThreadReady();
+      } catch {
+        shouldPromoteOnStreamStartRef.current = false;
+        return;
+      }
+
+      setCreationError(null);
+      shouldPromoteOnStreamStartRef.current = true;
+      await sendMessage(text);
+    },
+    [ensureDraftThreadReady, sendMessage],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -307,17 +345,7 @@ export function V2ChatSurface({
       <V2Composer
         isStreaming={isStreaming}
         onStop={stop}
-        onSubmit={async (text) => {
-          try {
-            await ensureDraftThreadReady();
-            setCreationError(null);
-            shouldPromoteOnStreamStartRef.current = true;
-            await sendMessage(text);
-          } catch {
-            shouldPromoteOnStreamStartRef.current = false;
-            return;
-          }
-        }}
+        onSubmit={handleComposerSubmit}
       />
     </div>
   );

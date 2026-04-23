@@ -28,7 +28,7 @@ export function V2ChatThreadPage({
 
   const isExistingThread = Boolean(threadId);
   const isThreadLoading =
-    isExistingThread && (sessionQuery.isPending || messagesQuery.isPending);
+    isExistingThread && (sessionQuery.isLoading || messagesQuery.isLoading);
   const title = threadId
     ? (sessionQuery.data?.thread.title ?? "Loading thread...")
     : "New Thread";
