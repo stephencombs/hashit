@@ -15,8 +15,14 @@ import {
   v2ChatRequestSchema,
 } from "~/features/chat-v2/server/chat-contract";
 import { buildV2ChatStreamPath, toV2RunStateKey } from "~/features/chat-v2/server/keys";
-import { createV2PersistenceMiddleware } from "~/features/chat-v2/server/persistence";
+import {
+  appendV2CustomEvents,
+  buildV2TerminalEvents,
+  createV2PersistenceMiddleware,
+  finalizeV2PersistenceTelemetry,
+} from "~/features/chat-v2/server/persistence-runtime";
 import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
+import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
 import { extractV2UserMessage } from "~/features/chat-v2/server/user-message";
 
 type MinimalMessage = {
@@ -42,6 +48,10 @@ function hasUsablePayload(message: MinimalMessage): boolean {
   const hasContent = typeof message.content === "string" && message.content.trim().length > 0;
   const hasParts = Array.isArray(message.parts) && message.parts.length > 0;
   return hasContent || hasParts;
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export const Route = createFileRoute("/api/v2/chat")({
@@ -117,7 +127,7 @@ export const Route = createFileRoute("/api/v2/chat")({
         const streamTarget = getDurableChatSessionTarget(streamPath);
         const conversationId = data?.conversationId ?? threadId;
 
-        const { stream: responseStream } = await createV2AgentRun({
+        const { stream: responseStream, telemetry } = await createV2AgentRun({
           messages: messages as Array<Record<string, unknown>>,
           conversationId,
           model: data?.model,
@@ -125,12 +135,8 @@ export const Route = createFileRoute("/api/v2/chat")({
           middlewareFactory: (telemetry) => [
             createV2PersistenceMiddleware({
               threadId,
-              userContent,
-              userParts,
-              persistUserTurn: shouldPersistUserTurn,
               telemetry,
               log,
-              userMessageId,
             }),
             createV2RunLifecycleMiddleware({ runKey, log }),
           ],
@@ -144,15 +150,70 @@ export const Route = createFileRoute("/api/v2/chat")({
           : [];
 
         beginThreadRun(runKey);
+        let persistenceError: string | undefined;
+        let eventError: string | undefined;
+        let persistenceFinalized = false;
+
+        const finalizePersistence = (): void => {
+          if (persistenceFinalized) return;
+          persistenceFinalized = true;
+          finalizeV2PersistenceTelemetry({
+            threadId,
+            telemetry,
+            persistenceError,
+            eventError,
+          });
+        };
+
         try {
-          return toDurableChatSessionResponse({
+          const response = await toDurableChatSessionResponse({
             stream: streamTarget,
             newMessages,
             responseStream,
             mode: "await",
           });
+
+          let updatedTitle: string | undefined;
+          try {
+            const projection = await projectV2StreamSnapshotToDb({
+              threadId,
+              telemetry,
+              persistUserTurn: shouldPersistUserTurn,
+              userMessageId,
+              log,
+            });
+            updatedTitle = projection.updatedTitle;
+          } catch (error) {
+            persistenceError = toErrorMessage(error);
+            log.set({
+              v2ProjectionError: persistenceError,
+            });
+          }
+
+          const terminalEvents = buildV2TerminalEvents({
+            threadId,
+            telemetry,
+            updatedTitle,
+            persistenceError,
+          });
+
+          try {
+            await appendV2CustomEvents(streamTarget, terminalEvents);
+          } catch (error) {
+            eventError = toErrorMessage(error);
+            log.set({
+              v2PersistenceEventAppendError: eventError,
+            });
+          }
+
+          finalizePersistence();
+          return response;
         } catch (error) {
           endThreadRun(runKey);
+          if (!persistenceError) {
+            persistenceError = toErrorMessage(error);
+          }
+          finalizePersistence();
           throw error;
         }
       },

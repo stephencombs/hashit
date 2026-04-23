@@ -9,7 +9,7 @@ type ExtractedV2UserMessage = {
   parts: Array<MessagePart>;
 };
 
-function summarizePartForPlaceholder(part: unknown): string | null {
+export function summarizePartForPlaceholder(part: unknown): string | null {
   if (!part || typeof part !== "object") return null;
   const value = part as { type?: unknown };
   if (value.type === "image") return "image";
@@ -19,7 +19,7 @@ function summarizePartForPlaceholder(part: unknown): string | null {
   return null;
 }
 
-function extractTextContent(parts: Array<unknown>): string {
+export function extractTextContent(parts: Array<unknown>): string {
   return parts
     .map((part) => {
       if (!part || typeof part !== "object") return "";

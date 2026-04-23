@@ -22,9 +22,13 @@ const user = {
 
 export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute();
+  const isThreadRouteActive = Boolean(
+    matchRoute({ to: "/v2/chat/$threadId", fuzzy: false }),
+  );
   const isNewChatActive =
-    Boolean(matchRoute({ to: "/v2", fuzzy: false })) ||
-    Boolean(matchRoute({ to: "/v2/chat", fuzzy: false }));
+    !isThreadRouteActive &&
+    (Boolean(matchRoute({ to: "/v2", fuzzy: false })) ||
+      Boolean(matchRoute({ to: "/v2/chat", fuzzy: false })));
 
   return (
     <Sidebar collapsible="icon" className="select-none" {...props}>
@@ -48,6 +52,7 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
             >
               <Link
                 to="/v2/chat"
+                activeOptions={{ exact: true }}
                 draggable={false}
                 state={(prev) => ({
                   ...(prev ?? {}),
