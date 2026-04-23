@@ -31,4 +31,12 @@ describe("v2ChatRequestSchema", () => {
     expect(parsed.data).not.toHaveProperty("maxInputMessages");
     expect(parsed.data).not.toHaveProperty("maxPartChars");
   });
+
+  it("rejects unsupported message roles", () => {
+    const parsed = v2ChatRequestSchema.safeParse({
+      messages: [{ role: "moderator", content: "Hello" }],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
 });

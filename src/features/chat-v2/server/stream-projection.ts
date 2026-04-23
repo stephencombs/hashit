@@ -1,7 +1,6 @@
 import { materializeSnapshotFromDurableStream } from "@durable-streams/tanstack-ai-transport";
 import { eq } from "drizzle-orm";
 import type { RequestLogger } from "evlog";
-import type { AppMessagePart } from "~/components/chat/message-row.types";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
 import {
@@ -11,10 +10,8 @@ import {
 } from "~/lib/durable-streams";
 import type { V2AgentRunTelemetry } from "./agent-runner";
 import { buildV2ChatStreamPath } from "./keys";
-import {
-  createV2RunMetadata,
-  deriveThreadTitleFromUserTurn,
-} from "./persistence-runtime";
+import { createV2RunMetadata } from "./persistence-runtime";
+import { normalizeRuntimeParts, type V2RuntimePart } from "./runtime-message";
 import {
   ATTACHMENT_ONLY_CONTENT_PREFIX,
   extractTextContent,
@@ -46,13 +43,12 @@ type ProjectedMessage = {
   id: string;
   role: ProjectedRole;
   content: string;
-  parts: Array<AppMessagePart>;
+  parts: Array<V2RuntimePart>;
 };
 
 export type ProjectV2StreamSnapshotResult = {
   persistedMessageCount: number;
   resumeOffset?: string;
-  updatedTitle?: string;
 };
 
 function asMessageRole(value: unknown): ProjectedRole | null {
@@ -98,12 +94,8 @@ function deriveSnapshotContent(
 function normalizeParts(
   parts: Array<unknown>,
   fallbackContent: string,
-): Array<AppMessagePart> {
-  if (parts.length > 0) return parts as Array<AppMessagePart>;
-  if (fallbackContent.length > 0) {
-    return [{ type: "text", content: fallbackContent }];
-  }
-  return [];
+): Array<V2RuntimePart> {
+  return normalizeRuntimeParts(parts, fallbackContent);
 }
 
 function toProjectedMessages(
@@ -152,19 +144,6 @@ function createAssistantMetadata(
   });
 }
 
-function deriveNextTitle(
-  projectedMessages: Array<ProjectedMessage>,
-  existingTitle: string,
-): string | undefined {
-  if (existingTitle && existingTitle !== "Untitled") return undefined;
-
-  const firstUserMessage = projectedMessages.find(
-    (message) => message.role === "user",
-  );
-  if (!firstUserMessage) return undefined;
-  return deriveThreadTitleFromUserTurn(firstUserMessage.content) ?? undefined;
-}
-
 export async function projectV2StreamSnapshotToDb({
   threadId,
   telemetry,
@@ -182,7 +161,6 @@ export async function projectV2StreamSnapshotToDb({
   const [thread, existingRows] = await Promise.all([
     db
       .select({
-        title: v2Threads.title,
         resumeOffset: v2Threads.resumeOffset,
       })
       .from(v2Threads)
@@ -236,9 +214,6 @@ export async function projectV2StreamSnapshotToDb({
     await db.insert(v2Messages).values(newRows).onConflictDoNothing();
   }
 
-  const nextTitle = deriveNextTitle(projectedMessages, threadRow.title);
-  const shouldUpdateTitle = Boolean(nextTitle && nextTitle !== threadRow.title);
-
   let resumeOffset = offset;
   const shouldReadHeadOffset =
     resumeOffset === undefined &&
@@ -255,15 +230,13 @@ export async function projectV2StreamSnapshotToDb({
   }
   const shouldUpdateResumeOffset =
     resumeOffset !== undefined && resumeOffset !== threadRow.resumeOffset;
-  const shouldTouchThread =
-    newRows.length > 0 || shouldUpdateTitle || shouldUpdateResumeOffset;
+  const shouldTouchThread = newRows.length > 0 || shouldUpdateResumeOffset;
 
   if (shouldTouchThread) {
     await db
       .update(v2Threads)
       .set({
         updatedAt: new Date(),
-        ...(shouldUpdateTitle && nextTitle ? { title: nextTitle } : {}),
         ...(shouldUpdateResumeOffset ? { resumeOffset } : {}),
       })
       .where(eq(v2Threads.id, threadId));
@@ -272,13 +245,11 @@ export async function projectV2StreamSnapshotToDb({
   log?.set({
     v2ProjectionMessageCount: projectedMessages.length,
     v2ProjectionInsertedCount: newRows.length,
-    v2ProjectionUpdatedTitle: shouldUpdateTitle ? nextTitle : undefined,
     v2ProjectionResumeOffset: resumeOffset,
   });
 
   return {
     persistedMessageCount: newRows.length,
     resumeOffset,
-    updatedTitle: shouldUpdateTitle ? nextTitle : undefined,
   };
 }

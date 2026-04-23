@@ -80,7 +80,7 @@ function createTelemetry() {
 }
 
 function mockSelectResults(params: {
-  thread: { title: string; resumeOffset: string | null } | null;
+  thread: { resumeOffset: string | null } | null;
   existingRows: Array<{ id: string }>;
 }) {
   const threadSelect = {
@@ -121,7 +121,7 @@ describe("projectV2StreamSnapshotToDb", () => {
       offset: undefined,
     });
     mockSelectResults({
-      thread: { title: "Hello", resumeOffset: "off-1" },
+      thread: { resumeOffset: "off-1" },
       existingRows: [{ id: "u-1" }, { id: "a-1" }],
     });
 
@@ -138,7 +138,7 @@ describe("projectV2StreamSnapshotToDb", () => {
     expect(mocks.mockUpdate).not.toHaveBeenCalled();
   });
 
-  it("inserts new snapshot messages and updates thread title + resume offset", async () => {
+  it("inserts new snapshot messages and updates thread resume offset", async () => {
     mocks.mockMaterializeSnapshotFromDurableStream.mockResolvedValueOnce({
       messages: [
         {
@@ -157,7 +157,7 @@ describe("projectV2StreamSnapshotToDb", () => {
       offset: "off-2",
     });
     mockSelectResults({
-      thread: { title: "Untitled", resumeOffset: null },
+      thread: { resumeOffset: null },
       existingRows: [],
     });
 
@@ -170,7 +170,6 @@ describe("projectV2StreamSnapshotToDb", () => {
     });
 
     expect(result.persistedMessageCount).toBe(2);
-    expect(result.updatedTitle).toBe("Plan a quarterly roadmap");
     expect(result.resumeOffset).toBe("off-2");
 
     expect(mocks.mockInsert).toHaveBeenCalledTimes(1);
@@ -187,12 +186,45 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     expect(mocks.mockUpdate).toHaveBeenCalledTimes(1);
     const threadPatch = mocks.mockUpdateSet.mock.calls[0]?.[0] as {
-      title?: string;
       resumeOffset?: string;
       updatedAt?: Date;
     };
-    expect(threadPatch.title).toBe("Plan a quarterly roadmap");
     expect(threadPatch.resumeOffset).toBe("off-2");
     expect(threadPatch.updatedAt).toBeInstanceOf(Date);
+  });
+
+  it("normalizes invalid snapshot parts before persisting", async () => {
+    mocks.mockMaterializeSnapshotFromDurableStream.mockResolvedValueOnce({
+      messages: [
+        {
+          id: "a-3",
+          role: "assistant",
+          content: "Fallback assistant text",
+          parts: [{ type: "unsupported", foo: "bar" }],
+        },
+      ],
+      offset: "off-3",
+    });
+    mockSelectResults({
+      thread: { resumeOffset: null },
+      existingRows: [],
+    });
+
+    const result = await projectV2StreamSnapshotToDb({
+      threadId: "thread-3",
+      telemetry: createTelemetry(),
+      persistUserTurn: false,
+      log: { set: mocks.mockLogSet } as never,
+    });
+
+    expect(result.persistedMessageCount).toBe(1);
+    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
+      id: string;
+      parts: Array<{ type: string; content?: string }>;
+    }>;
+    expect(insertedRows[0]?.id).toBe("a-3");
+    expect(insertedRows[0]?.parts).toEqual([
+      { type: "text", content: "Fallback assistant text" },
+    ]);
   });
 });

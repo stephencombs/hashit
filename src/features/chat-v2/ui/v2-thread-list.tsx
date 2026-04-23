@@ -229,7 +229,7 @@ function ThreadGroup({
                 <SidebarMenuButton
                   isActive={isActive}
                   asChild
-                  className={`${SIDEBAR_ROW_HIT_AREA_CLASS_NAME} pr-16`}
+                  className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
                 >
                   <Link
                     to="/v2/chat/$threadId"

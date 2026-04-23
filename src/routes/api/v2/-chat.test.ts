@@ -54,6 +54,9 @@ const mocks = vi.hoisted(() => {
   const mockCreateV2PersistenceMiddleware = vi.fn(() => ({
     name: "v2-persistence",
   }));
+  const mockQueueV2ThreadTitleGeneration = vi.fn(() => {
+    callOrder.push("queue-title");
+  });
 
   return {
     callOrder,
@@ -65,6 +68,7 @@ const mocks = vi.hoisted(() => {
     mockFinalizeV2PersistenceTelemetry,
     mockLogSet,
     mockProjectV2StreamSnapshotToDb,
+    mockQueueV2ThreadTitleGeneration,
     mockToDurableChatSessionResponse,
     mockUseRequest,
   };
@@ -101,6 +105,10 @@ vi.mock("~/features/chat-v2/server/agent-runner", () => ({
 
 vi.mock("~/features/chat-v2/server/stream-projection", () => ({
   projectV2StreamSnapshotToDb: mocks.mockProjectV2StreamSnapshotToDb,
+}));
+
+vi.mock("~/features/chat-v2/server/thread-title", () => ({
+  queueV2ThreadTitleGeneration: mocks.mockQueueV2ThreadTitleGeneration,
 }));
 
 vi.mock("~/features/chat-v2/server/persistence-runtime", () => ({
@@ -188,10 +196,12 @@ describe("/api/v2/chat", () => {
       "durable:end",
       "project",
       "append-events",
+      "queue-title",
       "finalize",
     ]);
     expect(mocks.mockProjectV2StreamSnapshotToDb).toHaveBeenCalledTimes(1);
     expect(mocks.mockAppendV2CustomEvents).toHaveBeenCalledTimes(1);
+    expect(mocks.mockQueueV2ThreadTitleGeneration).toHaveBeenCalledTimes(1);
     expect(mocks.mockBeginThreadRun).toHaveBeenCalledWith("v2:thread-1");
     expect(mocks.mockEndThreadRun).not.toHaveBeenCalled();
   });
@@ -219,5 +229,6 @@ describe("/api/v2/chat", () => {
       (event) => event.name === "persistence_complete",
     );
     expect(persistenceComplete?.value.error).toBe("projection failed");
+    expect(mocks.mockQueueV2ThreadTitleGeneration).not.toHaveBeenCalled();
   });
 });

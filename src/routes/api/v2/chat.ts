@@ -23,6 +23,7 @@ import {
 } from "~/features/chat-v2/server/persistence-runtime";
 import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
 import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
+import { queueV2ThreadTitleGeneration } from "~/features/chat-v2/server/thread-title";
 import { extractV2UserMessage } from "~/features/chat-v2/server/user-message";
 
 type MinimalMessage = {
@@ -173,16 +174,14 @@ export const Route = createFileRoute("/api/v2/chat")({
             mode: "await",
           });
 
-          let updatedTitle: string | undefined;
           try {
-            const projection = await projectV2StreamSnapshotToDb({
+            await projectV2StreamSnapshotToDb({
               threadId,
               telemetry,
               persistUserTurn: shouldPersistUserTurn,
               userMessageId,
               log,
             });
-            updatedTitle = projection.updatedTitle;
           } catch (error) {
             persistenceError = toErrorMessage(error);
             log.set({
@@ -193,7 +192,6 @@ export const Route = createFileRoute("/api/v2/chat")({
           const terminalEvents = buildV2TerminalEvents({
             threadId,
             telemetry,
-            updatedTitle,
             persistenceError,
           });
 
@@ -203,6 +201,14 @@ export const Route = createFileRoute("/api/v2/chat")({
             eventError = toErrorMessage(error);
             log.set({
               v2PersistenceEventAppendError: eventError,
+            });
+          }
+
+          if (shouldPersistUserTurn && !persistenceError) {
+            queueV2ThreadTitleGeneration({
+              threadId,
+              streamTarget,
+              log,
             });
           }
 

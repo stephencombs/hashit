@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+import type { V2RuntimeMessage } from "./runtime-message";
 import {
   getV2ThreadSessionServer,
   listV2ThreadMessagesServer,
@@ -10,7 +11,10 @@ const v2ThreadIdInputSchema = z.string().min(1).max(128);
 
 export const listV2ThreadMessages = createServerFn({ method: "GET" })
   .inputValidator(zodValidator(v2ThreadIdInputSchema))
-  .handler(async ({ data }) => listV2ThreadMessagesServer(data));
+  .handler(
+    async ({ data }): Promise<Array<V2RuntimeMessage>> =>
+      listV2ThreadMessagesServer(data),
+  );
 
 export const getV2ThreadSession = createServerFn({ method: "GET" })
   .inputValidator(zodValidator(v2ThreadIdInputSchema))

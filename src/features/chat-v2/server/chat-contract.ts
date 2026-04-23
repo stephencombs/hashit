@@ -1,10 +1,16 @@
 import { z } from "zod";
 
 const v2MessagePartSchema = z.object({ type: z.string() }).passthrough();
+const v2ChatMessageRoleSchema = z.enum([
+  "system",
+  "user",
+  "assistant",
+  "tool",
+]);
 
 const v2ChatMessageSchema = z.object({
   id: z.string().optional(),
-  role: z.string(),
+  role: v2ChatMessageRoleSchema,
   content: z.string().optional(),
   parts: z.array(v2MessagePartSchema).optional(),
 });
@@ -23,4 +29,5 @@ export const v2ChatRequestSchema = z.object({
     .optional(),
 });
 
+export type V2IncomingChatRole = z.infer<typeof v2ChatMessageRoleSchema>;
 export type V2IncomingChatMessage = z.infer<typeof v2ChatMessageSchema>;

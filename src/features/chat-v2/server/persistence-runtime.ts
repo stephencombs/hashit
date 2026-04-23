@@ -11,7 +11,6 @@ import {
   startPersistenceSpan,
 } from "~/lib/telemetry/agent-spans";
 import type { V2AgentRunStatus, V2AgentRunTelemetry } from "./agent-runner";
-import { ATTACHMENT_ONLY_CONTENT_PREFIX } from "./user-message";
 
 /**
  * V2 persistence runtime helpers for the stream-first architecture.
@@ -40,27 +39,8 @@ type FinalizeV2PersistenceTelemetryOptions = {
 type BuildV2TerminalEventsOptions = {
   threadId: string;
   telemetry: V2AgentRunTelemetry;
-  updatedTitle?: string;
   persistenceError?: string;
 };
-
-function collapseWhitespace(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-export function deriveThreadTitleFromUserTurn(userContent: string): string | null {
-  const normalized = collapseWhitespace(userContent);
-  if (!normalized || normalized.startsWith(ATTACHMENT_ONLY_CONTENT_PREFIX)) {
-    return null;
-  }
-
-  const words = normalized.split(" ").slice(0, 6);
-  let title = words.join(" ");
-  if (title.length > 64) {
-    title = title.slice(0, 64).trimEnd();
-  }
-  return title || null;
-}
 
 export function createV2RunMetadata(
   telemetry: V2AgentRunTelemetry,
@@ -150,19 +130,9 @@ export function finalizeV2PersistenceTelemetry({
 export function buildV2TerminalEvents({
   threadId,
   telemetry,
-  updatedTitle,
   persistenceError,
 }: BuildV2TerminalEventsOptions): Array<StreamChunk> {
   const events: Array<StreamChunk> = [];
-  if (updatedTitle) {
-    events.push(
-      createV2CustomChunk("thread_title_updated", {
-        threadId,
-        title: updatedTitle,
-      }),
-    );
-  }
-
   events.push(
     createV2CustomChunk(getRunTerminalEventName(telemetry.status), {
       threadId,
