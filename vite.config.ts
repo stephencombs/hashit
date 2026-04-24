@@ -17,7 +17,9 @@ export default defineConfig({
   ssr: {
     resolve: {
       conditions: [...defaultServerConditions],
-      externalConditions: [...defaultServerConditions],
+      // Externalized deps execute in Node, so resolve them with Node's
+      // runtime conditions instead of Vite's "module" condition.
+      externalConditions: ["node"],
     },
     external: [
       "@modelcontextprotocol/sdk",

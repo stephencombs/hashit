@@ -63,11 +63,7 @@ function V2ThreadAttachmentSummaryPanel({
   summary: V2ThreadAttachmentSummary;
 }) {
   if (summary.totalCount === 0) {
-    return (
-      <div className="border-b px-6 py-2 text-xs text-muted-foreground">
-        No file attachments yet.
-      </div>
-    );
+    return null;
   }
 
   return (
