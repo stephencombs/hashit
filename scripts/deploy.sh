@@ -15,6 +15,7 @@ TERRAFORM_MODE="${TERRAFORM_MODE:-auto}" # auto|apply|plan|skip
 TFVARS_FILE="${TFVARS_FILE:-terraform.tfvars}"
 DURABLE_IMAGE_NAME="${DURABLE_IMAGE_NAME:-durable-streams}"
 DURABLE_STREAMS_REF="${DURABLE_STREAMS_REF:-main}"
+DURABLE_BINARY_CACHE_DIR="${DURABLE_BINARY_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/hashit/durable-streams}"
 DRY_RUN=false
 ASSUME_YES=false
 SKIP_BUILD=false
@@ -36,6 +37,7 @@ Options:
   --durable-image-tag <tag>        Durable image tag (default: --image-tag)
   --durable-image-name <name>      Durable image repo name (default: durable-streams)
   --durable-streams-ref <ref>      Durable Streams caddy ref for go install (default: main)
+  (env) DURABLE_BINARY_CACHE_DIR   Durable binary cache dir (default: ~/.cache/hashit/durable-streams)
   --terraform <mode>               auto|apply|plan|skip (default: auto)
   --infra-dir <path>               Terraform directory (default: ./infra)
   --tfvars-file <path>             Tfvars file under infra dir (default: terraform.tfvars)
@@ -132,6 +134,27 @@ platform_goarch() {
   echo "${rest%%/*}"
 }
 
+sanitize_cache_component() {
+  local value="$1"
+  value="${value//\//-}"
+  value="${value//:/-}"
+  value="${value//@/-}"
+  value="${value//=/-}"
+  value="${value//+/-}"
+  echo "${value}"
+}
+
+resolve_durable_streams_version() {
+  local ref="$1"
+  local version
+  version="$(go list -m -f '{{.Version}}' "github.com/durable-streams/durable-streams@${ref}" 2>/dev/null || true)"
+  if [[ -n "${version}" ]]; then
+    echo "${version}"
+  else
+    echo "${ref}"
+  fi
+}
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Error: Missing required command '$1'" >&2
@@ -204,6 +227,7 @@ echo "durable_app_name: ${DURABLE_APP_NAME}"
 echo "app_image: ${APP_IMAGE}"
 echo "durable_image: ${DURABLE_IMAGE}"
 echo "durable_streams_ref: ${DURABLE_STREAMS_REF}"
+echo "durable_binary_cache_dir: ${DURABLE_BINARY_CACHE_DIR}"
 echo "terraform_mode: ${TERRAFORM_MODE}"
 echo "infra_dir: ${INFRA_DIR}"
 
@@ -253,21 +277,40 @@ if [[ "${SKIP_BUILD}" == "false" ]]; then
   esac
 
   durable_build_ctx="$(mktemp -d)"
-  durable_gopath="$(mktemp -d)"
   cp "${REPO_ROOT}/infra/durable-streams/Caddyfile" "${durable_build_ctx}/Caddyfile"
-  echo "==> Building durable-streams-server binary (${DURABLE_STREAMS_REF}) for ${durable_goos}/${durable_goarch}"
-  run env CGO_ENABLED=0 GOOS="${durable_goos}" GOARCH="${durable_goarch}" GOPATH="${durable_gopath}" \
-    go install "github.com/durable-streams/durable-streams/packages/caddy-plugin/cmd/caddy@${DURABLE_STREAMS_REF}"
+
+  durable_cache_ref="${DURABLE_STREAMS_REF}"
   if [[ "${DRY_RUN}" == "false" ]]; then
-    durable_binary="${durable_gopath}/bin/${durable_goos}_${durable_goarch}/caddy"
-    if [[ ! -f "${durable_binary}" ]]; then
-      durable_binary="${durable_gopath}/bin/caddy"
+    durable_cache_ref="$(resolve_durable_streams_version "${DURABLE_STREAMS_REF}")"
+  fi
+  durable_cache_key="$(sanitize_cache_component "${durable_cache_ref}")"
+  durable_cached_binary="${DURABLE_BINARY_CACHE_DIR}/durable-streams-server-${durable_goos}-${durable_goarch}-${durable_cache_key}"
+
+  if [[ "${DRY_RUN}" == "false" && -f "${durable_cached_binary}" ]]; then
+    echo "==> Reusing cached durable-streams-server binary (${durable_cache_ref}) for ${durable_goos}/${durable_goarch}"
+    cp "${durable_cached_binary}" "${durable_build_ctx}/durable-streams-server"
+    chmod 0755 "${durable_build_ctx}/durable-streams-server"
+  else
+    echo "==> Building durable-streams-server binary (${DURABLE_STREAMS_REF}) for ${durable_goos}/${durable_goarch}"
+    durable_gopath="$(mktemp -d)"
+    run env CGO_ENABLED=0 GOOS="${durable_goos}" GOARCH="${durable_goarch}" GOPATH="${durable_gopath}" \
+      go install "github.com/durable-streams/durable-streams/packages/caddy-plugin/cmd/caddy@${DURABLE_STREAMS_REF}"
+    if [[ "${DRY_RUN}" == "false" ]]; then
+      durable_binary="${durable_gopath}/bin/${durable_goos}_${durable_goarch}/caddy"
+      if [[ ! -f "${durable_binary}" ]]; then
+        durable_binary="${durable_gopath}/bin/caddy"
+      fi
+      if [[ ! -f "${durable_binary}" ]]; then
+        echo "Error: Expected caddy binary was not produced under ${durable_gopath}/bin" >&2
+        exit 1
+      fi
+      mkdir -p "${DURABLE_BINARY_CACHE_DIR}"
+      cp "${durable_binary}" "${durable_cached_binary}"
+      chmod 0755 "${durable_cached_binary}"
+      cp "${durable_binary}" "${durable_build_ctx}/durable-streams-server"
+      chmod 0755 "${durable_build_ctx}/durable-streams-server"
+      echo "==> Cached durable-streams-server at ${durable_cached_binary}"
     fi
-    if [[ ! -f "${durable_binary}" ]]; then
-      echo "Error: Expected caddy binary was not produced under ${durable_gopath}/bin" >&2
-      exit 1
-    fi
-    cp "${durable_binary}" "${durable_build_ctx}/durable-streams-server"
   fi
 
   echo "==> Building ${APP_IMAGE}"

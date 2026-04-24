@@ -21,9 +21,22 @@ import {
   MessageContent,
   MessageResponse,
 } from "~/components/ai-elements/message";
+import {
+  Attachment,
+  AttachmentInfo,
+  AttachmentPreview,
+  Attachments,
+} from "~/components/ai-elements/attachments";
+import type { PromptInputMessage } from "~/components/ai-elements/prompt-input";
+import {
+  isRenderableAttachmentPart,
+  toAttachmentData,
+} from "~/components/chat/message-row-parts";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { LiveSpecStore, useLiveSpecsSnapshot } from "~/lib/live-spec-store";
+import { buildPromptContentParts } from "~/lib/multimodal-parts";
 import {
+  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "../data/query-options";
@@ -36,6 +49,10 @@ import {
 } from "../data/mutations";
 import type { V2RuntimeMessage } from "../server/runtime-message";
 import { V2Composer } from "./v2-composer";
+import {
+  toAbsoluteAttachmentUrl,
+  uploadV2AttachmentSource,
+} from "./v2-session-attachments";
 
 const JsonRenderDisplay = lazy(() =>
   import("~/components/json-render-display").then((module) => ({
@@ -47,7 +64,10 @@ type RuntimeUiSpecPart = Extract<
   V2RuntimeMessage["parts"][number],
   { type: "ui-spec" }
 >;
-type RuntimeTextPart = Extract<V2RuntimeMessage["parts"][number], { type: "text" }>;
+type RuntimeAttachmentPart = Extract<
+  V2RuntimeMessage["parts"][number],
+  { type: "image" | "audio" | "video" | "document" }
+>;
 
 function getMessageFromRole(role: V2RuntimeMessage["role"]): "user" | "assistant" {
   return role === "user" ? "user" : "assistant";
@@ -83,6 +103,59 @@ function resolveRenderText(message: V2RuntimeMessage): string {
     textParts.push(part.content);
   }
   return textParts.join("\n").trim();
+}
+
+export function mergeBackfilledMessages(params: {
+  olderMessages: Array<V2RuntimeMessage>;
+  currentMessages: Array<V2RuntimeMessage>;
+}): Array<V2RuntimeMessage> {
+  const currentIds = new Set(params.currentMessages.map((message) => message.id));
+  const missingOlder = params.olderMessages.filter(
+    (message) => !currentIds.has(message.id),
+  );
+  if (missingOlder.length === 0) return params.currentMessages;
+  return [...missingOlder, ...params.currentMessages];
+}
+
+type InitialSnapMode = "aggressive" | "minimal";
+
+export function resolveV2InitialSnapMode(params: {
+  isDraftThread: boolean;
+  initialMessageCount: number;
+  enableInitialTranscriptRender: boolean;
+}): InitialSnapMode {
+  if (params.isDraftThread) return "aggressive";
+  if (params.enableInitialTranscriptRender) return "minimal";
+  if (params.initialMessageCount > 0) return "minimal";
+  return "aggressive";
+}
+
+export function resolveV2TranscriptLayerState(params: {
+  enableInitialTranscriptRender: boolean;
+  hasInitialTranscriptRenderable: boolean;
+  isDraftThread: boolean;
+  surfaceReady: boolean;
+}): {
+  shouldRenderInitialTranscript: boolean;
+  shouldShowServerTranscriptLayer: boolean;
+  shouldHideClientTranscriptLayer: boolean;
+} {
+  const shouldRenderInitialTranscript =
+    params.enableInitialTranscriptRender &&
+    params.hasInitialTranscriptRenderable &&
+    !params.isDraftThread;
+  const shouldShowServerTranscriptLayer =
+    shouldRenderInitialTranscript && !params.surfaceReady;
+
+  return {
+    shouldRenderInitialTranscript,
+    shouldShowServerTranscriptLayer,
+    shouldHideClientTranscriptLayer: shouldShowServerTranscriptLayer,
+  };
+}
+
+export function hasV2ComposerPayload(message: PromptInputMessage): boolean {
+  return message.text.trim().length > 0 || message.files.length > 0;
 }
 
 type V2ChatSurfaceProps = {
@@ -154,6 +227,10 @@ export function V2ChatSurface({
         });
         void queryClient.invalidateQueries({
           queryKey: v2ThreadMessagesQueryOptions(threadId).queryKey,
+          exact: true,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: v2ThreadAttachmentSummaryQueryOptions(threadId).queryKey,
           exact: true,
         });
       }
@@ -267,7 +344,21 @@ export function V2ChatSurface({
         .filter((part): part is RuntimeUiSpecPart => part.type === "ui-spec")
         .sort((left, right) => left.specIndex - right.specIndex);
       const liveSpecs = liveSpecsByMessageId.get(message.id);
+      const attachments = message.parts
+        .map((part, index) => ({ part, index }))
+        .filter(
+          (
+            item,
+          ): item is {
+            part: RuntimeAttachmentPart;
+            index: number;
+          } => isRenderableAttachmentPart(item.part),
+        )
+        .map(({ part, index }) =>
+          toAttachmentData(part, `${message.id}:attachment:${index}`),
+        );
       return {
+        attachments,
         isLatestAssistant: message.id === lastAssistantMessageId,
         liveSpecs,
         message,
@@ -295,7 +386,11 @@ export function V2ChatSurface({
   }, [isDraftThread, onThreadReady, queryClient, threadId]);
 
   const handleComposerSubmit = useCallback(
-    async (text: string) => {
+    async (message: PromptInputMessage) => {
+      if (!hasV2ComposerPayload(message)) return;
+      const trimmedText = message.text.trim();
+      const fileCount = message.files.length;
+
       try {
         await ensureDraftThreadReady();
       } catch {
@@ -305,10 +400,43 @@ export function V2ChatSurface({
 
       setCreationError(null);
       setRuntimeError(null);
+      let attachments: Awaited<ReturnType<typeof uploadV2AttachmentSource>>[] = [];
+      if (fileCount > 0) {
+        try {
+          attachments = await Promise.all(
+            message.files.map((file) =>
+              uploadV2AttachmentSource({
+                threadId,
+                url: file.url,
+                mediaType: file.mediaType,
+                filename: file.filename ?? "upload",
+              }),
+            ),
+          );
+        } catch (error) {
+          shouldPromoteOnStreamStartRef.current = false;
+          setRuntimeError(toErrorMessage(error));
+          return;
+        }
+      }
+
       shouldPromoteOnStreamStartRef.current = true;
-      await sendMessage(text);
+      if (attachments.length === 0) {
+        await sendMessage(trimmedText);
+        return;
+      }
+
+      const outgoingContent = buildPromptContentParts({
+        text: trimmedText,
+        attachments: attachments.map((attachment) => ({
+          url: toAbsoluteAttachmentUrl(attachment.url),
+          mimeType: attachment.mimeType,
+          filename: attachment.filename,
+        })),
+      });
+      await sendMessage({ content: outgoingContent } as never);
     },
-    [ensureDraftThreadReady, sendMessage],
+    [ensureDraftThreadReady, sendMessage, threadId],
   );
 
   const handleCopyMessage = useCallback((messageId: string, text: string) => {
@@ -347,6 +475,7 @@ export function V2ChatSurface({
 
         {renderedMessages.map(
           ({
+            attachments,
             isLatestAssistant,
             liveSpecs,
             message,
@@ -359,8 +488,28 @@ export function V2ChatSurface({
               from={getMessageFromRole(message.role)}
               id={`msg-${message.id}`}
             >
+              {message.role === "user" && attachments.length > 0 ? (
+                <Attachments variant="grid" className="group-[.is-user]:ml-auto">
+                  {attachments.map((attachment) => (
+                    <Attachment key={attachment.id} data={attachment}>
+                      <AttachmentPreview />
+                      <AttachmentInfo />
+                    </Attachment>
+                  ))}
+                </Attachments>
+              ) : null}
               <MessageContent>
                 {renderText.length > 0 ? <MessageResponse>{renderText}</MessageResponse> : null}
+                {message.role !== "user" && attachments.length > 0 ? (
+                  <Attachments variant="grid">
+                    {attachments.map((attachment) => (
+                      <Attachment key={attachment.id} data={attachment}>
+                        <AttachmentPreview />
+                        <AttachmentInfo />
+                      </Attachment>
+                    ))}
+                  </Attachments>
+                ) : null}
                 {persistedSpecs.map((part) => (
                   <Suspense key={`${message.id}:persisted:${part.specIndex}`} fallback={null}>
                     <JsonRenderDisplay

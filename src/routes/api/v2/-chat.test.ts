@@ -63,6 +63,8 @@ const mocks = vi.hoisted(() => {
     callOrder.push("queue-title");
   });
   const mockHasV2MessageByIdServer = vi.fn(async () => false);
+  const mockIsVisionCapableModel = vi.fn(() => true);
+  const mockUserMessagesContainMedia = vi.fn(() => false);
 
   return {
     callOrder,
@@ -76,8 +78,10 @@ const mocks = vi.hoisted(() => {
     mockProjectV2StreamSnapshotToDb,
     mockQueueV2ThreadTitleGeneration,
     mockHasV2MessageByIdServer,
+    mockIsVisionCapableModel,
     mockToDurableChatSessionResponse,
     mockUseRequest,
+    mockUserMessagesContainMedia,
     mockWithV2JsonRenderEvents,
   };
 });
@@ -95,6 +99,11 @@ vi.mock("~/lib/durable-streams", () => ({
     writeUrl: "http://durable.local/chat/thread-1",
     createIfMissing: true,
   }),
+}));
+
+vi.mock("~/lib/multimodal-parts", () => ({
+  isVisionCapableModel: mocks.mockIsVisionCapableModel,
+  userMessagesContainMedia: mocks.mockUserMessagesContainMedia,
 }));
 
 vi.mock("~/features/chat-v2/server/keys", () => ({
@@ -190,6 +199,8 @@ describe("/api/v2/chat", () => {
     vi.clearAllMocks();
     mocks.callOrder.length = 0;
     mocks.mockHasV2MessageByIdServer.mockResolvedValue(false);
+    mocks.mockIsVisionCapableModel.mockReturnValue(true);
+    mocks.mockUserMessagesContainMedia.mockReturnValue(false);
     process.env.AZURE_OPENAI_API_KEY = "test-key";
     process.env.AZURE_OPENAI_ENDPOINT = "https://example.openai.azure.com";
     process.env.AZURE_OPENAI_DEPLOYMENT = "gpt-test";
@@ -270,5 +281,20 @@ describe("/api/v2/chat", () => {
       }),
     );
     expect(mocks.mockQueueV2ThreadTitleGeneration).not.toHaveBeenCalled();
+  });
+
+  it("rejects media prompts for non-vision models", async () => {
+    mocks.mockUserMessagesContainMedia.mockReturnValueOnce(true);
+    mocks.mockIsVisionCapableModel.mockReturnValueOnce(false);
+
+    await expect(
+      Route.options.server.handlers.POST({
+        request: makeRequest(),
+      }),
+    ).rejects.toMatchObject({
+      status: 415,
+    });
+
+    expect(mocks.mockCreateV2AgentRun).not.toHaveBeenCalled();
   });
 });

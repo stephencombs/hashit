@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppPageHeader } from "~/components/app-page-header";
 import {
@@ -7,6 +7,7 @@ import {
   setV2ThreadTitle,
 } from "~/features/chat-v2/data/mutations";
 import {
+  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "~/features/chat-v2/data/query-options";
@@ -142,6 +143,10 @@ export function V2ChatThreadPage({
     ...v2ThreadMessagesQueryOptions(threadId ?? "__draft__"),
     enabled: Boolean(threadId),
   });
+  const attachmentSummaryQuery = useQuery({
+    ...v2ThreadAttachmentSummaryQueryOptions(threadId ?? "__draft__"),
+    enabled: Boolean(threadId),
+  });
 
   const isExistingThread = Boolean(threadId);
   const isThreadLoading =
@@ -154,6 +159,10 @@ export function V2ChatThreadPage({
     : undefined;
   const initialMessages = threadId ? (messagesQuery.data ?? []) : [];
   const surfaceThreadId = threadId ?? draftThreadId;
+  const attachmentSummaryRenderable = threadId
+    ? ((attachmentSummaryQuery.data as { Renderable?: ReactNode } | undefined)
+        ?.Renderable ?? null)
+    : null;
 
   return (
     <>
@@ -172,13 +181,16 @@ export function V2ChatThreadPage({
             Loading thread...
           </div>
         ) : (
-          <V2ChatSurface
-            threadId={surfaceThreadId}
-            initialResumeOffset={initialResumeOffset}
-            initialMessages={initialMessages}
-            isDraftThread={!threadId}
-            onThreadReady={onThreadReady}
-          />
+          <>
+            {attachmentSummaryRenderable ?? null}
+            <V2ChatSurface
+              threadId={surfaceThreadId}
+              initialResumeOffset={initialResumeOffset}
+              initialMessages={initialMessages}
+              isDraftThread={!threadId}
+              onThreadReady={onThreadReady}
+            />
+          </>
         )}
       </div>
     </>

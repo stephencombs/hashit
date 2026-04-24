@@ -8,6 +8,7 @@ import {
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "~/features/chat-v2/data/query-options";
@@ -50,6 +51,9 @@ function V2ChatRoute() {
       await Promise.all([
         queryClient.ensureQueryData(v2ThreadSessionQueryOptions(nextThreadId)),
         queryClient.ensureQueryData(v2ThreadMessagesQueryOptions(nextThreadId)),
+        queryClient.ensureQueryData(
+          v2ThreadAttachmentSummaryQueryOptions(nextThreadId),
+        ),
       ]);
 
       await navigate({

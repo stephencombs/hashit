@@ -27,7 +27,6 @@ import type {
   HighlighterGeneric,
   ThemedToken,
 } from "shiki";
-import { createHighlighter } from "shiki";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // oxlint-disable-next-line eslint(no-bitwise)
@@ -134,6 +133,7 @@ const highlighterCache = new Map<
   string,
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
 >();
+let shikiModulePromise: Promise<typeof import("shiki")> | null = null;
 
 // Token cache
 const tokensCache = new Map<string, TokenizedCode>();
@@ -155,10 +155,15 @@ const getHighlighter = (
     return cached;
   }
 
-  const highlighterPromise = createHighlighter({
-    langs: [language],
-    themes: ["github-light", "github-dark"],
-  });
+  if (!shikiModulePromise) {
+    shikiModulePromise = import("shiki");
+  }
+  const highlighterPromise = shikiModulePromise.then(({ createHighlighter }) =>
+    createHighlighter({
+      langs: [language],
+      themes: ["github-light", "github-dark"],
+    }),
+  );
 
   highlighterCache.set(language, highlighterPromise);
   return highlighterPromise;

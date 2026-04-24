@@ -22,6 +22,42 @@ const thinkingPartSchema = z.object({
   content: z.string(),
 });
 
+const contentPartSourceSchema = z
+  .object({
+    type: z.enum(["url", "data"]),
+    value: z.string(),
+    mimeType: z.string().optional(),
+  })
+  .passthrough();
+
+const imagePartSchema = z
+  .object({
+    type: z.literal("image"),
+    source: contentPartSourceSchema,
+  })
+  .passthrough();
+
+const audioPartSchema = z
+  .object({
+    type: z.literal("audio"),
+    source: contentPartSourceSchema,
+  })
+  .passthrough();
+
+const videoPartSchema = z
+  .object({
+    type: z.literal("video"),
+    source: contentPartSourceSchema,
+  })
+  .passthrough();
+
+const documentPartSchema = z
+  .object({
+    type: z.literal("document"),
+    source: contentPartSourceSchema,
+  })
+  .passthrough();
+
 const toolCallPartSchema = z
   .object({
     type: z.literal("tool-call"),
@@ -65,6 +101,10 @@ const uiSpecPartSchema = z
 const runtimePartSchema = z.union([
   textPartSchema,
   thinkingPartSchema,
+  imagePartSchema,
+  audioPartSchema,
+  videoPartSchema,
+  documentPartSchema,
   toolCallPartSchema,
   toolResultPartSchema,
   uiSpecPartSchema,

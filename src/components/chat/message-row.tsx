@@ -12,14 +12,20 @@ import {
   MessageContent,
   MessageResponse,
 } from "~/components/ai-elements/message";
+import {
+  Attachment,
+  AttachmentInfo,
+  AttachmentPreview,
+  Attachments,
+  type AttachmentData,
+} from "~/components/ai-elements/attachments";
 import { DuplicateResolutionDisplay } from "~/components/duplicate-resolution-display";
 import { FormDisplay } from "~/components/form-display";
 import { MessageRowActivity } from "~/components/chat/message-row-activity";
 import {
-  DocumentPartView,
-  ImagePartView,
   InteractiveToolFallback,
-  MediaPartView,
+  isRenderableAttachmentPart,
+  toAttachmentData,
 } from "~/components/chat/message-row-parts";
 import type {
   ChatMessage,
@@ -42,6 +48,11 @@ const JsonRenderDisplay = lazy(() =>
     default: module.JsonRenderDisplay,
   })),
 );
+
+type ChatAttachmentPart = Extract<
+  ChatMessage["parts"][number],
+  { type: "image" | "audio" | "video" | "document" }
+>;
 
 function SpecMountReporter({
   onReady,
@@ -104,6 +115,30 @@ function MessageRowImpl({
     parts: message.parts,
     messageComplete,
   });
+  const attachments = message.parts
+    .map((part, index) => ({ part, index }))
+    .filter(
+      (
+        item,
+      ): item is {
+        part: ChatAttachmentPart;
+        index: number;
+      } => isRenderableAttachmentPart(item.part),
+    )
+    .map(({ part, index }): AttachmentData =>
+      toAttachmentData(part, `${message.id}:attachment:${index}`),
+    );
+  const attachmentsNode =
+    attachments.length > 0 ? (
+      <Attachments variant="grid" className="group-[.is-user]:ml-auto">
+        {attachments.map((attachment) => (
+          <Attachment key={attachment.id} data={attachment}>
+            <AttachmentPreview />
+            <AttachmentInfo />
+          </Attachment>
+        ))}
+      </Attachments>
+    ) : null;
 
   return (
     <Message
@@ -111,6 +146,7 @@ function MessageRowImpl({
       key={message.id}
       id={`msg-${message.id}`}
     >
+      {message.role === "user" ? attachmentsNode : null}
       <MessageContent>
         {steps.length > 0 && (
           <MessageRowActivity
@@ -129,13 +165,13 @@ function MessageRowImpl({
                 </MessageResponse>
               );
             case "image":
-              return <ImagePartView key={key} part={part} />;
+              return null;
             case "audio":
-              return <MediaPartView key={key} part={part} kind="audio" />;
+              return null;
             case "video":
-              return <MediaPartView key={key} part={part} kind="video" />;
+              return null;
             case "document":
-              return <DocumentPartView key={key} part={part} />;
+              return null;
             case "tool-call": {
               const interactiveLastIndex = lastInteractiveToolCallIndexById.get(
                 part.id,
@@ -252,9 +288,13 @@ function MessageRowImpl({
             case "thinking":
               // Handled inside the chain-of-thought activity panel above.
               return null;
+            case "ui-spec":
+              // Rendered by the persisted/live spec sections below.
+              return null;
+            case "tool-summary":
+              // Rendered by MessageRowActivity via toolSummary extraction.
+              return null;
             default: {
-              // Custom (non-TanStack) parts like ui-spec / tool-summary land
-              // here and are handled by sibling sections (persistedSpecs etc).
               // The strict `never` check below catches future MessagePart
               // additions at compile time so we can decide how to render them.
               const _exhaustive: never = part;
@@ -263,6 +303,7 @@ function MessageRowImpl({
             }
           }
         })}
+        {message.role !== "user" ? attachmentsNode : null}
       </MessageContent>
       {persistedSpecs.length > 0
         ? persistedSpecs.map(({ spec, idx }) => (

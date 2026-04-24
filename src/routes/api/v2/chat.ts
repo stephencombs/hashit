@@ -7,6 +7,10 @@ import {
 } from "@durable-streams/tanstack-ai-transport";
 import type { RequestLogger } from "evlog";
 import { getDurableChatSessionTarget } from "~/lib/durable-streams";
+import {
+  isVisionCapableModel,
+  userMessagesContainMedia,
+} from "~/lib/multimodal-parts";
 import { createV2AgentRun } from "~/features/chat-v2/server/agent-runner";
 import { v2ChatRequestSchema } from "~/features/chat-v2/server/chat-contract";
 import { buildV2ChatStreamPath } from "~/features/chat-v2/server/keys";
@@ -108,6 +112,20 @@ export const Route = createFileRoute("/api/v2/chat")({
             status: 400,
             why: "All input messages are empty.",
             fix: "Send at least one message with text content.",
+          });
+        }
+
+        const requestedModel =
+          data?.model?.trim() || process.env.AZURE_OPENAI_DEPLOYMENT;
+        if (
+          userMessagesContainMedia(messages) &&
+          !isVisionCapableModel(requestedModel)
+        ) {
+          throw createError({
+            message: "Model does not support image or document input",
+            status: 415,
+            why: `Selected model "${requestedModel ?? "unknown"}" cannot process image, audio, video, or document parts`,
+            fix: "Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)",
           });
         }
 

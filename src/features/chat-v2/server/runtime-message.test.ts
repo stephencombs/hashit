@@ -77,6 +77,60 @@ describe("normalizeV2MessageForRuntime", () => {
     expect(normalized.renderText).toBe("hello");
   });
 
+  it("preserves multimodal image/audio/video/document parts", () => {
+    const normalized = normalizeV2MessageForRuntime(
+      buildMessage({
+        content: "",
+        parts: [
+          {
+            type: "image",
+            source: { type: "url", value: "https://example.com/image.png" },
+          },
+          {
+            type: "audio",
+            source: { type: "url", value: "https://example.com/audio.mp3" },
+          },
+          {
+            type: "video",
+            source: { type: "url", value: "https://example.com/video.mp4" },
+          },
+          {
+            type: "document",
+            source: {
+              type: "url",
+              value: "https://example.com/document.pdf",
+              mimeType: "application/pdf",
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(normalized.parts).toEqual([
+      {
+        type: "image",
+        source: { type: "url", value: "https://example.com/image.png" },
+      },
+      {
+        type: "audio",
+        source: { type: "url", value: "https://example.com/audio.mp3" },
+      },
+      {
+        type: "video",
+        source: { type: "url", value: "https://example.com/video.mp4" },
+      },
+      {
+        type: "document",
+        source: {
+          type: "url",
+          value: "https://example.com/document.pdf",
+          mimeType: "application/pdf",
+        },
+      },
+    ]);
+    expect(normalized.renderText).toBe("");
+  });
+
   it("falls back to content text part when parts are invalid", () => {
     const normalized = normalizeV2MessageForRuntime(
       buildMessage({

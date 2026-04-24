@@ -5,6 +5,7 @@ import {
 } from "@azure/storage-blob";
 
 const ORIGINAL_FILENAME_METADATA_KEY = "original_filename";
+const THREAD_ID_METADATA_KEY = "thread_id";
 
 export interface AttachmentMeta {
   contentType: string;
@@ -18,6 +19,7 @@ export interface UploadAttachmentInput {
   originalFilename: string;
   body: Buffer | Uint8Array | Blob;
   size: number;
+  threadId?: string;
 }
 
 let containerPromise: Promise<ContainerClient> | null = null;
@@ -62,6 +64,12 @@ export async function uploadAttachment(
 ): Promise<void> {
   const container = await getAttachmentContainer();
   const blob = container.getBlockBlobClient(input.id);
+  const metadata: Record<string, string> = {
+    [ORIGINAL_FILENAME_METADATA_KEY]: encodeURIComponent(input.originalFilename),
+  };
+  if (input.threadId) {
+    metadata[THREAD_ID_METADATA_KEY] = encodeURIComponent(input.threadId);
+  }
 
   const data =
     input.body instanceof Blob
@@ -75,11 +83,7 @@ export async function uploadAttachment(
       blobContentType: input.contentType,
       blobCacheControl: "public, max-age=31536000, immutable",
     },
-    metadata: {
-      [ORIGINAL_FILENAME_METADATA_KEY]: encodeURIComponent(
-        input.originalFilename,
-      ),
-    },
+    metadata,
   });
 }
 
@@ -87,6 +91,7 @@ export interface AttachmentDownload {
   contentType: string;
   contentLength?: number;
   originalFilename?: string;
+  threadId?: string;
   stream: NodeJS.ReadableStream;
 }
 
@@ -113,11 +118,14 @@ export async function getAttachment(
   const originalFilename = originalFilenameRaw
     ? safeDecode(originalFilenameRaw)
     : undefined;
+  const threadIdRaw = download.metadata?.[THREAD_ID_METADATA_KEY] ?? undefined;
+  const threadId = threadIdRaw ? safeDecode(threadIdRaw) : undefined;
 
   return {
     contentType: download.contentType ?? "application/octet-stream",
     contentLength: download.contentLength ?? undefined,
     originalFilename,
+    threadId,
     stream: download.readableStreamBody,
   };
 }

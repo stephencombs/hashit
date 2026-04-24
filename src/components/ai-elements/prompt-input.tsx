@@ -181,11 +181,29 @@ const captureScreenshot = async (): Promise<File | null> => {
 // Provider Context & Types
 // ============================================================================
 
+export type ClearAttachmentsOptions = {
+  revokeObjectUrls?: boolean;
+};
+
+function shouldRevokeObjectUrls(options?: ClearAttachmentsOptions): boolean {
+  return options?.revokeObjectUrls ?? true;
+}
+
+function revokeAttachmentObjectUrls(
+  files: Array<{ url?: string | undefined }>,
+): void {
+  for (const file of files) {
+    if (file.url?.startsWith("blob:")) {
+      URL.revokeObjectURL(file.url);
+    }
+  }
+}
+
 export interface AttachmentsContext {
   files: (FileUIPart & { id: string; size?: number })[];
   add: (files: File[] | FileList) => void;
   remove: (id: string) => void;
-  clear: () => void;
+  clear: (options?: ClearAttachmentsOptions) => void;
   openFileDialog: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   /**
@@ -303,12 +321,10 @@ export const PromptInputProvider = ({
     });
   }, []);
 
-  const clear = useCallback(() => {
+  const clear = useCallback((options?: ClearAttachmentsOptions) => {
     setAttachmentFiles((prev) => {
-      for (const f of prev) {
-        if (f.url) {
-          URL.revokeObjectURL(f.url);
-        }
+      if (shouldRevokeObjectUrls(options)) {
+        revokeAttachmentObjectUrls(prev);
       }
       return [];
     });
@@ -877,14 +893,12 @@ export const PromptInput = ({
   );
 
   const clearAttachments = useCallback(
-    () =>
+    (options?: ClearAttachmentsOptions) =>
       usingProvider
-        ? controller?.attachments.clear()
+        ? controller?.attachments.clear(options)
         : setItems((prev) => {
-            for (const file of prev) {
-              if (file.url) {
-                URL.revokeObjectURL(file.url);
-              }
+            if (shouldRevokeObjectUrls(options)) {
+              revokeAttachmentObjectUrls(prev);
             }
             return [];
           }),
@@ -902,8 +916,8 @@ export const PromptInput = ({
     ? controller.attachments.openFileDialog
     : openFileDialogLocal;
 
-  const clear = useCallback(() => {
-    clearAttachments();
+  const clear = useCallback((options?: ClearAttachmentsOptions) => {
+    clearAttachments(options);
     clearReferencedSources();
   }, [clearAttachments, clearReferencedSources]);
 
@@ -1088,22 +1102,32 @@ export const PromptInput = ({
           }),
         );
 
-        const result = onSubmit({ files: convertedFiles, text }, event);
+        const submittedFiles = files;
+        clear({ revokeObjectUrls: false });
+
+        let result: void | Promise<void>;
+        try {
+          result = onSubmit({ files: convertedFiles, text }, event);
+        } catch {
+          revokeAttachmentObjectUrls(submittedFiles);
+          return;
+        }
 
         // Handle both sync and async onSubmit
         if (result instanceof Promise) {
           try {
             await result;
-            clear();
             if (usingProvider) {
               controller.textInput.clear();
             }
           } catch {
-            // Don't clear on error - user may want to retry
+            // Attachments are already cleared once the prompt has been sent.
+          } finally {
+            revokeAttachmentObjectUrls(submittedFiles);
           }
         } else {
-          // Sync function completed without throwing, clear inputs
-          clear();
+          // Sync function completed without throwing, clear provider-owned text.
+          revokeAttachmentObjectUrls(submittedFiles);
           if (usingProvider) {
             controller.textInput.clear();
           }

@@ -30,6 +30,7 @@ import { Route as AppArtifactsRouteImport } from './routes/_app.artifacts'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/index'
 import { Route as V2ChatThreadIdRouteImport } from './routes/v2.chat.$threadId'
 import { Route as ApiV2ThreadEventsRouteImport } from './routes/api/v2/thread-events'
+import { Route as ApiV2PromptAttachmentsRouteImport } from './routes/api/v2/prompt-attachments'
 import { Route as ApiV2ChatStreamRouteImport } from './routes/api/v2/chat-stream'
 import { Route as ApiV2ChatRouteImport } from './routes/api/v2/chat'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
@@ -45,6 +46,7 @@ import { Route as AppSettingsMcpRouteImport } from './routes/_app.settings/mcp'
 import { Route as AppSettingsDataRouteImport } from './routes/_app.settings/data'
 import { Route as AppSettingsAppearanceRouteImport } from './routes/_app.settings/appearance'
 import { Route as AppChatThreadIdRouteImport } from './routes/_app.chat.$threadId'
+import { Route as ApiV2PromptAttachmentsAttachmentIdRouteImport } from './routes/api/v2/prompt-attachments.$attachmentId'
 import { Route as ApiDashboardSnapshotsSnapshotIdRouteImport } from './routes/api/dashboard.snapshots.$snapshotId'
 import { Route as ApiAutomationsAutomationIdRunsRouteImport } from './routes/api/automations.$automationId.runs'
 
@@ -152,6 +154,11 @@ const ApiV2ThreadEventsRoute = ApiV2ThreadEventsRouteImport.update({
   path: '/api/v2/thread-events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV2PromptAttachmentsRoute = ApiV2PromptAttachmentsRouteImport.update({
+  id: '/api/v2/prompt-attachments',
+  path: '/api/v2/prompt-attachments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV2ChatStreamRoute = ApiV2ChatStreamRouteImport.update({
   id: '/api/v2/chat-stream',
   path: '/api/v2/chat-stream',
@@ -229,6 +236,12 @@ const AppChatThreadIdRoute = AppChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiV2PromptAttachmentsAttachmentIdRoute =
+  ApiV2PromptAttachmentsAttachmentIdRouteImport.update({
+    id: '/$attachmentId',
+    path: '/$attachmentId',
+    getParentRoute: () => ApiV2PromptAttachmentsRoute,
+  } as any)
 const ApiDashboardSnapshotsSnapshotIdRoute =
   ApiDashboardSnapshotsSnapshotIdRouteImport.update({
     id: '/snapshots/$snapshotId',
@@ -275,11 +288,13 @@ export interface FileRoutesByFullPath {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/prompt-attachments': typeof ApiV2PromptAttachmentsRouteWithChildren
   '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
+  '/api/v2/prompt-attachments/$attachmentId': typeof ApiV2PromptAttachmentsAttachmentIdRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -312,11 +327,13 @@ export interface FileRoutesByTo {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/prompt-attachments': typeof ApiV2PromptAttachmentsRouteWithChildren
   '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/settings': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
+  '/api/v2/prompt-attachments/$attachmentId': typeof ApiV2PromptAttachmentsAttachmentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -353,11 +370,13 @@ export interface FileRoutesById {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v2/prompt-attachments': typeof ApiV2PromptAttachmentsRouteWithChildren
   '/api/v2/thread-events': typeof ApiV2ThreadEventsRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
+  '/api/v2/prompt-attachments/$attachmentId': typeof ApiV2PromptAttachmentsAttachmentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -394,11 +413,13 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/prompt-attachments'
     | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/settings/'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
+    | '/api/v2/prompt-attachments/$attachmentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -431,11 +452,13 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/prompt-attachments'
     | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/settings'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
+    | '/api/v2/prompt-attachments/$attachmentId'
   id:
     | '__root__'
     | '/_app'
@@ -471,11 +494,13 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v2/prompt-attachments'
     | '/api/v2/thread-events'
     | '/v2/chat/$threadId'
     | '/_app/settings/'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
+    | '/api/v2/prompt-attachments/$attachmentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -495,6 +520,7 @@ export interface RootRouteChildren {
   ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
   ApiV2ChatRoute: typeof ApiV2ChatRoute
   ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute
+  ApiV2PromptAttachmentsRoute: typeof ApiV2PromptAttachmentsRouteWithChildren
   ApiV2ThreadEventsRoute: typeof ApiV2ThreadEventsRoute
 }
 
@@ -647,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV2ThreadEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v2/prompt-attachments': {
+      id: '/api/v2/prompt-attachments'
+      path: '/api/v2/prompt-attachments'
+      fullPath: '/api/v2/prompt-attachments'
+      preLoaderRoute: typeof ApiV2PromptAttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/chat-stream': {
       id: '/api/v2/chat-stream'
       path: '/api/v2/chat-stream'
@@ -751,6 +784,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/chat/$threadId'
       preLoaderRoute: typeof AppChatThreadIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/v2/prompt-attachments/$attachmentId': {
+      id: '/api/v2/prompt-attachments/$attachmentId'
+      path: '/$attachmentId'
+      fullPath: '/api/v2/prompt-attachments/$attachmentId'
+      preLoaderRoute: typeof ApiV2PromptAttachmentsAttachmentIdRouteImport
+      parentRoute: typeof ApiV2PromptAttachmentsRoute
     }
     '/api/dashboard/snapshots/$snapshotId': {
       id: '/api/dashboard/snapshots/$snapshotId'
@@ -907,6 +947,21 @@ const ApiThreadsRouteWithChildren = ApiThreadsRoute._addFileChildren(
   ApiThreadsRouteChildren,
 )
 
+interface ApiV2PromptAttachmentsRouteChildren {
+  ApiV2PromptAttachmentsAttachmentIdRoute: typeof ApiV2PromptAttachmentsAttachmentIdRoute
+}
+
+const ApiV2PromptAttachmentsRouteChildren: ApiV2PromptAttachmentsRouteChildren =
+  {
+    ApiV2PromptAttachmentsAttachmentIdRoute:
+      ApiV2PromptAttachmentsAttachmentIdRoute,
+  }
+
+const ApiV2PromptAttachmentsRouteWithChildren =
+  ApiV2PromptAttachmentsRoute._addFileChildren(
+    ApiV2PromptAttachmentsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   HealthRoute: HealthRoute,
@@ -924,6 +979,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
   ApiV2ChatRoute: ApiV2ChatRoute,
   ApiV2ChatStreamRoute: ApiV2ChatStreamRoute,
+  ApiV2PromptAttachmentsRoute: ApiV2PromptAttachmentsRouteWithChildren,
   ApiV2ThreadEventsRoute: ApiV2ThreadEventsRoute,
 }
 export const routeTree = rootRouteImport
