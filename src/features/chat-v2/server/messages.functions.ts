@@ -18,6 +18,10 @@ export const listV2ThreadMessages = createServerFn({ method: "GET" })
       listV2ThreadMessagesServer(data),
   );
 
+// Compatibility alias for stale query-options modules still importing
+// `listV2ThreadMessagesPage` during dev HMR transitions.
+export const listV2ThreadMessagesPage = listV2ThreadMessages;
+
 export const listV2ThreadMessageUiSpecs = createServerFn({ method: "GET" })
   .inputValidator(zodValidator(v2ThreadIdInputSchema))
   .handler(

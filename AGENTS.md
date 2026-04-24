@@ -6,16 +6,16 @@
 - For complex work, prefer a research-first flow: analyze, then plan, then implement.
 - Do not commit or push changes unless explicitly requested in the current chat.
 - Prefer minimal, local changes over introducing new abstractions when inline changes are sufficient.
-- For V2 work, build net-new flows and avoid reusing V1 code paths.
+- For V2 work, build net-new flows and avoid reusing V1 code paths; favor hard refactors over backward-compatibility shims.
 - Prefer package/framework-native solutions (TanStack Router, Query, DB, AI, and ai-elements) before adding custom code, and simplify aggressively.
 - Prefer Router/Query/DB data-flow patterns over `useEffect` unless alternatives are exhausted.
 - Prioritize native-feeling, instant UX and perceived performance.
-- Keep `New Chat` active state tied to exact `useMatchRoute` matches; thread routes should not mark it active.
+- Never use `as any`; resolve type errors by refining or inferring types, and if unavoidable cast through `unknown` instead of deleting logic.
 - Provide research-heavy or architecture-heavy deliverables as canvas artifacts instead of long chat responses.
 
 ## Learned Workspace Facts
 
-- Stack: TanStack Start + Nitro + Vite with Drizzle/Postgres, TanStack AI, Azure OpenAI, and MCP tooling.
+- Stack: TanStack Start + Nitro + Vite (with React Server Components available in current Start versions), plus Drizzle/Postgres, TanStack AI, Azure OpenAI, and MCP tooling.
 - Local development runs at `hashit.localhost` via portless.
 - Durable Streams powers chat session transport (`@durable-streams/tanstack-ai-transport`), with server helpers in `src/lib/durable-streams.ts` and production `DURABLE_STREAMS_URL` wired from Terraform outputs.
 - V2 chat is isolated under `src/features/chat-v2/` and `src/routes/v2*`, with `v2_threads`/`v2_messages` tables and `/api/v2/chat` + `/api/v2/chat-stream` endpoints.
