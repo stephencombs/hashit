@@ -95,11 +95,11 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Back to current chat">
+            <SidebarMenuButton asChild tooltip="Back to app">
               <Link to="/" draggable={false}>
                 <ArrowLeftIcon className="size-4" />
                 <span className="group-data-[collapsible=icon]:hidden">
-                  Back to V1
+                  Back to App
                 </span>
               </Link>
             </SidebarMenuButton>

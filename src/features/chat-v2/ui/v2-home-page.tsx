@@ -10,8 +10,8 @@ export function V2HomePage() {
             Select or create a thread
           </h2>
           <p className="text-muted-foreground text-sm">
-            This V2 surface is isolated from the current chat UI and uses a
-            collection-first data model with TanStack DB live queries.
+            This chat surface uses a collection-first data model with TanStack
+            DB live queries.
           </p>
         </div>
       </div>

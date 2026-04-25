@@ -1,6 +1,6 @@
 /**
  * One-shot backfill: compute argsPreview on tool-call parts and summary on
- * tool-result parts for all existing rows in messages.parts.
+ * tool-result parts for all existing rows in v2_messages.parts.
  *
  * Safe to re-run — already-enriched parts are skipped. Processes rows in
  * batches of 500 ordered by createdAt to stay friendly on memory and locks.
@@ -10,7 +10,7 @@
  */
 
 import { db } from "../src/db";
-import { messages } from "../src/db/schema";
+import { v2Messages } from "../src/db/schema";
 import { asc, gt, eq } from "drizzle-orm";
 import {
   buildArgsPreview,
@@ -55,13 +55,13 @@ async function main() {
   while (true) {
     const rows = await db
       .select({
-        id: messages.id,
-        parts: messages.parts,
-        createdAt: messages.createdAt,
+        id: v2Messages.id,
+        parts: v2Messages.parts,
+        createdAt: v2Messages.createdAt,
       })
-      .from(messages)
-      .where(cursor ? gt(messages.createdAt, cursor) : undefined)
-      .orderBy(asc(messages.createdAt))
+      .from(v2Messages)
+      .where(cursor ? gt(v2Messages.createdAt, cursor) : undefined)
+      .orderBy(asc(v2Messages.createdAt))
       .limit(BATCH_SIZE);
 
     if (rows.length === 0) break;
@@ -76,9 +76,9 @@ async function main() {
       if (!changed) continue;
 
       await db
-        .update(messages)
+        .update(v2Messages)
         .set({ parts: nextParts })
-        .where(eq(messages.id, row.id));
+        .where(eq(v2Messages.id, row.id));
       updated++;
     }
 

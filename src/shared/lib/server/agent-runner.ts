@@ -4,16 +4,16 @@ import {
   type ChatMiddleware,
   type ErrorInfo,
   type FinishInfo,
-  type Tool,
   type StreamChunk,
+  type Tool,
 } from "@tanstack/ai";
-import { collectFormDataTool } from "~/shared/lib/form-tool";
-import { resolveDuplicateEntityTool } from "~/shared/lib/resolve-duplicate-tool";
 import {
   getMcpTools,
   type GetMcpToolsOptions,
 } from "~/features/mcp/server/client";
+import { collectFormDataTool } from "~/shared/lib/form-tool";
 import { getAzureAdapter } from "~/shared/lib/openai-adapter";
+import { resolveDuplicateEntityTool } from "~/shared/lib/resolve-duplicate-tool";
 import {
   PROFILE_CONFIGS,
   resolveAgentModel,
@@ -43,7 +43,7 @@ export interface AgentRunState {
 
 interface CreateAgentRunOptions {
   profile: AgentRunProfile;
-  messages: Array<any>;
+  messages: NonNullable<Parameters<typeof chat>[0]["messages"]>;
   conversationId?: string;
   model?: string;
   temperature?: number;
@@ -144,7 +144,7 @@ export async function createAgentRun({
   const runState = createAgentRunState();
 
   const allowedToolNames = new Set(tools.map((tool) => tool.name));
-  if (tools.some((t) => t.lazy)) {
+  if (tools.some((tool) => tool.lazy)) {
     allowedToolNames.add(LAZY_TOOL_DISCOVERY_NAME);
   }
 

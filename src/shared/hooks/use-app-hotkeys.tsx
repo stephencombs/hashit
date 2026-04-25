@@ -18,11 +18,11 @@ export function AppHotkeys({ onOpenCommandPalette }: AppHotkeysProps) {
 
   useHotkey("Mod+Shift+N", (event) => {
     event.preventDefault();
-    navigate({
-      to: "/",
+    void navigate({
+      to: "/v2/chat",
       state: (prev) => ({
         ...prev,
-        __newChatNavNonce: Date.now(),
+        __newV2ChatNavNonce: Date.now(),
       }),
     });
   });

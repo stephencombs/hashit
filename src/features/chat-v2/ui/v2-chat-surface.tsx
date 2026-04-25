@@ -13,7 +13,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChatConversation } from "~/features/chat-v1/ui/chat-conversation";
 import {
   MessageAction,
   MessageActions,
@@ -26,12 +25,13 @@ import { Alert, AlertDescription } from "~/shared/ui/alert";
 import { Button } from "~/shared/ui/button";
 import { DuplicateResolutionDisplay } from "~/shared/ui/duplicate-resolution-display";
 import { FormDisplay } from "~/shared/ui/form-display";
-import { InteractiveToolFallback } from "~/features/chat-v1/ui/message-row-parts";
 import {
   hasCollectFormDataOutput,
   hasResolutionOutput,
-  parseInteractiveSpec,
-} from "~/features/chat-v1/ui/message-row-utils";
+  parseV2InteractiveSpec,
+  V2InteractiveToolFallback,
+  type V2InteractiveToolName,
+} from "~/features/chat-v2/ui/v2-interactive-tools";
 import { useMcpSettings } from "~/shared/hooks/use-mcp-settings";
 import { useModelSettings } from "~/shared/hooks/use-model-settings";
 import {
@@ -43,7 +43,6 @@ import {
   cancelAllPending,
   registerPending,
   resolvePending,
-  type InteractiveToolName,
 } from "~/shared/lib/interactive-tool-registry";
 import {
   LiveSpecStore,
@@ -65,6 +64,7 @@ import {
   setV2ThreadTitle,
 } from "../data/mutations";
 import type { V2RuntimeMessage } from "../server/runtime-message";
+import { V2ChatConversation } from "./v2-chat-conversation";
 import { V2Composer } from "./v2-composer";
 
 const JsonRenderDisplay = lazy(() =>
@@ -220,7 +220,7 @@ function V2InteractiveToolPart({
   part: RuntimeToolCallPart;
   messageComplete: boolean;
   onApprovalResponse: (approvalId: string, approved: boolean) => void;
-  onResolve: (toolName: InteractiveToolName, output: unknown) => void;
+  onResolve: (toolName: V2InteractiveToolName, output: unknown) => void;
 }) {
   if (part.approval?.needsApproval && part.approval.approved == null) {
     return (
@@ -253,10 +253,10 @@ function V2InteractiveToolPart({
   }
 
   if (part.name === "collect_form_data") {
-    const formSpec = parseInteractiveSpec<FormSpec>(part.arguments);
+    const formSpec = parseV2InteractiveSpec<FormSpec>(part.arguments);
     if (!formSpec) {
       return messageComplete ? (
-        <InteractiveToolFallback message="Unable to render form request." />
+        <V2InteractiveToolFallback message="Unable to render form request." />
       ) : null;
     }
 
@@ -282,12 +282,12 @@ function V2InteractiveToolPart({
   }
 
   if (part.name === "resolve_duplicate_entity") {
-    const duplicateSpec = parseInteractiveSpec<DuplicateResolutionSpec>(
+    const duplicateSpec = parseV2InteractiveSpec<DuplicateResolutionSpec>(
       part.arguments,
     );
     if (!duplicateSpec) {
       return messageComplete ? (
-        <InteractiveToolFallback message="Unable to render duplicate-resolution request." />
+        <V2InteractiveToolFallback message="Unable to render duplicate-resolution request." />
       ) : null;
     }
 
@@ -548,7 +548,7 @@ export function V2ChatSurface({
   );
 
   const handleResolveInteractive = useCallback(
-    (toolName: InteractiveToolName, output: unknown) => {
+    (toolName: V2InteractiveToolName, output: unknown) => {
       if (resolvePending(toolName, output)) {
         setRuntimeError(null);
         return;
@@ -603,7 +603,7 @@ export function V2ChatSurface({
         </div>
       ) : null}
 
-      <ChatConversation className="min-h-0 flex-1">
+      <V2ChatConversation className="min-h-0 flex-1">
         {renderedMessages.length === 0 ? (
           <div className="text-muted-foreground text-sm">
             Start the conversation by sending a message.
@@ -726,7 +726,7 @@ export function V2ChatSurface({
             </Message>
           ),
         )}
-      </ChatConversation>
+      </V2ChatConversation>
 
       <V2Composer
         isStreaming={isStreaming}

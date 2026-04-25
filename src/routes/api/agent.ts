@@ -1,50 +1,16 @@
-import { toServerSentEventsResponse } from "@tanstack/ai";
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-import { withPersistence } from "~/features/chat-v1/server/chat-helpers";
-import { prepareAutomationRun } from "~/features/automations/server/automation-agent";
 import { errorResponse } from "~/shared/lib/http-error";
-
-const agentRequestSchema = z.object({
-  prompt: z.string().min(1),
-  threadId: z.string().optional(),
-});
 
 export const Route = createFileRoute("/api/agent")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        if (
-          !process.env.AZURE_OPENAI_API_KEY ||
-          !process.env.AZURE_OPENAI_ENDPOINT ||
-          !process.env.AZURE_OPENAI_DEPLOYMENT
-        ) {
-          return errorResponse({
-            message: "Azure OpenAI environment variables not configured",
-            status: 500,
-            why: "Missing one or more required environment variables",
-            fix: "Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT",
-          });
-        }
-
-        const { prompt, threadId: existingThreadId } = agentRequestSchema.parse(
-          await request.json(),
-        );
-
-        const prepared = await prepareAutomationRun(prompt, existingThreadId);
-
-        return toServerSentEventsResponse(
-          withPersistence(
-            prepared.stream,
-            prepared.threadId,
-            prepared.threadCreated,
-            prepared.prompt,
-            prepared.userParts,
-            true,
-            prepared.runState,
-          ),
-        );
-      },
+      POST: async () =>
+        errorResponse({
+          message: "Legacy agent streaming endpoint removed",
+          status: 410,
+          why: "The V1 chat persistence path has been deleted.",
+          fix: "Use /api/v2/chat for interactive chat or the automations executor for scheduled prompt runs.",
+        }),
     },
   },
 });

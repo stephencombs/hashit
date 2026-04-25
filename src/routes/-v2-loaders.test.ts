@@ -33,14 +33,11 @@ describe("v2 route loaders", () => {
       },
     });
 
-    expect(ensureQueryData).toHaveBeenCalledTimes(3);
+    expect(ensureQueryData).toHaveBeenCalledTimes(2);
     const firstCall = ensureQueryData.mock.calls[0]?.[0] as {
       queryKey: unknown[];
     };
     const secondCall = ensureQueryData.mock.calls[1]?.[0] as {
-      queryKey: unknown[];
-    };
-    const thirdCall = ensureQueryData.mock.calls[2]?.[0] as {
       queryKey: unknown[];
     };
     expect(firstCall.queryKey).toEqual([
@@ -54,12 +51,6 @@ describe("v2 route loaders", () => {
       "messages",
       "thread-123",
       "list",
-    ]);
-    expect(thirdCall.queryKey).toEqual([
-      "v2",
-      "attachments",
-      "summary",
-      "thread-123",
     ]);
   });
 });

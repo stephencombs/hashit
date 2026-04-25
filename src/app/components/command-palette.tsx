@@ -25,7 +25,7 @@ import {
 } from "~/shared/ui/command";
 import { useSidebar } from "~/shared/ui/sidebar";
 import { useTheme } from "~/shared/hooks/use-theme";
-import { threadListQuery } from "~/features/chat-v1/data/queries";
+import { v2ThreadListQueryOptions } from "~/features/chat-v2/data/query-options";
 
 const MAX_THREADS = 25;
 
@@ -43,7 +43,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
   const { toggleSidebar } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
-  const { data: threads = [] } = useQuery(threadListQuery);
+  const { data: threads = [] } = useQuery(v2ThreadListQueryOptions);
 
   const recentThreads = useMemo(() => {
     return [...threads]
@@ -95,10 +95,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               onSelect={() =>
                 run(() => {
                   void navigate({
-                    to: "/",
+                    to: "/v2/chat",
                     state: (prev) => ({
                       ...prev,
-                      __newChatNavNonce: Date.now(),
+                      __newV2ChatNavNonce: Date.now(),
                     }),
                   });
                 })
@@ -193,7 +193,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     onSelect={() =>
                       run(() => {
                         void navigate({
-                          to: "/chat/$threadId",
+                          to: "/v2/chat/$threadId",
                           params: { threadId: thread.id },
                         });
                       })

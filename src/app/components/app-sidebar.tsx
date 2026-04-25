@@ -1,66 +1,23 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
-import { AppHotkeys } from "~/shared/hooks/use-app-hotkeys";
+import { Link, useMatchRoute } from "@tanstack/react-router";
+import { FlaskConicalIcon, GaugeIcon, LayersIcon, ZapIcon } from "lucide-react";
+import { SquarePenIcon } from "lucide-animated";
 import { CommandPalette } from "~/app/components/command-palette";
-import { Kbd, KbdGroup } from "~/shared/ui/kbd";
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CheckSquare2Icon,
-  FlaskConicalIcon,
-  PinIcon,
-  PinOffIcon,
-  Trash2Icon,
-  TriangleAlertIcon,
-  XIcon,
-  ZapIcon,
-} from "lucide-react";
-import {
-  GaugeIcon,
-  LayersIcon,
-  SquarePenIcon,
-  ZapIcon as AnimatedZapIcon,
-} from "lucide-animated";
-import { HoverIcon } from "~/shared/ui/animated-icon";
-import { Checkbox } from "~/shared/ui/checkbox";
-import { Button } from "~/shared/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/shared/ui/dialog";
-
 import { NavUser } from "~/app/components/nav-user";
+import { V2ThreadList } from "~/features/chat-v2/ui/v2-thread-list";
+import { AppHotkeys } from "~/shared/hooks/use-app-hotkeys";
+import { HoverIcon } from "~/shared/ui/animated-icon";
+import { Kbd, KbdGroup } from "~/shared/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "~/shared/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/shared/ui/tooltip";
-import { useIsOverflowing } from "~/shared/hooks/use-is-overflowing";
-import { Skeleton } from "~/shared/ui/skeleton";
-import {
-  artifactsByThreadQuery,
-  threadDetailQuery,
-  threadListQuery,
-} from "~/features/chat-v1/data/queries";
-import type { Thread } from "~/features/chat-v1/contracts/schemas";
-import {
-  clearThreadStreaming,
-  markThreadStreaming,
-  useStreamingThreadIds,
-} from "~/features/chat-v1/ui/thread-streaming-db";
 
 const user = {
   name: "User",
@@ -79,716 +36,12 @@ function KbdHint({ keys }: { keys: string }) {
   );
 }
 
-// Delay (ms) before a thread-title tooltip appears on hover. Long enough
-// that casually scanning the thread list doesn't flash tooltips on every
-// row, short enough to feel responsive when you actually pause on one.
-const THREAD_TOOLTIP_DELAY_MS = 500;
-// Sidebar rows have a 4px vertical menu gap. Extend the clickable surface by
-// 2px above and below so there is no dead zone between adjacent thread items.
-const SIDEBAR_ROW_HIT_AREA_CLASS_NAME = "overflow-visible hit-area-y-0.5";
-const EMPTY_STREAMING_IDS: ReadonlySet<string> = new Set<string>();
-
-function sortThreadsByActivity(conversations: Thread[]): Thread[] {
-  return [...conversations].sort((left, right) => {
-    const leftPinned = Boolean(left.pinnedAt);
-    const rightPinned = Boolean(right.pinnedAt);
-    if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
-
-    const updatedAtDelta = right.updatedAt.getTime() - left.updatedAt.getTime();
-    if (updatedAtDelta !== 0) return updatedAtDelta;
-
-    const createdAtDelta = right.createdAt.getTime() - left.createdAt.getTime();
-    if (createdAtDelta !== 0) return createdAtDelta;
-
-    return right.id.localeCompare(left.id);
-  });
-}
-
-const ItemTitle = memo(function ItemTitle({ title }: { title: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isOverflowing = useIsOverflowing(title, ref);
-
-  return (
-    <Tooltip delayDuration={THREAD_TOOLTIP_DELAY_MS}>
-      <TooltipTrigger asChild>
-        <span ref={ref} className="min-w-0 truncate">
-          {title}
-        </span>
-      </TooltipTrigger>
-      {isOverflowing && <TooltipContent side="bottom">{title}</TooltipContent>}
-    </Tooltip>
-  );
-});
-
-/** Right-edge slide-in actions. Render inside `HoverActionsClip` so overflow does not clip the row link’s hit-area. */
-function HoverActions({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="to-sidebar absolute inset-0 flex translate-x-full items-center justify-end gap-1 bg-gradient-to-r from-transparent to-30% pr-2 pl-6 transition-transform duration-150 ease-out group-hover/menu-item:translate-x-0">
-      {children}
-    </div>
-  );
-}
-
-/** Clips off-screen hover actions horizontally without clipping the row link (hit-area ::before). */
-function HoverActionsClip({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="absolute inset-y-0 right-0 z-[1] w-[7rem] overflow-hidden group-data-[collapsible=icon]:hidden"
-      aria-hidden
-    >
-      {children}
-    </div>
-  );
-}
-
-function HoverButton({
-  onClick,
-  label,
-  children,
-}: {
-  onClick: (e: React.MouseEvent) => void;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 items-center justify-center rounded-md"
-      onClick={(e) => {
-        e.preventDefault();
-        e.currentTarget.blur();
-        onClick(e);
-      }}
-    >
-      {children}
-      <span className="sr-only">{label}</span>
-    </button>
-  );
-}
-
-function usePinThread() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      threadId,
-      pinned,
-    }: {
-      threadId: string;
-      pinned: boolean;
-    }) => {
-      await fetch(`/api/threads/${threadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-    },
-  });
-}
-
-function useDeleteThread() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  return useMutation({
-    mutationFn: async (threadId: string) => {
-      await fetch(`/api/threads/${threadId}`, { method: "DELETE" });
-    },
-    onSuccess: (_data, threadId) => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-      if (window.location.pathname.includes(threadId)) {
-        navigate({ to: "/" });
-      }
-    },
-  });
-}
-
-function useBulkDeleteThreads() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  return useMutation({
-    mutationFn: async (threadIds: string[]) => {
-      await Promise.all(
-        threadIds.map((id) =>
-          fetch(`/api/threads/${id}`, { method: "DELETE" }),
-        ),
-      );
-    },
-    onSuccess: (_data, threadIds) => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-      if (threadIds.some((id) => window.location.pathname.includes(id))) {
-        navigate({ to: "/" });
-      }
-    },
-  });
-}
-
-function useBulkPinThreads() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      threadIds,
-      pinned,
-    }: {
-      threadIds: string[];
-      pinned: boolean;
-    }) => {
-      await Promise.all(
-        threadIds.map((id) =>
-          fetch(`/api/threads/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pinned }),
-          }),
-        ),
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-    },
-  });
-}
-
-function ThreadItem({
-  conversation,
-  pinThread,
-  deleteThread,
-  bulkMode,
-  selected,
-  isStreaming,
-  onToggleSelect,
-}: {
-  conversation: Thread;
-  pinThread: ReturnType<typeof usePinThread>;
-  deleteThread: ReturnType<typeof useDeleteThread>;
-  bulkMode: boolean;
-  selected: boolean;
-  isStreaming: boolean;
-  onToggleSelect: (id: string, shiftKey: boolean) => void;
-}) {
-  const queryClient = useQueryClient();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const prefetchThread = useCallback(() => {
-    void queryClient.prefetchQuery(threadDetailQuery(conversation.id));
-    void queryClient.prefetchQuery(artifactsByThreadQuery(conversation.id));
-  }, [conversation.id, queryClient]);
-
-  if (bulkMode) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          isActive={selected}
-          className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}
-          onMouseDown={(e) => {
-            if (e.shiftKey) e.preventDefault();
-          }}
-          onClick={(e) => onToggleSelect(conversation.id, e.shiftKey)}
-        >
-          <Checkbox
-            checked={selected}
-            tabIndex={-1}
-            className="pointer-events-none"
-          />
-          <ItemTitle title={conversation.title} />
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  }
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild className={SIDEBAR_ROW_HIT_AREA_CLASS_NAME}>
-        <Link
-          to="/chat/$threadId"
-          params={{ threadId: conversation.id }}
-          activeOptions={{ exact: true }}
-          className="relative"
-          onFocus={prefetchThread}
-          onMouseEnter={prefetchThread}
-          draggable={false}
-        >
-          {conversation.source === "automation" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="flex shrink-0">
-                  <ZapIcon className="size-4 text-amber-500" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                Created by automation
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <ItemTitle title={conversation.title} />
-          {isStreaming ? (
-            <>
-              <span
-                aria-hidden
-                className="border-sidebar-ring/60 pointer-events-none absolute inset-0 rounded-md border"
-              />
-              <span className="sr-only">Streaming response</span>
-            </>
-          ) : null}
-        </Link>
-      </SidebarMenuButton>
-      <HoverActionsClip>
-        <HoverActions>
-          <HoverButton
-            onClick={() =>
-              pinThread.mutate({
-                threadId: conversation.id,
-                pinned: !conversation.pinnedAt,
-              })
-            }
-            label={conversation.pinnedAt ? "Unpin" : "Pin"}
-          >
-            {conversation.pinnedAt ? (
-              <PinOffIcon className="size-5" />
-            ) : (
-              <PinIcon className="size-5" />
-            )}
-          </HoverButton>
-          <HoverButton
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setDeleteOpen(true);
-            }}
-            label="Delete"
-          >
-            <Trash2Icon className="size-5" />
-          </HoverButton>
-        </HoverActions>
-      </HoverActionsClip>
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader>
-            <div className="bg-destructive/10 flex size-10 items-center justify-center rounded-full">
-              <TriangleAlertIcon className="text-destructive size-5" />
-            </div>
-            <DialogTitle>Delete conversation?</DialogTitle>
-            <DialogDescription>
-              Permanently delete &quot;{conversation.title}&quot;? This cannot
-              be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleteThread.isPending}
-              onClick={() =>
-                deleteThread.mutate(conversation.id, {
-                  onSuccess: () => setDeleteOpen(false),
-                })
-              }
-            >
-              {deleteThread.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </SidebarMenuItem>
-  );
-}
-
-function ThreadSection({
-  label,
-  threads,
-  pinThread,
-  deleteThread,
-  bulkAction,
-  streamingIds,
-}: {
-  label: string;
-  threads: Thread[];
-  pinThread: ReturnType<typeof usePinThread>;
-  deleteThread: ReturnType<typeof useDeleteThread>;
-  bulkAction: "pin" | "unpin";
-  streamingIds: ReadonlySet<string>;
-}) {
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [anchorId, setAnchorId] = useState<string | null>(null);
-  // Set of rows that belong to the active shift-drag range anchored at
-  // `anchorId`. When the user shift+clicks again from the same anchor, we
-  // remove the previous range and apply the new one — this is what makes
-  // the selection "shrink" correctly when the second shift+click lands
-  // between the anchor and the prior shift+click (macOS Finder behavior).
-  const [rangeIds, setRangeIds] = useState<Set<string>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const bulkDelete = useBulkDeleteThreads();
-  const bulkPin = useBulkPinThreads();
-
-  const handleSelect = useCallback(
-    (id: string, shiftKey: boolean) => {
-      if (shiftKey && anchorId) {
-        const ids = threads.map((t) => t.id);
-        const a = ids.indexOf(anchorId);
-        const b = ids.indexOf(id);
-        if (a === -1 || b === -1) return;
-        const [lo, hi] = a < b ? [a, b] : [b, a];
-        const newRange = ids.slice(lo, hi + 1);
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          // Remove the previous shift-drag range, then reapply the new one.
-          // If the anchor itself is not selected, treat the shift-drag as a
-          // deselect sweep (Finder behavior when the anchor row was toggled
-          // off before the shift+click).
-          for (const rid of rangeIds) next.delete(rid);
-          const anchorSelected =
-            next.has(anchorId) || newRange.includes(anchorId);
-          for (const rid of newRange) {
-            if (anchorSelected) next.add(rid);
-            else next.delete(rid);
-          }
-          return next;
-        });
-        setRangeIds(new Set(newRange));
-        // Anchor does NOT move on shift+click — that's the carry-forward part.
-        return;
-      }
-
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
-      setAnchorId(id);
-      setRangeIds(new Set());
-    },
-    [anchorId, rangeIds, threads],
-  );
-
-  const exitBulkMode = useCallback(() => {
-    setBulkMode(false);
-    setSelectedIds(new Set());
-    setAnchorId(null);
-    setRangeIds(new Set());
-  }, []);
-
-  const allSelected = selectedIds.size === threads.length && threads.length > 0;
-
-  const handleToggleAll = useCallback(() => {
-    if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(threads.map((t) => t.id)));
-    setRangeIds(new Set());
-  }, [allSelected, threads]);
-
-  const handleBulkDelete = useCallback(() => {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    bulkDelete.mutate(ids, {
-      onSuccess: () => {
-        setBulkDeleteOpen(false);
-        exitBulkMode();
-      },
-    });
-  }, [selectedIds, bulkDelete, exitBulkMode]);
-
-  const handleBulkPinAction = useCallback(() => {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    bulkPin.mutate(
-      { threadIds: ids, pinned: bulkAction === "pin" },
-      { onSuccess: () => exitBulkMode() },
-    );
-  }, [selectedIds, bulkPin, bulkAction, exitBulkMode]);
-
-  if (threads.length === 0) return null;
-
-  return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>
-        {bulkMode ? (
-          <span className="flex flex-1 items-center gap-2">
-            <button
-              className="text-sidebar-foreground/70 hover:text-sidebar-foreground flex items-center"
-              onClick={handleToggleAll}
-            >
-              <Checkbox
-                checked={allSelected}
-                tabIndex={-1}
-                className="pointer-events-none size-3.5"
-              />
-            </button>
-            <span className="flex-1 truncate">
-              {selectedIds.size > 0 ? `${selectedIds.size} selected` : label}
-            </span>
-            {selectedIds.size > 0 && (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="text-destructive hover:bg-destructive/10 flex size-5 items-center justify-center rounded"
-                      onClick={() => setBulkDeleteOpen(true)}
-                    >
-                      <Trash2Icon className="size-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Delete</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex size-5 items-center justify-center rounded"
-                      onClick={handleBulkPinAction}
-                    >
-                      {bulkAction === "pin" ? (
-                        <PinIcon className="size-3" />
-                      ) : (
-                        <PinOffIcon className="size-3" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {bulkAction === "pin" ? "Pin" : "Unpin"}
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            )}
-            <button
-              className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex size-5 items-center justify-center rounded"
-              onClick={exitBulkMode}
-            >
-              <XIcon className="size-3" />
-            </button>
-          </span>
-        ) : (
-          <span className="flex flex-1 items-center justify-between">
-            <span>{label}</span>
-            {threads.length > 1 && (
-              <button
-                className="text-sidebar-foreground/50 hover:text-sidebar-foreground flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-normal"
-                onClick={() => setBulkMode(true)}
-              >
-                <CheckSquare2Icon className="size-3" />
-                Select
-              </button>
-            )}
-          </span>
-        )}
-      </SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {threads.map((conversation) => (
-            <ThreadItem
-              key={conversation.id}
-              conversation={conversation}
-              pinThread={pinThread}
-              deleteThread={deleteThread}
-              bulkMode={bulkMode}
-              selected={selectedIds.has(conversation.id)}
-              isStreaming={streamingIds.has(conversation.id)}
-              onToggleSelect={handleSelect}
-            />
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader>
-            <div className="bg-destructive/10 flex size-10 items-center justify-center rounded-full">
-              <TriangleAlertIcon className="text-destructive size-5" />
-            </div>
-            <DialogTitle>Delete conversations?</DialogTitle>
-            <DialogDescription>
-              Permanently delete {selectedIds.size} conversation
-              {selectedIds.size === 1 ? "" : "s"}? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={bulkDelete.isPending || selectedIds.size === 0}
-              onClick={handleBulkDelete}
-            >
-              {bulkDelete.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </SidebarGroup>
-  );
-}
-
-type ThreadSectionsProps = {
-  pinned: Thread[];
-  recents: Thread[];
-  pinThread: ReturnType<typeof usePinThread>;
-  deleteThread: ReturnType<typeof useDeleteThread>;
-  streamingIds: ReadonlySet<string>;
-};
-
-function ThreadSections({
-  pinned,
-  recents,
-  pinThread,
-  deleteThread,
-  streamingIds,
-}: ThreadSectionsProps) {
-  return (
-    <>
-      <ThreadSection
-        label="Pinned"
-        threads={pinned}
-        pinThread={pinThread}
-        deleteThread={deleteThread}
-        bulkAction="unpin"
-        streamingIds={streamingIds}
-      />
-      <ThreadSection
-        label="Recents"
-        threads={recents}
-        pinThread={pinThread}
-        deleteThread={deleteThread}
-        bulkAction="pin"
-        streamingIds={streamingIds}
-      />
-    </>
-  );
-}
-
-function LiveThreadSections({
-  pinned,
-  recents,
-  pinThread,
-  deleteThread,
-}: Omit<ThreadSectionsProps, "streamingIds">) {
-  const streamingIds = useStreamingThreadIds();
-  return (
-    <ThreadSections
-      pinned={pinned}
-      recents={recents}
-      pinThread={pinThread}
-      deleteThread={deleteThread}
-      streamingIds={streamingIds}
-    />
-  );
-}
-
-function SidebarSkeletonGroup({ widths }: { widths: string[] }) {
-  return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      {/* Matches SidebarGroupLabel: h-8 px-2 flex items-center rounded-md */}
-      <div className="flex h-8 shrink-0 items-center rounded-md px-2">
-        <Skeleton className="h-3 w-14" />
-      </div>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {widths.map((w, i) => (
-            <SidebarMenuItem key={i}>
-              {/* Matches SidebarMenuButton default: h-8 p-2 flex w-full items-center rounded-md */}
-              <div className="flex h-8 w-full items-center rounded-md p-2">
-                <Skeleton className={`h-3.5 ${w}`} />
-              </div>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
-
-function SidebarListSkeleton() {
-  return (
-    <>
-      <SidebarSkeletonGroup widths={["w-3/5", "w-1/2"]} />
-      <SidebarSkeletonGroup
-        widths={["w-3/4", "w-2/3", "w-4/5", "w-1/2", "w-3/5"]}
-      />
-    </>
-  );
-}
-
-function ChatSidebarContent() {
-  const { data: conversations = [], isPending } = useQuery({
-    ...threadListQuery,
-    // Reduced from 2 s: the critical freshness path is invalidateThreadList on
-    // persistence_complete; polling at 10 s covers automation-created threads
-    // and title updates without generating frequent thread-list re-renders.
-    refetchInterval: 10_000,
-  });
-  const pinThread = usePinThread();
-  const deleteThread = useDeleteThread();
-  const [hasHydratedStreamingState, setHasHydratedStreamingState] =
-    useState(false);
-
-  const { pinned, recents } = useMemo(() => {
-    const sortedConversations = sortThreadsByActivity(conversations);
-    const pinned: Thread[] = [];
-    const recents: Thread[] = [];
-    for (const c of sortedConversations) {
-      if (c.pinnedAt) pinned.push(c);
-      else recents.push(c);
-    }
-    return { pinned, recents };
-  }, [conversations]);
-
-  useEffect(() => {
-    setHasHydratedStreamingState(true);
-  }, []);
-
-  useEffect(() => {
-    for (const conversation of conversations) {
-      if (conversation.isStreaming) {
-        markThreadStreaming(conversation.id, "event");
-      } else {
-        clearThreadStreaming(conversation.id);
-      }
-    }
-  }, [conversations]);
-
-  if (isPending) return <SidebarListSkeleton />;
-
-  if (conversations.length === 0) {
-    return (
-      <div className="text-muted-foreground p-4 text-center text-sm group-data-[collapsible=icon]:hidden">
-        No conversations yet
-      </div>
-    );
-  }
-
-  if (!hasHydratedStreamingState) {
-    return (
-      <ThreadSections
-        pinned={pinned}
-        recents={recents}
-        pinThread={pinThread}
-        deleteThread={deleteThread}
-        streamingIds={EMPTY_STREAMING_IDS}
-      />
-    );
-  }
-
-  return (
-    <LiveThreadSections
-      pinned={pinned}
-      recents={recents}
-      pinThread={pinThread}
-      deleteThread={deleteThread}
-    />
-  );
-}
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const matchRoute = useMatchRoute();
-  const isNewChatActive = !!matchRoute({ to: "/" });
-  const isV2Active = !!matchRoute({ to: "/v2", fuzzy: true });
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const isNewChatActive =
+    Boolean(matchRoute({ to: "/v2/chat", fuzzy: false })) ||
+    Boolean(matchRoute({ to: "/v2", fuzzy: false }));
 
   return (
     <>
@@ -832,11 +85,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 tooltip="New Chat"
               >
                 <Link
-                  to="/"
+                  to="/v2/chat"
                   draggable={false}
                   state={(prev) => ({
                     ...prev,
-                    __newChatNavNonce: Date.now(),
+                    __newV2ChatNavNonce: Date.now(),
                   })}
                 >
                   <HoverIcon as={SquarePenIcon} />
@@ -854,7 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 tooltip="Dashboard"
               >
                 <Link to="/dashboard" draggable={false}>
-                  <HoverIcon as={GaugeIcon} />
+                  <GaugeIcon className="size-4" />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Dashboard
                   </span>
@@ -868,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 tooltip="Artifacts"
               >
                 <Link to="/artifacts" draggable={false}>
-                  <HoverIcon as={LayersIcon} />
+                  <LayersIcon className="size-4" />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Artifacts
                   </span>
@@ -882,7 +135,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 tooltip="Automations"
               >
                 <Link to="/automations" draggable={false}>
-                  <HoverIcon as={AnimatedZapIcon} />
+                  <ZapIcon className="size-4" />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Automations
                   </span>
@@ -893,21 +146,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarHeader>
 
         <SidebarContent>
-          <ChatSidebarContent />
+          <V2ThreadList />
         </SidebarContent>
 
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                isActive={isV2Active}
+                isActive={!!matchRoute({ to: "/v2", fuzzy: true })}
                 asChild
-                tooltip="Try V2 Sidebar/Chat"
+                tooltip="V2 Chat"
               >
-                <Link to="/v2" draggable={false}>
+                <Link to="/v2/chat" draggable={false}>
                   <FlaskConicalIcon className="size-4" />
                   <span className="group-data-[collapsible=icon]:hidden">
-                    Try V2 Beta
+                    V2 Chat
                   </span>
                 </Link>
               </SidebarMenuButton>

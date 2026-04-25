@@ -11,7 +11,7 @@ import type {
   PersistedWidget,
 } from "~/features/dashboard/contracts/dashboard-schemas";
 import type { Spec } from "@json-render/core";
-import { createAgentRun } from "~/features/chat-v1/server/agent-runner";
+import { createAgentRun } from "~/shared/lib/server/agent-runner";
 
 const PREFERRED_ROW_KEYS = [
   "data",

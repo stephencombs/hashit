@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "~/shared/ui/dialog";
 import { Separator } from "~/shared/ui/separator";
+import { v2ThreadListQueryOptions } from "~/features/chat-v2/data/query-options";
 
 async function exportConversations() {
   const threadsRes = await fetch("/api/threads");
@@ -53,9 +54,11 @@ export function DataSettingsPage() {
           fetch(`/api/threads/${thread.id}`, { method: "DELETE" }),
         ),
       );
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      void queryClient.invalidateQueries({
+        queryKey: v2ThreadListQueryOptions.queryKey,
+      });
       setDialogOpen(false);
-      navigate({ to: "/" });
+      void navigate({ to: "/v2/chat" });
     } finally {
       setDeleting(false);
     }

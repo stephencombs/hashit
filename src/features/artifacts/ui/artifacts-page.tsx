@@ -102,7 +102,7 @@ function ArtifactListRow({
       <div className="flex shrink-0 items-center gap-1">
         {artifact.threadId && artifact.messageId && (
           <Link
-            to="/chat/$threadId"
+            to="/v2/chat/$threadId"
             params={{ threadId: artifact.threadId }}
             hash={`msg-${artifact.messageId}`}
             onClick={(event) => event.stopPropagation()}
@@ -396,7 +396,7 @@ export function ArtifactsPage() {
                       </div>
                       {featured.threadId && featured.messageId && (
                         <Link
-                          to="/chat/$threadId"
+                          to="/v2/chat/$threadId"
                           params={{ threadId: featured.threadId }}
                           hash={`msg-${featured.messageId}`}
                           onClick={(event) => event.stopPropagation()}
@@ -490,7 +490,7 @@ export function ArtifactsPage() {
                 </Button>
                 {selected.threadId && selected.messageId && (
                   <Link
-                    to="/chat/$threadId"
+                    to="/v2/chat/$threadId"
                     params={{ threadId: selected.threadId }}
                     hash={`msg-${selected.messageId}`}
                     className="hover:bg-accent inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"

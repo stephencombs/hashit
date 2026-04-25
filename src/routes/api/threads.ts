@@ -1,61 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ensureDurableChatSessionStream } from "@durable-streams/tanstack-ai-transport";
-import { db } from "~/db";
-import { threads } from "~/db/schema";
-import { desc, isNull, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
-import { createThreadBodySchema } from "~/features/chat-v1/contracts/schemas";
 import {
-  buildChatStreamPath,
-  getDurableChatSessionTarget,
-  isDurableStreamsConfigured,
-} from "~/shared/lib/durable-streams";
+  createV2ThreadServer,
+  listV2ThreadsServer,
+} from "~/features/chat-v2/server/threads.server";
+import { z } from "zod";
+
+const createThreadBodySchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+});
 
 export const Route = createFileRoute("/api/threads")({
   server: {
     handlers: {
       GET: async () => {
-        const allThreads = await db
-          .select()
-          .from(threads)
-          .where(isNull(threads.deletedAt))
-          .orderBy(
-            sql`CASE WHEN ${threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
-            desc(threads.updatedAt),
-            desc(threads.createdAt),
-            desc(threads.id),
-          );
-
-        return Response.json(allThreads);
+        return Response.json(await listV2ThreadsServer());
       },
 
       POST: async ({ request }) => {
         const { id, title } = createThreadBodySchema.parse(
           await request.json(),
         );
-        const now = new Date();
-
-        const thread = {
-          id: id || nanoid(),
-          title: title || "Untitled",
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        await db.insert(threads).values(thread);
-
-        // Pre-create the durable session stream so the client's durable
-        // connection can subscribe immediately with a stable id. Idempotent.
-        if (isDurableStreamsConfigured()) {
-          try {
-            await ensureDurableChatSessionStream(
-              getDurableChatSessionTarget(buildChatStreamPath(thread.id)),
-            );
-          } catch {
-            // Thread creation should succeed even if durable stream pre-creation fails.
-          }
-        }
-
+        const thread = await createV2ThreadServer({ id, title });
         return Response.json(thread, { status: 201 });
       },
     },

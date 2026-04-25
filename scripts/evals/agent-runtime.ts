@@ -65,17 +65,17 @@ async function main() {
     await runScenario(
       "automation-live-run",
       async () => {
-        const [{ executeAutomationRun }, { loadThreadMessagesForRuntime }] =
+        const [{ executeAutomationRun }, { listV2ThreadMessagesServer }] =
           await Promise.all([
             import("../../src/features/automations/server/automation-agent"),
-            import("../../src/features/chat-v1/server/chat-helpers"),
+            import("../../src/features/chat-v2/server/messages.server"),
           ]);
         const result = await executeAutomationRun(automationPrompt!, undefined);
         assert.ok(result.threadId);
         assert.ok(
           ["completed", "failed", "aborted"].includes(result.runState.status),
         );
-        const persisted = await loadThreadMessagesForRuntime(result.threadId);
+        const persisted = await listV2ThreadMessagesServer(result.threadId);
         assert.ok(persisted.length >= 1);
       },
       {

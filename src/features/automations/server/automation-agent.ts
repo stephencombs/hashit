@@ -1,59 +1,53 @@
-import { withJsonRender } from "~/shared/lib/json-render-stream";
+import {
+  toDurableChatSessionResponse,
+  type DurableSessionMessage,
+} from "@durable-streams/tanstack-ai-transport";
+import { generateMessageId } from "@tanstack/ai";
 import {
   createAgentRun,
   type AgentRunState,
-} from "~/features/chat-v1/server/agent-runner";
+} from "~/shared/lib/server/agent-runner";
+import { buildV2ChatStreamPath } from "~/features/chat-v2/server/keys";
 import {
-  createThread,
-  loadThreadMessagesForRuntime,
-  withPersistence,
-} from "~/features/chat-v1/server/chat-helpers";
-import type { MessagePart, StreamChunk } from "@tanstack/ai";
+  appendV2CustomEvents,
+  buildV2TerminalEvents,
+} from "~/features/chat-v2/server/persistence-runtime";
+import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
+import { createV2ThreadServer } from "~/features/chat-v2/server/threads.server";
+import { listV2ThreadMessagesServer } from "~/features/chat-v2/server/messages.server";
+import { withJsonRender } from "~/shared/lib/json-render-stream";
+import { getDurableChatSessionTarget } from "~/shared/lib/durable-streams";
 
-export interface PreparedAutomationRun {
-  threadId: string;
-  threadCreated: boolean;
-  prompt: string;
-  userParts: Array<MessagePart>;
-  runState: AgentRunState;
-  stream: AsyncIterable<StreamChunk>;
+type AutomationMessage = {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+};
+
+function buildAutomationTitle(prompt: string): string {
+  return prompt.length > 60 ? `${prompt.slice(0, 60)}...` : prompt;
 }
 
-export async function prepareAutomationRun(
-  prompt: string,
-  existingThreadId: string | undefined,
-): Promise<PreparedAutomationRun> {
-  let threadId = existingThreadId;
-  let threadCreated = false;
-
-  if (!threadId) {
-    const title = prompt.length > 60 ? prompt.slice(0, 60) + "..." : prompt;
-    threadId = await createThread(title, "automation");
-    threadCreated = true;
-  }
-
-  const persistedMessages = await loadThreadMessagesForRuntime(threadId);
-  const lastMessage = persistedMessages[persistedMessages.length - 1];
-  const messages =
-    lastMessage?.role === "user" && lastMessage.content === prompt
-      ? persistedMessages
-      : [...persistedMessages, { role: "user" as const, content: prompt }];
-
-  const userParts: Array<MessagePart> = [{ type: "text", content: prompt }];
-
-  const { stream, runState } = await createAgentRun({
-    profile: "automation",
-    messages,
-    conversationId: threadId,
+function toAgentRunMessages(
+  messages: Awaited<ReturnType<typeof listV2ThreadMessagesServer>>,
+): Array<AutomationMessage> {
+  return messages.flatMap((message) => {
+    if (message.role !== "user" && message.role !== "assistant") return [];
+    return [
+      {
+        id: message.id,
+        role: message.role,
+        content: message.renderText,
+      },
+    ];
   });
+}
 
+function buildUserMessage(prompt: string): DurableSessionMessage {
   return {
-    threadId,
-    threadCreated,
-    prompt,
-    userParts,
-    runState,
-    stream: withJsonRender(stream),
+    id: generateMessageId(),
+    role: "user",
+    parts: [{ type: "text", content: prompt }],
   };
 }
 
@@ -64,22 +58,74 @@ export async function executeAutomationRun(
   threadId: string;
   runState: AgentRunState;
 }> {
-  const prepared = await prepareAutomationRun(prompt, existingThreadId);
+  let threadId = existingThreadId;
 
-  for await (const _chunk of withPersistence(
-    prepared.stream,
-    prepared.threadId,
-    prepared.threadCreated,
-    prepared.prompt,
-    prepared.userParts,
-    true,
-    prepared.runState,
-  )) {
-    // Drain the stream to completion so persistence and middleware can run.
+  if (!threadId) {
+    const thread = await createV2ThreadServer({
+      title: buildAutomationTitle(prompt),
+    });
+    threadId = thread.id;
+  }
+
+  const persistedMessages = toAgentRunMessages(
+    await listV2ThreadMessagesServer(threadId),
+  );
+  const lastMessage = persistedMessages[persistedMessages.length - 1];
+  const shouldAppendUser =
+    lastMessage?.role !== "user" || lastMessage.content !== prompt;
+  const userMessage = shouldAppendUser ? buildUserMessage(prompt) : undefined;
+  const messages =
+    userMessage === undefined
+      ? persistedMessages
+      : [
+          ...persistedMessages,
+          {
+            id: userMessage.id,
+            role: "user" as const,
+            content: prompt,
+          },
+        ];
+
+  const { stream, runState } = await createAgentRun({
+    profile: "automation",
+    messages,
+    conversationId: threadId,
+  });
+
+  const streamTarget = getDurableChatSessionTarget(
+    buildV2ChatStreamPath(threadId),
+  );
+  const newMessages = userMessage ? [userMessage] : [];
+
+  let persistenceError: string | undefined;
+  await toDurableChatSessionResponse({
+    stream: streamTarget,
+    newMessages,
+    responseStream: withJsonRender(stream),
+    mode: "await",
+  });
+
+  try {
+    await projectV2StreamSnapshotToDb({ threadId });
+  } catch (error) {
+    persistenceError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    await appendV2CustomEvents(
+      streamTarget,
+      buildV2TerminalEvents({
+        threadId,
+        runState,
+        persistenceError,
+      }),
+    );
+  } catch {
+    // The automation result is authoritative even if terminal stream metadata fails.
   }
 
   return {
-    threadId: prepared.threadId,
-    runState: prepared.runState,
+    threadId,
+    runState,
   };
 }
