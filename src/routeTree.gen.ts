@@ -9,11 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as V3RouteImport } from './routes/v3'
 import { Route as V2RouteImport } from './routes/v2'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as V3IndexRouteImport } from './routes/v3.index'
 import { Route as V2IndexRouteImport } from './routes/v2.index'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as V3ChatRouteImport } from './routes/v3.chat'
 import { Route as V2ChatRouteImport } from './routes/v2.chat'
 import { Route as ApiThreadsRouteImport } from './routes/api/threads'
 import { Route as ApiPromptAttachmentsRouteImport } from './routes/api/prompt-attachments'
@@ -28,7 +31,9 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAutomationsRouteImport } from './routes/_app.automations'
 import { Route as AppArtifactsRouteImport } from './routes/_app.artifacts'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app.settings/index'
+import { Route as V3ChatThreadIdRouteImport } from './routes/v3.chat.$threadId'
 import { Route as V2ChatThreadIdRouteImport } from './routes/v2.chat.$threadId'
+import { Route as ApiV3ChatRouteImport } from './routes/api/v3/chat'
 import { Route as ApiV2ChatStreamRouteImport } from './routes/api/v2/chat-stream'
 import { Route as ApiV2ChatRouteImport } from './routes/api/v2/chat'
 import { Route as ApiThreadsThreadIdRouteImport } from './routes/api/threads.$threadId'
@@ -47,6 +52,11 @@ import { Route as AppChatThreadIdRouteImport } from './routes/_app.chat.$threadI
 import { Route as ApiDashboardSnapshotsSnapshotIdRouteImport } from './routes/api/dashboard.snapshots.$snapshotId'
 import { Route as ApiAutomationsAutomationIdRunsRouteImport } from './routes/api/automations.$automationId.runs'
 
+const V3Route = V3RouteImport.update({
+  id: '/v3',
+  path: '/v3',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const V2Route = V2RouteImport.update({
   id: '/v2',
   path: '/v2',
@@ -61,6 +71,11 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const V3IndexRoute = V3IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => V3Route,
+} as any)
 const V2IndexRoute = V2IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -70,6 +85,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const V3ChatRoute = V3ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => V3Route,
 } as any)
 const V2ChatRoute = V2ChatRouteImport.update({
   id: '/chat',
@@ -141,10 +161,20 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const V3ChatThreadIdRoute = V3ChatThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => V3ChatRoute,
+} as any)
 const V2ChatThreadIdRoute = V2ChatThreadIdRouteImport.update({
   id: '/$threadId',
   path: '/$threadId',
   getParentRoute: () => V2ChatRoute,
+} as any)
+const ApiV3ChatRoute = ApiV3ChatRouteImport.update({
+  id: '/api/v3/chat',
+  path: '/api/v3/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV2ChatStreamRoute = ApiV2ChatStreamRouteImport.update({
   id: '/api/v2/chat-stream',
@@ -240,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/health': typeof HealthRoute
   '/v2': typeof V2RouteWithChildren
+  '/v3': typeof V3RouteWithChildren
   '/artifacts': typeof AppArtifactsRoute
   '/automations': typeof AppAutomationsRoute
   '/dashboard': typeof AppDashboardRoute
@@ -253,7 +284,9 @@ export interface FileRoutesByFullPath {
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/v2/chat': typeof V2ChatRouteWithChildren
+  '/v3/chat': typeof V3ChatRouteWithChildren
   '/v2/': typeof V2IndexRoute
+  '/v3/': typeof V3IndexRoute
   '/chat/$threadId': typeof AppChatThreadIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/data': typeof AppSettingsDataRoute
@@ -269,7 +302,9 @@ export interface FileRoutesByFullPath {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v3/chat': typeof ApiV3ChatRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/v3/chat/$threadId': typeof V3ChatThreadIdRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
@@ -288,8 +323,10 @@ export interface FileRoutesByTo {
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/v2/chat': typeof V2ChatRouteWithChildren
+  '/v3/chat': typeof V3ChatRouteWithChildren
   '/': typeof AppIndexRoute
   '/v2': typeof V2IndexRoute
+  '/v3': typeof V3IndexRoute
   '/chat/$threadId': typeof AppChatThreadIdRoute
   '/settings/appearance': typeof AppSettingsAppearanceRoute
   '/settings/data': typeof AppSettingsDataRoute
@@ -305,7 +342,9 @@ export interface FileRoutesByTo {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v3/chat': typeof ApiV3ChatRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/v3/chat/$threadId': typeof V3ChatThreadIdRoute
   '/settings': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
@@ -315,6 +354,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/health': typeof HealthRoute
   '/v2': typeof V2RouteWithChildren
+  '/v3': typeof V3RouteWithChildren
   '/_app/artifacts': typeof AppArtifactsRoute
   '/_app/automations': typeof AppAutomationsRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -328,8 +368,10 @@ export interface FileRoutesById {
   '/api/prompt-attachments': typeof ApiPromptAttachmentsRouteWithChildren
   '/api/threads': typeof ApiThreadsRouteWithChildren
   '/v2/chat': typeof V2ChatRouteWithChildren
+  '/v3/chat': typeof V3ChatRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/v2/': typeof V2IndexRoute
+  '/v3/': typeof V3IndexRoute
   '/_app/chat/$threadId': typeof AppChatThreadIdRoute
   '/_app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/_app/settings/data': typeof AppSettingsDataRoute
@@ -345,7 +387,9 @@ export interface FileRoutesById {
   '/api/threads/$threadId': typeof ApiThreadsThreadIdRoute
   '/api/v2/chat': typeof ApiV2ChatRoute
   '/api/v2/chat-stream': typeof ApiV2ChatStreamRoute
+  '/api/v3/chat': typeof ApiV3ChatRoute
   '/v2/chat/$threadId': typeof V2ChatThreadIdRoute
+  '/v3/chat/$threadId': typeof V3ChatThreadIdRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/api/automations/$automationId/runs': typeof ApiAutomationsAutomationIdRunsRoute
   '/api/dashboard/snapshots/$snapshotId': typeof ApiDashboardSnapshotsSnapshotIdRoute
@@ -356,6 +400,7 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/v2'
+    | '/v3'
     | '/artifacts'
     | '/automations'
     | '/dashboard'
@@ -369,7 +414,9 @@ export interface FileRouteTypes {
     | '/api/prompt-attachments'
     | '/api/threads'
     | '/v2/chat'
+    | '/v3/chat'
     | '/v2/'
+    | '/v3/'
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
@@ -385,7 +432,9 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v3/chat'
     | '/v2/chat/$threadId'
+    | '/v3/chat/$threadId'
     | '/settings/'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
@@ -404,8 +453,10 @@ export interface FileRouteTypes {
     | '/api/prompt-attachments'
     | '/api/threads'
     | '/v2/chat'
+    | '/v3/chat'
     | '/'
     | '/v2'
+    | '/v3'
     | '/chat/$threadId'
     | '/settings/appearance'
     | '/settings/data'
@@ -421,7 +472,9 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v3/chat'
     | '/v2/chat/$threadId'
+    | '/v3/chat/$threadId'
     | '/settings'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
@@ -430,6 +483,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/health'
     | '/v2'
+    | '/v3'
     | '/_app/artifacts'
     | '/_app/automations'
     | '/_app/dashboard'
@@ -443,8 +497,10 @@ export interface FileRouteTypes {
     | '/api/prompt-attachments'
     | '/api/threads'
     | '/v2/chat'
+    | '/v3/chat'
     | '/_app/'
     | '/v2/'
+    | '/v3/'
     | '/_app/chat/$threadId'
     | '/_app/settings/appearance'
     | '/_app/settings/data'
@@ -460,7 +516,9 @@ export interface FileRouteTypes {
     | '/api/threads/$threadId'
     | '/api/v2/chat'
     | '/api/v2/chat-stream'
+    | '/api/v3/chat'
     | '/v2/chat/$threadId'
+    | '/v3/chat/$threadId'
     | '/_app/settings/'
     | '/api/automations/$automationId/runs'
     | '/api/dashboard/snapshots/$snapshotId'
@@ -470,6 +528,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   HealthRoute: typeof HealthRoute
   V2Route: typeof V2RouteWithChildren
+  V3Route: typeof V3RouteWithChildren
   ApiAgentRoute: typeof ApiAgentRoute
   ApiArtifactsRoute: typeof ApiArtifactsRouteWithChildren
   ApiAutomationsRoute: typeof ApiAutomationsRouteWithChildren
@@ -483,10 +542,18 @@ export interface RootRouteChildren {
   ApiSettingsMcpTokenRoute: typeof ApiSettingsMcpTokenRoute
   ApiV2ChatRoute: typeof ApiV2ChatRoute
   ApiV2ChatStreamRoute: typeof ApiV2ChatStreamRoute
+  ApiV3ChatRoute: typeof ApiV3ChatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/v3': {
+      id: '/v3'
+      path: '/v3'
+      fullPath: '/v3'
+      preLoaderRoute: typeof V3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/v2': {
       id: '/v2'
       path: '/v2'
@@ -508,6 +575,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v3/': {
+      id: '/v3/'
+      path: '/'
+      fullPath: '/v3/'
+      preLoaderRoute: typeof V3IndexRouteImport
+      parentRoute: typeof V3Route
+    }
     '/v2/': {
       id: '/v2/'
       path: '/'
@@ -521,6 +595,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/v3/chat': {
+      id: '/v3/chat'
+      path: '/chat'
+      fullPath: '/v3/chat'
+      preLoaderRoute: typeof V3ChatRouteImport
+      parentRoute: typeof V3Route
     }
     '/v2/chat': {
       id: '/v2/chat'
@@ -620,12 +701,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/v3/chat/$threadId': {
+      id: '/v3/chat/$threadId'
+      path: '/$threadId'
+      fullPath: '/v3/chat/$threadId'
+      preLoaderRoute: typeof V3ChatThreadIdRouteImport
+      parentRoute: typeof V3ChatRoute
+    }
     '/v2/chat/$threadId': {
       id: '/v2/chat/$threadId'
       path: '/$threadId'
       fullPath: '/v2/chat/$threadId'
       preLoaderRoute: typeof V2ChatThreadIdRouteImport
       parentRoute: typeof V2ChatRoute
+    }
+    '/api/v3/chat': {
+      id: '/api/v3/chat'
+      path: '/api/v3/chat'
+      fullPath: '/api/v3/chat'
+      preLoaderRoute: typeof ApiV3ChatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/v2/chat-stream': {
       id: '/api/v2/chat-stream'
@@ -812,6 +907,29 @@ const V2RouteChildren: V2RouteChildren = {
 
 const V2RouteWithChildren = V2Route._addFileChildren(V2RouteChildren)
 
+interface V3ChatRouteChildren {
+  V3ChatThreadIdRoute: typeof V3ChatThreadIdRoute
+}
+
+const V3ChatRouteChildren: V3ChatRouteChildren = {
+  V3ChatThreadIdRoute: V3ChatThreadIdRoute,
+}
+
+const V3ChatRouteWithChildren =
+  V3ChatRoute._addFileChildren(V3ChatRouteChildren)
+
+interface V3RouteChildren {
+  V3ChatRoute: typeof V3ChatRouteWithChildren
+  V3IndexRoute: typeof V3IndexRoute
+}
+
+const V3RouteChildren: V3RouteChildren = {
+  V3ChatRoute: V3ChatRouteWithChildren,
+  V3IndexRoute: V3IndexRoute,
+}
+
+const V3RouteWithChildren = V3Route._addFileChildren(V3RouteChildren)
+
 interface ApiArtifactsRouteChildren {
   ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute
 }
@@ -891,6 +1009,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   HealthRoute: HealthRoute,
   V2Route: V2RouteWithChildren,
+  V3Route: V3RouteWithChildren,
   ApiAgentRoute: ApiAgentRoute,
   ApiArtifactsRoute: ApiArtifactsRouteWithChildren,
   ApiAutomationsRoute: ApiAutomationsRouteWithChildren,
@@ -904,6 +1023,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsMcpTokenRoute: ApiSettingsMcpTokenRoute,
   ApiV2ChatRoute: ApiV2ChatRoute,
   ApiV2ChatStreamRoute: ApiV2ChatStreamRoute,
+  ApiV3ChatRoute: ApiV3ChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
