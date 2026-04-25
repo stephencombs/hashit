@@ -1,8 +1,8 @@
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 import { SquarePenIcon } from "lucide-animated";
-import { HoverIcon } from "~/components/animated-icon";
-import { NavUser } from "~/components/nav-user";
+import { HoverIcon } from "~/shared/ui/animated-icon";
+import { NavUser } from "~/app/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "~/components/ui/sidebar";
+} from "~/shared/ui/sidebar";
 import { V2ThreadList } from "./v2-thread-list";
 
 const user = {

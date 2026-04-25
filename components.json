@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/app.css",
+    "css": "src/app/styles/app.css",
     "baseColor": "zinc",
     "cssVariables": true,
     "prefix": ""
@@ -15,11 +15,11 @@
   "menuColor": "default-translucent",
   "menuAccent": "subtle",
   "aliases": {
-    "components": "~/components",
-    "utils": "~/lib/utils",
-    "ui": "~/components/ui",
-    "lib": "~/lib",
-    "hooks": "~/hooks"
+    "components": "~/shared/ui",
+    "utils": "~/shared/lib/utils",
+    "ui": "~/shared/ui",
+    "lib": "~/shared/lib",
+    "hooks": "~/shared/hooks"
   },
   "registries": {
     "@ai-elements": "https://ai-sdk.dev/elements/api/registry/{name}.json"

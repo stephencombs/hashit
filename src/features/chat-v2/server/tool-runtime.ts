@@ -1,7 +1,7 @@
 import type { Tool } from "@tanstack/ai";
-import { collectFormDataTool } from "~/lib/form-tool";
-import { getMcpTools } from "~/lib/mcp/client";
-import { resolveDuplicateEntityTool } from "~/lib/resolve-duplicate-tool";
+import { collectFormDataTool } from "~/shared/lib/form-tool";
+import { getMcpTools } from "~/features/mcp/server/client";
+import { resolveDuplicateEntityTool } from "~/shared/lib/resolve-duplicate-tool";
 import type { ResolvedV2RuntimePolicy } from "./runtime-policy";
 
 export const V2_LAZY_TOOL_DISCOVERY_NAME = "__lazy__tool__discovery__";

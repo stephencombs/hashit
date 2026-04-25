@@ -7,13 +7,9 @@ import { v2Threads } from "~/db/schema";
 import {
   getDurableChatSessionTarget,
   isDurableStreamsConfigured,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 import { v2ThreadSchema, type V2Thread } from "../types";
 import { buildV2ChatStreamPath } from "./keys";
-import {
-  isV2ThreadRunActive,
-  listActiveV2ThreadRunIds,
-} from "./thread-run-state.server";
 
 const v2ThreadArraySchema = z.array(v2ThreadSchema);
 
@@ -43,14 +39,8 @@ export async function listV2ThreadsServer(): Promise<Array<V2Thread>> {
       desc(v2Threads.createdAt),
       desc(v2Threads.id),
     );
-  const activeThreadIds = await listActiveV2ThreadRunIds();
 
-  return v2ThreadArraySchema.parse(
-    rows.map((row) => ({
-      ...row,
-      isStreaming: activeThreadIds.has(row.id),
-    })),
-  );
+  return v2ThreadArraySchema.parse(rows);
 }
 
 export async function getV2ThreadByIdServer(
@@ -66,10 +56,7 @@ export async function getV2ThreadByIdServer(
     throw new Error("Thread not found");
   }
 
-  return v2ThreadSchema.parse({
-    ...row,
-    isStreaming: await isV2ThreadRunActive(row.id),
-  });
+  return v2ThreadSchema.parse(row);
 }
 
 export async function createV2ThreadServer(
@@ -102,10 +89,7 @@ export async function createV2ThreadServer(
     }
   }
 
-  return v2ThreadSchema.parse({
-    ...row,
-    isStreaming: false,
-  });
+  return v2ThreadSchema.parse(row);
 }
 
 export async function setV2ThreadPinnedServer(
@@ -123,10 +107,7 @@ export async function setV2ThreadPinnedServer(
     throw new Error("Thread not found");
   }
 
-  return v2ThreadSchema.parse({
-    ...row,
-    isStreaming: await isV2ThreadRunActive(row.id),
-  });
+  return v2ThreadSchema.parse(row);
 }
 
 export async function setV2ThreadTitleServer(
@@ -150,10 +131,7 @@ export async function setV2ThreadTitleServer(
     throw new Error("Thread not found");
   }
 
-  return v2ThreadSchema.parse({
-    ...row,
-    isStreaming: await isV2ThreadRunActive(row.id),
-  });
+  return v2ThreadSchema.parse(row);
 }
 
 export async function deleteV2ThreadServer(threadId: string): Promise<void> {

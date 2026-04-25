@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppLayout } from "~/features/routes/app-layout";
-import { getDefaultSidebarOpen } from "~/lib/server/sidebar-state";
+import { AppLayout } from "~/app/layouts/app-layout";
+import { getDefaultSidebarOpen } from "~/shared/lib/server/sidebar-state";
 
 export const Route = createFileRoute("/_app")({
   loader: async () => ({

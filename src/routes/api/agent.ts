@@ -1,9 +1,9 @@
 import { toServerSentEventsResponse } from "@tanstack/ai";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { withPersistence } from "~/lib/chat-helpers";
-import { prepareAutomationRun } from "~/lib/automation-agent";
-import { errorResponse } from "~/lib/http-error";
+import { withPersistence } from "~/features/chat-v1/server/chat-helpers";
+import { prepareAutomationRun } from "~/features/automations/server/automation-agent";
+import { errorResponse } from "~/shared/lib/http-error";
 
 const agentRequestSchema = z.object({
   prompt: z.string().min(1),

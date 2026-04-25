@@ -5,7 +5,7 @@ import { v2Messages } from "~/db/schema";
 import {
   isDurableStreamsConfigured,
   readDurableStreamHeadOffset,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 import { v2MessageSchema, type V2ThreadSession } from "../types";
 import { buildV2ChatStreamPath } from "./keys";
 import {
@@ -108,16 +108,12 @@ export async function getV2ThreadSessionServer(
   let initialResumeOffset: string | undefined =
     thread.resumeOffset ?? undefined;
   if (!initialResumeOffset && isDurableStreamsConfigured()) {
-    if (thread.isStreaming) {
-      initialResumeOffset = "-1";
-    } else {
-      try {
-        initialResumeOffset = await readDurableStreamHeadOffset(
-          buildV2ChatStreamPath(threadId),
-        );
-      } catch {
-        // Continue without a durable offset fallback.
-      }
+    try {
+      initialResumeOffset = await readDurableStreamHeadOffset(
+        buildV2ChatStreamPath(threadId),
+      );
+    } catch {
+      // Continue without a durable offset fallback.
     }
   }
 

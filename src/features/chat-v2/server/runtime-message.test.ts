@@ -77,10 +77,10 @@ describe("normalizeV2MessageForRuntime", () => {
     expect(normalized.renderText).toBe("hello");
   });
 
-  it("preserves multimodal image/audio/video/document parts", () => {
+  it("drops unsupported file attachment parts", () => {
     const normalized = normalizeV2MessageForRuntime(
       buildMessage({
-        content: "",
+        content: "fallback",
         parts: [
           {
             type: "image",
@@ -106,29 +106,8 @@ describe("normalizeV2MessageForRuntime", () => {
       }),
     );
 
-    expect(normalized.parts).toEqual([
-      {
-        type: "image",
-        source: { type: "url", value: "https://example.com/image.png" },
-      },
-      {
-        type: "audio",
-        source: { type: "url", value: "https://example.com/audio.mp3" },
-      },
-      {
-        type: "video",
-        source: { type: "url", value: "https://example.com/video.mp4" },
-      },
-      {
-        type: "document",
-        source: {
-          type: "url",
-          value: "https://example.com/document.pdf",
-          mimeType: "application/pdf",
-        },
-      },
-    ]);
-    expect(normalized.renderText).toBe("");
+    expect(normalized.parts).toEqual([{ type: "text", content: "fallback" }]);
+    expect(normalized.renderText).toBe("fallback");
   });
 
   it("falls back to content text part when parts are invalid", () => {

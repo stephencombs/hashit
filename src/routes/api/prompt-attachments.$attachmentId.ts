@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Readable } from "node:stream";
-import { ATTACHMENT_ID_PATTERN } from "~/lib/attachment-schemas";
-import { getAttachment } from "~/lib/server/attachments";
+import { ATTACHMENT_ID_PATTERN } from "~/shared/lib/attachment-schemas";
+import { getAttachment } from "~/shared/lib/server/attachments";
 
 export const Route = createFileRoute("/api/prompt-attachments/$attachmentId")({
   server: {

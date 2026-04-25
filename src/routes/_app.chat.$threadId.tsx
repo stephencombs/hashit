@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   ChatThreadPage,
   ChatThreadPending,
-} from "~/features/routes/chat-thread-page";
-import { artifactsByThreadQuery, threadDetailQuery } from "~/lib/queries";
+} from "~/features/chat-v1/ui/chat-thread-page";
+import {
+  artifactsByThreadQuery,
+  threadDetailQuery,
+} from "~/features/chat-v1/data/queries";
 
 export const Route = createFileRoute("/_app/chat/$threadId")({
   loader: ({ params, context, abortController }) => {

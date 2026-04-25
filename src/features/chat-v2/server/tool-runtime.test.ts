@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   mockGetMcpTools: vi.fn(),
 }));
 
-vi.mock("~/lib/mcp/client", () => ({
+vi.mock("~/features/mcp/server/client", () => ({
   getMcpTools: mocks.mockGetMcpTools,
 }));
 

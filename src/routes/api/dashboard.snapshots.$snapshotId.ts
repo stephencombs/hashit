@@ -5,8 +5,8 @@ import { dashboardSnapshots } from "~/db/schema";
 import {
   dashboardSnapshotDetailResponseSchema,
   dashboardSnapshotWireSchema,
-} from "~/lib/dashboard-schemas";
-import { errorResponse } from "~/lib/http-error";
+} from "~/features/dashboard/contracts/dashboard-schemas";
+import { errorResponse } from "~/shared/lib/http-error";
 
 export const Route = createFileRoute("/api/dashboard/snapshots/$snapshotId")({
   server: {

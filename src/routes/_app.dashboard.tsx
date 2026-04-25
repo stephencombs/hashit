@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   DASHBOARD_PERSONA,
   DashboardPage,
-} from "~/features/routes/dashboard-page";
-import { dashboardSnapshotQuery } from "~/lib/dashboard-queries";
+} from "~/features/dashboard/ui/dashboard-page";
+import { dashboardSnapshotQuery } from "~/features/dashboard/data/dashboard-queries";
 
 export const Route = createFileRoute("/_app/dashboard")({
   loader: ({ context }) => {

@@ -3,29 +3,32 @@ import {
   toDurableChatSessionResponse,
   type DurableSessionMessage,
 } from "@durable-streams/tanstack-ai-transport";
-import { chatRequestSchema } from "~/lib/schemas";
-import { withJsonRender } from "~/lib/json-render-stream";
+import { chatRequestSchema } from "~/features/chat-v1/contracts/schemas";
+import { withJsonRender } from "~/shared/lib/json-render-stream";
 import {
   extractUserMessage,
   syncPriorToolOutputs,
   withPersistence,
-} from "~/lib/chat-helpers";
+} from "~/features/chat-v1/server/chat-helpers";
 import type { StreamChunk } from "@tanstack/ai";
-import { createAgentRun } from "~/lib/agent-runner";
+import { createAgentRun } from "~/features/chat-v1/server/agent-runner";
 import {
   isVisionCapableModel,
   userMessagesContainMedia,
-} from "~/lib/multimodal-parts";
+} from "~/shared/lib/multimodal-parts";
 import {
   buildChatStreamPath,
   getDurableChatSessionTarget,
-} from "~/lib/durable-streams";
-import { beginThreadRun, endThreadRun } from "~/lib/server/thread-run-state";
+} from "~/shared/lib/durable-streams";
+import {
+  beginThreadRun,
+  endThreadRun,
+} from "~/features/chat-v1/server/thread-run-state";
 import {
   createHttpError,
   errorResponse,
   toErrorResponse,
-} from "~/lib/http-error";
+} from "~/shared/lib/http-error";
 
 async function* withThreadRunTracking(
   stream: AsyncIterable<StreamChunk>,

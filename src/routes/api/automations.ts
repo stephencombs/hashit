@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { desc, isNull } from "drizzle-orm";
 import { db } from "~/db";
 import { automations } from "~/db/schema";
-import { createAutomationBodySchema } from "~/lib/schemas";
+import { createAutomationBodySchema } from "~/features/automations/contracts/schemas";
 
 export const Route = createFileRoute("/api/automations")({
   server: {

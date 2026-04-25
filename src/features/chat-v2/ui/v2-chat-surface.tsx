@@ -13,57 +13,48 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChatConversation } from "~/components/chat/chat-conversation";
+import { ChatConversation } from "~/features/chat-v1/ui/chat-conversation";
 import {
   MessageAction,
   MessageActions,
   Message,
   MessageContent,
   MessageResponse,
-} from "~/components/ai-elements/message";
-import {
-  Attachment,
-  AttachmentInfo,
-  AttachmentPreview,
-  Attachments,
-} from "~/components/ai-elements/attachments";
-import type { PromptInputMessage } from "~/components/ai-elements/prompt-input";
-import {
-  isRenderableAttachmentPart,
-  toAttachmentData,
-} from "~/components/chat/message-row-parts";
-import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
-import { DuplicateResolutionDisplay } from "~/components/duplicate-resolution-display";
-import { FormDisplay } from "~/components/form-display";
-import { InteractiveToolFallback } from "~/components/chat/message-row-parts";
+} from "~/shared/ai-elements/message";
+import type { PromptInputMessage } from "~/shared/ai-elements/prompt-input";
+import { Alert, AlertDescription } from "~/shared/ui/alert";
+import { Button } from "~/shared/ui/button";
+import { DuplicateResolutionDisplay } from "~/shared/ui/duplicate-resolution-display";
+import { FormDisplay } from "~/shared/ui/form-display";
+import { InteractiveToolFallback } from "~/features/chat-v1/ui/message-row-parts";
 import {
   hasCollectFormDataOutput,
   hasResolutionOutput,
   parseInteractiveSpec,
-} from "~/components/chat/message-row-utils";
-import { useMcpSettings } from "~/hooks/use-mcp-settings";
-import { useModelSettings } from "~/hooks/use-model-settings";
+} from "~/features/chat-v1/ui/message-row-utils";
+import { useMcpSettings } from "~/shared/hooks/use-mcp-settings";
+import { useModelSettings } from "~/shared/hooks/use-model-settings";
 import {
   collectFormDataTool,
   type CollectFormDataOutput,
   type FormSpec,
-} from "~/lib/form-tool";
+} from "~/shared/lib/form-tool";
 import {
   cancelAllPending,
   registerPending,
   resolvePending,
   type InteractiveToolName,
-} from "~/lib/interactive-tool-registry";
-import { LiveSpecStore, useLiveSpecsSnapshot } from "~/lib/live-spec-store";
-import { buildPromptContentParts } from "~/lib/multimodal-parts";
+} from "~/shared/lib/interactive-tool-registry";
+import {
+  LiveSpecStore,
+  useLiveSpecsSnapshot,
+} from "~/shared/lib/live-spec-store";
 import {
   resolveDuplicateEntityTool,
   type DuplicateResolutionSpec,
   type ResolutionOutput,
-} from "~/lib/resolve-duplicate-tool";
+} from "~/shared/lib/resolve-duplicate-tool";
 import {
-  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "../data/query-options";
@@ -71,18 +62,13 @@ import {
   confirmPendingV2Thread,
   discardPendingV2Thread,
   insertPendingV2Thread,
-  setV2ThreadStreamingState,
   setV2ThreadTitle,
 } from "../data/mutations";
 import type { V2RuntimeMessage } from "../server/runtime-message";
 import { V2Composer } from "./v2-composer";
-import {
-  toAbsoluteAttachmentUrl,
-  uploadV2AttachmentSource,
-} from "./v2-session-attachments";
 
 const JsonRenderDisplay = lazy(() =>
-  import("~/components/json-render-display").then((module) => ({
+  import("~/shared/ui/json-render-display").then((module) => ({
     default: module.JsonRenderDisplay,
   })),
 );
@@ -90,10 +76,6 @@ const JsonRenderDisplay = lazy(() =>
 type RuntimeUiSpecPart = Extract<
   V2RuntimeMessage["parts"][number],
   { type: "ui-spec" }
->;
-type RuntimeAttachmentPart = Extract<
-  V2RuntimeMessage["parts"][number],
-  { type: "image" | "audio" | "video" | "document" }
 >;
 type RuntimeToolCallPart = Extract<
   V2RuntimeMessage["parts"][number],
@@ -200,7 +182,7 @@ export function resolveV2TranscriptLayerState(params: {
 }
 
 export function hasV2ComposerPayload(message: PromptInputMessage): boolean {
-  return message.text.trim().length > 0 || message.files.length > 0;
+  return message.text.trim().length > 0;
 }
 
 export function buildV2ChatRequestBody(input: {
@@ -353,7 +335,6 @@ export function V2ChatSurface({
   const [creationError, setCreationError] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
-  const shouldPromoteOnStreamStartRef = useRef(false);
   const suppressAbortErrorRef = useRef(false);
   const suppressAbortResetTimeoutRef = useRef<ReturnType<
     typeof setTimeout
@@ -416,7 +397,7 @@ export function V2ChatSurface({
       if (eventType === "thread_title_updated") {
         const payload = data as { threadId?: string; title?: string };
         if (payload.threadId && typeof payload.title === "string") {
-          void setV2ThreadTitle(queryClient, payload.threadId, payload.title);
+          setV2ThreadTitle(queryClient, payload.threadId, payload.title);
         }
       }
 
@@ -427,10 +408,6 @@ export function V2ChatSurface({
         });
         void queryClient.invalidateQueries({
           queryKey: v2ThreadMessagesQueryOptions(threadId).queryKey,
-          exact: true,
-        });
-        void queryClient.invalidateQueries({
-          queryKey: v2ThreadAttachmentSummaryQueryOptions(threadId).queryKey,
           exact: true,
         });
       }
@@ -455,9 +432,6 @@ export function V2ChatSurface({
       }
     },
     onError: (chatError: unknown) => {
-      shouldPromoteOnStreamStartRef.current = false;
-      // Reset optimistic streaming indicator immediately on transport/model failures.
-      void setV2ThreadStreamingState(queryClient, threadId, false);
       const message = toErrorMessage(chatError);
       if (isAbortLikeError(message)) {
         if (suppressAbortErrorRef.current) {
@@ -489,7 +463,6 @@ export function V2ChatSurface({
       suppressAbortErrorRef.current = false;
       suppressAbortResetTimeoutRef.current = null;
     }, 2_000);
-    shouldPromoteOnStreamStartRef.current = false;
     cancelAllPending("thread changed");
     stop();
     setMessages(initialMessages as never);
@@ -511,23 +484,6 @@ export function V2ChatSurface({
     };
   }, []);
 
-  useEffect(() => {
-    if (isDraftThread && status === "ready") {
-      return;
-    }
-    const isStreaming = status === "submitted" || status === "streaming";
-    if (isStreaming) {
-      if (!shouldPromoteOnStreamStartRef.current) {
-        return;
-      }
-      void setV2ThreadStreamingState(queryClient, threadId, true);
-      return;
-    }
-
-    shouldPromoteOnStreamStartRef.current = false;
-    void setV2ThreadStreamingState(queryClient, threadId, false);
-  }, [isDraftThread, queryClient, status, threadId]);
-
   const displayMessages = runtimeMessages as Array<V2RuntimeMessage>;
   const isStreaming = status === "submitted" || status === "streaming";
   const submissionError = creationError ?? runtimeError;
@@ -546,21 +502,7 @@ export function V2ChatSurface({
         .filter((part): part is RuntimeUiSpecPart => part.type === "ui-spec")
         .sort((left, right) => left.specIndex - right.specIndex);
       const liveSpecs = liveSpecsByMessageId.get(message.id);
-      const attachments = message.parts
-        .map((part, index) => ({ part, index }))
-        .filter(
-          (
-            item,
-          ): item is {
-            part: RuntimeAttachmentPart;
-            index: number;
-          } => isRenderableAttachmentPart(item.part),
-        )
-        .map(({ part, index }) =>
-          toAttachmentData(part, `${message.id}:attachment:${index}`),
-        );
       return {
-        attachments,
         isLatestAssistant: message.id === lastAssistantMessageId,
         liveSpecs,
         message,
@@ -591,55 +533,18 @@ export function V2ChatSurface({
     async (message: PromptInputMessage) => {
       if (!hasV2ComposerPayload(message)) return;
       const trimmedText = message.text.trim();
-      const fileCount = message.files.length;
 
       try {
         await ensureDraftThreadReady();
       } catch {
-        shouldPromoteOnStreamStartRef.current = false;
         return;
       }
 
       setCreationError(null);
       setRuntimeError(null);
-      let attachments: Awaited<ReturnType<typeof uploadV2AttachmentSource>>[] =
-        [];
-      if (fileCount > 0) {
-        try {
-          attachments = await Promise.all(
-            message.files.map((file) =>
-              uploadV2AttachmentSource({
-                threadId,
-                url: file.url,
-                mediaType: file.mediaType,
-                filename: file.filename ?? "upload",
-              }),
-            ),
-          );
-        } catch (error) {
-          shouldPromoteOnStreamStartRef.current = false;
-          setRuntimeError(toErrorMessage(error));
-          return;
-        }
-      }
-
-      shouldPromoteOnStreamStartRef.current = true;
-      if (attachments.length === 0) {
-        await sendMessage(trimmedText);
-        return;
-      }
-
-      const outgoingContent = buildPromptContentParts({
-        text: trimmedText,
-        attachments: attachments.map((attachment) => ({
-          url: toAbsoluteAttachmentUrl(attachment.url),
-          mimeType: attachment.mimeType,
-          filename: attachment.filename,
-        })),
-      });
-      await sendMessage({ content: outgoingContent } as never);
+      await sendMessage(trimmedText);
     },
-    [ensureDraftThreadReady, sendMessage, threadId],
+    [ensureDraftThreadReady, sendMessage],
   );
 
   const handleResolveInteractive = useCallback(
@@ -707,7 +612,6 @@ export function V2ChatSurface({
 
         {renderedMessages.map(
           ({
-            attachments,
             isLatestAssistant,
             liveSpecs,
             message,
@@ -720,32 +624,9 @@ export function V2ChatSurface({
               from={getMessageFromRole(message.role)}
               id={`msg-${message.id}`}
             >
-              {message.role === "user" && attachments.length > 0 ? (
-                <Attachments
-                  variant="grid"
-                  className="group-[.is-user]:ml-auto"
-                >
-                  {attachments.map((attachment) => (
-                    <Attachment key={attachment.id} data={attachment}>
-                      <AttachmentPreview />
-                      <AttachmentInfo />
-                    </Attachment>
-                  ))}
-                </Attachments>
-              ) : null}
               <MessageContent>
                 {renderText.length > 0 ? (
                   <MessageResponse>{renderText}</MessageResponse>
-                ) : null}
-                {message.role !== "user" && attachments.length > 0 ? (
-                  <Attachments variant="grid">
-                    {attachments.map((attachment) => (
-                      <Attachment key={attachment.id} data={attachment}>
-                        <AttachmentPreview />
-                        <AttachmentInfo />
-                      </Attachment>
-                    ))}
-                  </Attachments>
                 ) : null}
                 {message.parts.map((part, index) =>
                   part.type === "tool-call" ? (
@@ -834,7 +715,6 @@ export function V2ChatSurface({
                     label="Regenerate response"
                     onClick={() => {
                       setRuntimeError(null);
-                      shouldPromoteOnStreamStartRef.current = true;
                       void reload().catch(() => {});
                     }}
                     tooltip="Regenerate response"

@@ -1,5 +1,6 @@
 import { defineTask } from "nitro/task";
-import { generateDashboard } from "../../server/lib/dashboard-generator";
+import { generateDashboard } from "../../src/features/dashboard/server/dashboard-generator";
+import type { PersistedWidget } from "../../src/features/dashboard/contracts/dashboard-schemas";
 
 export default defineTask({
   meta: {
@@ -12,7 +13,7 @@ export default defineTask({
         snapshotId: string;
         persona: string;
         previousWidgetIds: string[];
-        previousWidgets?: import("../../src/db/schema").PersistedWidget[];
+        previousWidgets?: PersistedWidget[];
       };
 
     await generateDashboard({

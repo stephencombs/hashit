@@ -16,7 +16,7 @@ vi.mock("@tanstack/ai", () => ({
   maxIterations: mocks.mockMaxIterations,
 }));
 
-vi.mock("~/lib/openai-adapter", () => ({
+vi.mock("~/shared/lib/openai-adapter", () => ({
   getAzureAdapter: mocks.mockGetAzureAdapter,
 }));
 

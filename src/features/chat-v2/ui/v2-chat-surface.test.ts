@@ -153,7 +153,7 @@ describe("hasV2ComposerPayload", () => {
     ).toBe(true);
   });
 
-  it("accepts attachment-only messages", () => {
+  it("rejects messages that only contain files", () => {
     expect(
       hasV2ComposerPayload({
         text: "   ",
@@ -166,7 +166,7 @@ describe("hasV2ComposerPayload", () => {
           },
         ],
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rejects empty text with no files", () => {

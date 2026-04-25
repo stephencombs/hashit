@@ -3,12 +3,11 @@ import { chat } from "@tanstack/ai";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
-import { getAzureAdapter } from "~/lib/openai-adapter";
+import { getAzureAdapter } from "~/shared/lib/openai-adapter";
 import {
   appendV2CustomEvents,
   createV2CustomChunk,
 } from "./persistence-runtime";
-import { ATTACHMENT_ONLY_CONTENT_PREFIX } from "./user-message";
 
 const GENERIC_THREAD_TITLES: ReadonlyArray<string> = ["Untitled", "New Chat"];
 const FALLBACK_TITLE_DEPLOYMENT = "gpt-4.1-mini";
@@ -75,9 +74,7 @@ async function readFirstPromptForTitle(
   if (!firstUserMessage) return null;
 
   const content = firstUserMessage.content.trim();
-  if (!content || content.startsWith(ATTACHMENT_ONLY_CONTENT_PREFIX)) {
-    return null;
-  }
+  if (!content) return null;
 
   return content;
 }

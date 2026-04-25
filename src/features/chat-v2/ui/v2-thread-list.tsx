@@ -3,7 +3,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2Icon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
-import { Button } from "~/components/ui/button";
+import { Button } from "~/shared/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -12,8 +12,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import { Skeleton } from "~/components/ui/skeleton";
+} from "~/shared/ui/dialog";
+import { Skeleton } from "~/shared/ui/skeleton";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -21,7 +21,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "~/components/ui/sidebar";
+} from "~/shared/ui/sidebar";
 import {
   commitV2ThreadDelete,
   commitV2ThreadPinnedState,
@@ -238,9 +238,6 @@ function ThreadGroup({
                     draggable={false}
                   >
                     <span className="truncate">{thread.title}</span>
-                    {thread.isStreaming ? (
-                      <span className="ml-auto size-2 shrink-0 rounded-full bg-emerald-500" />
-                    ) : null}
                   </Link>
                 </SidebarMenuButton>
                 <ThreadHoverActions
@@ -274,7 +271,7 @@ function V2ThreadListClient() {
   const [deleteCandidate, setDeleteCandidate] = useState<V2Thread | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { data: rawThreads = [], isLoading } = useLiveQuery((query) =>
+  const { data: rawThreads, isLoading } = useLiveQuery((query) =>
     query.from({ threads: threadsCollection }).select(({ threads }) => threads),
   );
   const threads = useMemo(() => sortThreads(rawThreads), [rawThreads]);

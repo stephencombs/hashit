@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MCP_SERVERS } from "~/lib/mcp/config";
+import { MCP_SERVERS } from "~/features/mcp/server/config";
 
 export const Route = createFileRoute("/api/mcp/servers")({
   server: {

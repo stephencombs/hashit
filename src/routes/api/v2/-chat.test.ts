@@ -10,8 +10,6 @@ const mocks = vi.hoisted(() => {
       status: 202,
     });
   });
-  const mockBeginThreadRun = vi.fn();
-  const mockEndThreadRun = vi.fn();
   const mockCreateV2AgentRun = vi.fn(async () => ({
     stream: (async function* () {
       yield { type: "TEXT_MESSAGE_CONTENT", delta: "ok" };
@@ -40,8 +38,6 @@ const mocks = vi.hoisted(() => {
     callOrder.push("queue-title");
   });
   const mockHasV2MessageByIdServer = vi.fn(async () => false);
-  const mockIsVisionCapableModel = vi.fn(() => true);
-  const mockUserMessagesContainMedia = vi.fn(() => false);
   const mockGetMcpTools = vi.fn(async () => ({
     serversUsed: ["alpha"],
     tools: [{ name: "search" }],
@@ -50,16 +46,12 @@ const mocks = vi.hoisted(() => {
   return {
     callOrder,
     mockAppendV2CustomEvents,
-    mockBeginThreadRun,
     mockCreateV2AgentRun,
-    mockEndThreadRun,
     mockProjectV2StreamSnapshotToDb,
     mockQueueV2ThreadTitleGeneration,
     mockHasV2MessageByIdServer,
-    mockIsVisionCapableModel,
     mockGetMcpTools,
     mockToDurableChatSessionResponse,
-    mockUserMessagesContainMedia,
     mockWithV2JsonRenderEvents,
   };
 });
@@ -68,29 +60,19 @@ vi.mock("@durable-streams/tanstack-ai-transport", () => ({
   toDurableChatSessionResponse: mocks.mockToDurableChatSessionResponse,
 }));
 
-vi.mock("~/lib/durable-streams", () => ({
+vi.mock("~/shared/lib/durable-streams", () => ({
   getDurableChatSessionTarget: () => ({
     writeUrl: "http://durable.local/chat/thread-1",
     createIfMissing: true,
   }),
 }));
 
-vi.mock("~/lib/multimodal-parts", () => ({
-  isVisionCapableModel: mocks.mockIsVisionCapableModel,
-  userMessagesContainMedia: mocks.mockUserMessagesContainMedia,
-}));
-
-vi.mock("~/lib/mcp/client", () => ({
+vi.mock("~/features/mcp/server/client", () => ({
   getMcpTools: mocks.mockGetMcpTools,
 }));
 
 vi.mock("~/features/chat-v2/server/keys", () => ({
   buildV2ChatStreamPath: (threadId: string) => `v2-chat/${threadId}`,
-}));
-
-vi.mock("~/features/chat-v2/server/thread-run-state.server", () => ({
-  beginV2ThreadRun: mocks.mockBeginThreadRun,
-  endV2ThreadRun: mocks.mockEndThreadRun,
 }));
 
 vi.mock("~/features/chat-v2/server/agent-runner", () => ({
@@ -177,8 +159,6 @@ describe("/api/v2/chat", () => {
     vi.clearAllMocks();
     mocks.callOrder.length = 0;
     mocks.mockHasV2MessageByIdServer.mockResolvedValue(false);
-    mocks.mockIsVisionCapableModel.mockReturnValue(true);
-    mocks.mockUserMessagesContainMedia.mockReturnValue(false);
     process.env.AZURE_OPENAI_API_KEY = "test-key";
     process.env.AZURE_OPENAI_ENDPOINT = "https://example.openai.azure.com";
     process.env.AZURE_OPENAI_DEPLOYMENT = "gpt-test";
@@ -207,8 +187,6 @@ describe("/api/v2/chat", () => {
     expect(mocks.mockAppendV2CustomEvents).toHaveBeenCalledTimes(1);
     expect(mocks.mockQueueV2ThreadTitleGeneration).toHaveBeenCalledTimes(1);
     expect(mocks.mockWithV2JsonRenderEvents).toHaveBeenCalledTimes(1);
-    expect(mocks.mockBeginThreadRun).toHaveBeenCalledWith("thread-1");
-    expect(mocks.mockEndThreadRun).not.toHaveBeenCalled();
   });
 
   it("returns success and emits persistence_complete when projection fails", async () => {
@@ -254,18 +232,6 @@ describe("/api/v2/chat", () => {
     expect(mocks.mockQueueV2ThreadTitleGeneration).not.toHaveBeenCalled();
   });
 
-  it("rejects media prompts for non-vision models", async () => {
-    mocks.mockUserMessagesContainMedia.mockReturnValueOnce(true);
-    mocks.mockIsVisionCapableModel.mockReturnValueOnce(false);
-
-    const response = await Route.options.server.handlers.POST({
-      request: makeRequest(),
-    });
-
-    expect(response.status).toBe(415);
-    expect(mocks.mockCreateV2AgentRun).not.toHaveBeenCalled();
-  });
-
   it("passes runtime and tool preferences through the V2 policy boundary", async () => {
     const response = await Route.options.server.handlers.POST({
       request: makeRequest({
@@ -298,9 +264,7 @@ describe("/api/v2/chat", () => {
     );
   });
 
-  it("accepts attachment-only user messages and checks the resolved model", async () => {
-    mocks.mockUserMessagesContainMedia.mockReturnValueOnce(true);
-
+  it("rejects attachment-only user messages", async () => {
     const response = await Route.options.server.handlers.POST({
       request: makeRequest({
         messages: [
@@ -325,8 +289,7 @@ describe("/api/v2/chat", () => {
       }),
     });
 
-    expect(response.status).toBe(202);
-    expect(mocks.mockIsVisionCapableModel).toHaveBeenCalledWith("gpt-4o");
-    expect(mocks.mockCreateV2AgentRun).toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(mocks.mockCreateV2AgentRun).not.toHaveBeenCalled();
   });
 });

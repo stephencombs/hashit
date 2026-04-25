@@ -17,7 +17,7 @@
 
 - Stack: TanStack Start + Nitro + Vite (with React Server Components available in current Start versions), plus Drizzle/Postgres, TanStack AI, Azure OpenAI, and MCP tooling.
 - Local development runs at `hashit.localhost` via portless, with Docker Compose Azurite backing local prompt-attachment blob storage.
-- Durable Streams powers chat session transport (`@durable-streams/tanstack-ai-transport`), with server helpers in `src/lib/durable-streams.ts` and production `DURABLE_STREAMS_URL` wired from Terraform outputs.
+- Durable Streams powers chat session transport (`@durable-streams/tanstack-ai-transport`), with server helpers in `src/shared/lib/durable-streams.ts` and production `DURABLE_STREAMS_URL` wired from Terraform outputs.
 - V2 chat is isolated under `src/features/chat-v2/` and `src/routes/v2*`, with `v2_threads`/`v2_messages` tables and `/api/v2/chat` + `/api/v2/chat-stream` endpoints.
 - V2 persistence is stream-first: `/api/v2/chat` awaits durable writes, then projects stream state into Postgres via `src/features/chat-v2/server/stream-projection.ts`; terminal custom events are emitted by `src/features/chat-v2/server/persistence-runtime.ts`.
 - Thread activity status sync uses atomic thread run-state transitions plus durable event logging in `v2_thread_activity_events`, streamed through `/api/v2/thread-events` and consumed by `use-v2-thread-activity-sync`.

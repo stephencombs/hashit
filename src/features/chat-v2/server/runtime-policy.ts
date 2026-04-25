@@ -3,8 +3,8 @@ import {
   resolveAgentModel,
   sanitizeCustomSystemPrompt,
   type AgentRunProfile,
-} from "~/lib/agent-profile-policy";
-import type { V2ChatRequestData } from "./chat-contract";
+} from "~/shared/lib/agent-profile-policy";
+import type { V2ChatRequestData } from "../contracts/chat-contract";
 
 export const V2_AGENT_PROFILE: AgentRunProfile = "interactiveChatV2";
 

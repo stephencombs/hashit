@@ -8,11 +8,10 @@ import {
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "~/features/chat-v2/data/query-options";
-import { V2ChatThreadPage } from "~/features/routes/v2-chat-thread-page";
+import { V2ChatThreadPage } from "~/features/chat-v2/ui/v2-chat-thread-page";
 
 function getNewChatNavNonce(state: unknown): number | undefined {
   if (!state || typeof state !== "object") return undefined;
@@ -51,9 +50,6 @@ function V2ChatRoute() {
       await Promise.all([
         queryClient.ensureQueryData(v2ThreadSessionQueryOptions(nextThreadId)),
         queryClient.ensureQueryData(v2ThreadMessagesQueryOptions(nextThreadId)),
-        queryClient.ensureQueryData(
-          v2ThreadAttachmentSummaryQueryOptions(nextThreadId),
-        ),
       ]);
 
       await navigate({

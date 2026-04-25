@@ -49,7 +49,6 @@ function makeThread(
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     deletedAt: null,
     pinnedAt: null,
-    isStreaming: false,
     ...overrides,
   };
 }
@@ -94,7 +93,6 @@ describe("thread title cache sync", () => {
     const serverThread = makeThread({
       id: threadId,
       title: "Roadmap Plan",
-      isStreaming: true,
       updatedAt: new Date("2026-01-01T00:05:00.000Z"),
     });
 

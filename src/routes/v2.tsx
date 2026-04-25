@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { v2ThreadListQueryOptions } from "~/features/chat-v2/data/query-options";
-import { V2AppLayout } from "~/features/routes/v2-app-layout";
-import { getDefaultSidebarOpen } from "~/lib/server/sidebar-state";
+import { V2AppLayout } from "~/app/layouts/v2-app-layout";
+import { getDefaultSidebarOpen } from "~/shared/lib/server/sidebar-state";
 
 type V2LayoutLoaderArgs = {
   context: {

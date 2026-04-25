@@ -1,21 +1,12 @@
 import { memo, useCallback, useRef, useState } from "react";
 import {
   PromptInput,
-  PromptInputAttachButton,
-  PromptInputAttachmentPreviewList,
   PromptInputBody,
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputTools,
   type PromptInputMessage,
-  usePromptInputAttachments,
-} from "~/components/ai-elements/prompt-input";
-import {
-  MAX_ATTACHMENT_BYTES,
-  MAX_ATTACHMENTS_PER_REQUEST,
-} from "~/lib/attachment-schemas";
-import { PaperclipIcon } from "lucide-react";
+} from "~/shared/ai-elements/prompt-input";
 
 type V2ComposerProps = {
   onSubmit: (message: PromptInputMessage) => Promise<void> | void;
@@ -43,11 +34,7 @@ export const V2Composer = memo(function V2Composer({
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
       const trimmed = message.text.trim();
-      if (
-        (trimmed.length === 0 && message.files.length === 0) ||
-        disabled ||
-        isSubmitting
-      ) {
+      if (trimmed.length === 0 || disabled || isSubmitting) {
         return;
       }
 
@@ -83,16 +70,8 @@ export const V2Composer = memo(function V2Composer({
   return (
     <div ref={rootRef} className="shrink-0 pt-3 pb-6">
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 px-6">
-        <PromptInput
-          onSubmit={handleSubmit}
-          accept="image/*,application/pdf"
-          globalDrop
-          multiple
-          maxFiles={MAX_ATTACHMENTS_PER_REQUEST}
-          maxFileSize={MAX_ATTACHMENT_BYTES}
-        >
+        <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
-            <PromptInputAttachmentPreviewList />
             <PromptInputTextarea
               ref={textareaRef}
               value={value}
@@ -102,11 +81,6 @@ export const V2Composer = memo(function V2Composer({
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputAttachButton>
-                <PaperclipIcon className="size-4" />
-              </PromptInputAttachButton>
-            </PromptInputTools>
             <V2ComposerSubmit
               input={value}
               status={status}
@@ -131,8 +105,7 @@ function V2ComposerSubmit({
   disabled: boolean;
   onStop?: () => void;
 }) {
-  const attachments = usePromptInputAttachments();
-  const canSubmit = input.trim().length > 0 || attachments.files.length > 0;
+  const canSubmit = input.trim().length > 0;
 
   return (
     <PromptInputSubmit

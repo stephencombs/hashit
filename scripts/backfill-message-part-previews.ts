@@ -15,8 +15,8 @@ import { asc, gt, eq } from "drizzle-orm";
 import {
   buildArgsPreview,
   buildResultSummary,
-} from "../src/lib/server/message-part-previews";
-import type { AppMessagePart } from "../src/components/chat/message-row.types";
+} from "../src/shared/lib/server/message-part-previews";
+import type { AppMessagePart } from "../src/shared/types/message-parts";
 
 const BATCH_SIZE = 500;
 

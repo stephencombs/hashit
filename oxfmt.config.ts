@@ -8,6 +8,7 @@ export default defineConfig({
     ".claude",
     ".cursor",
     ".tanstack",
+    "src/routeTree.gen.ts",
     "dist",
     ".output",
     ".vinxi",

@@ -3,7 +3,7 @@ import type { Spec } from "@json-render/core";
 import {
   buildReadStreamUrl,
   getDurableReadHeaders,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 import { buildV2ChatStreamPath } from "./keys";
 
 type DurableChunk = {

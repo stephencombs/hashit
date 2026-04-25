@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AutomationsPage } from "~/features/routes/automations-page";
-import { automationListQuery } from "~/lib/automation-queries";
+import { AutomationsPage } from "~/features/automations/ui/automations-page";
+import { automationListQuery } from "~/features/automations/data/automation-queries";
 
 export const Route = createFileRoute("/_app/automations")({
   loader: ({ context }) => {

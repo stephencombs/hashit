@@ -5,10 +5,8 @@ const mocks = vi.hoisted(() => {
   const mockWhere = vi.fn(() => ({ returning: mockReturning }));
   const mockSet = vi.fn(() => ({ where: mockWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockSet }));
-  const mockIsV2ThreadRunActive = vi.fn(async () => false);
 
   return {
-    mockIsV2ThreadRunActive,
     mockReturning,
     mockSet,
     mockUpdate,
@@ -20,11 +18,6 @@ vi.mock("~/db", () => ({
   db: {
     update: mocks.mockUpdate,
   },
-}));
-
-vi.mock("./thread-run-state.server", () => ({
-  isV2ThreadRunActive: mocks.mockIsV2ThreadRunActive,
-  listActiveV2ThreadRunIds: vi.fn(async () => new Set<string>()),
 }));
 
 import { setV2ThreadTitleServer } from "./threads.server";
@@ -47,8 +40,6 @@ describe("setV2ThreadTitleServer", () => {
         pinnedAt: null,
       },
     ]);
-    mocks.mockIsV2ThreadRunActive.mockResolvedValueOnce(true);
-
     const result = await setV2ThreadTitleServer({
       threadId: "thread-1",
       title: "  Roadmap Planning  ",
@@ -63,7 +54,6 @@ describe("setV2ThreadTitleServer", () => {
     expect(result).toMatchObject({
       id: "thread-1",
       title: "Roadmap Planning",
-      isStreaming: true,
     });
   });
 

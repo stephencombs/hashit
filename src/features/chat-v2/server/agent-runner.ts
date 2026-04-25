@@ -5,7 +5,7 @@ import {
   type StreamChunk,
   type Tool,
 } from "@tanstack/ai";
-import { getAzureAdapter } from "~/lib/openai-adapter";
+import { getAzureAdapter } from "~/shared/lib/openai-adapter";
 import {
   resolveV2RuntimePolicy,
   type ResolvedV2RuntimePolicy,

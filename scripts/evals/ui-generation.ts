@@ -13,8 +13,8 @@
  */
 
 import assert from "node:assert/strict";
-import { withJsonRender } from "../../src/lib/json-render-stream";
-import { validateWidgetSpec } from "../../src/lib/ui-catalog";
+import { withJsonRender } from "../../src/shared/lib/json-render-stream";
+import { validateWidgetSpec } from "../../src/shared/lib/ui-catalog";
 import type { StreamChunk } from "@tanstack/ai";
 import type { Spec } from "@json-render/core";
 

@@ -3,14 +3,14 @@ import { nanoid } from "nanoid";
 import { desc, eq, and } from "drizzle-orm";
 import { db } from "~/db";
 import { dashboardSnapshots } from "~/db/schema";
-import type { PersistedWidget } from "~/db/schema";
+import type { PersistedWidget } from "~/features/dashboard/contracts/dashboard-schemas";
 import {
   persistedWidgetSchema,
   postDashboardBodySchema,
   postDashboardGenerationResultSchema,
   snapshotResponseSchema,
-} from "~/lib/dashboard-schemas";
-import { errorResponse } from "~/lib/http-error";
+} from "~/features/dashboard/contracts/dashboard-schemas";
+import { errorResponse } from "~/shared/lib/http-error";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const GENERATING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -171,7 +171,7 @@ export const Route = createFileRoute("/api/dashboard")({
         });
 
         const { generateDashboard } =
-          await import("../../../server/lib/dashboard-generator");
+          await import("../../../src/features/dashboard/server/dashboard-generator");
         generateDashboard({
           snapshotId,
           persona,

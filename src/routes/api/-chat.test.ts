@@ -40,26 +40,26 @@ vi.mock("@durable-streams/tanstack-ai-transport", () => ({
   toDurableChatSessionResponse: mocks.mockToDurableChatSessionResponse,
 }));
 
-vi.mock("~/lib/chat-helpers", () => ({
+vi.mock("~/features/chat-v1/server/chat-helpers", () => ({
   extractUserMessage: mocks.mockExtractUserMessage,
   syncPriorToolOutputs: mocks.mockSyncPriorToolOutputs,
   withPersistence: mocks.mockWithPersistence,
 }));
 
-vi.mock("~/lib/json-render-stream", () => ({
+vi.mock("~/shared/lib/json-render-stream", () => ({
   withJsonRender: (stream: AsyncIterable<unknown>) => stream,
 }));
 
-vi.mock("~/lib/agent-runner", () => ({
+vi.mock("~/features/chat-v1/server/agent-runner", () => ({
   createAgentRun: mocks.mockCreateAgentRun,
 }));
 
-vi.mock("~/lib/multimodal-parts", () => ({
+vi.mock("~/shared/lib/multimodal-parts", () => ({
   isVisionCapableModel: () => true,
   userMessagesContainMedia: () => false,
 }));
 
-vi.mock("~/lib/durable-streams", () => ({
+vi.mock("~/shared/lib/durable-streams", () => ({
   buildChatStreamPath: (threadId: string) => `chat/${threadId}`,
   getDurableChatSessionTarget: () => ({
     writeUrl: "http://durable.local/chat/thread-1",
@@ -67,7 +67,7 @@ vi.mock("~/lib/durable-streams", () => ({
   }),
 }));
 
-vi.mock("~/lib/server/thread-run-state", () => ({
+vi.mock("~/features/chat-v1/server/thread-run-state", () => ({
   beginThreadRun: vi.fn(),
   endThreadRun: vi.fn(),
 }));

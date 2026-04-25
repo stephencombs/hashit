@@ -9,8 +9,6 @@ export const v2ThreadSchema = createSelectSchema(v2Threads, {
   updatedAt: coercedDate,
   deletedAt: coercedDate.nullable(),
   pinnedAt: coercedDate.nullable(),
-}).extend({
-  isStreaming: z.boolean().optional().default(false),
 });
 export type V2Thread = z.infer<typeof v2ThreadSchema>;
 

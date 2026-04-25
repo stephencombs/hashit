@@ -4,9 +4,8 @@ import { db } from "~/db";
 import { appSettings } from "~/db/schema";
 import {
   getMCPAccessToken,
-  isMCPTokenConfigured,
   resetMCPTokenCache,
-} from "~/lib/mcp/auth";
+} from "~/features/mcp/server/auth";
 
 export const Route = createFileRoute("/api/settings/mcp-token")({
   server: {

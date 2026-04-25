@@ -24,7 +24,7 @@ vi.mock("@durable-streams/client", () => ({
   stream: mocks.mockStream,
 }));
 
-vi.mock("~/lib/durable-streams", () => ({
+vi.mock("~/shared/lib/durable-streams", () => ({
   buildReadStreamUrl: mocks.mockBuildReadStreamUrl,
   getDurableReadHeaders: mocks.mockGetDurableReadHeaders,
 }));

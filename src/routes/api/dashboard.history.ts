@@ -6,8 +6,8 @@ import {
   dashboardHistoryResponseSchema,
   persistedRecipeSchema,
   persistedWidgetSchema,
-} from "~/lib/dashboard-schemas";
-import { errorResponse } from "~/lib/http-error";
+} from "~/features/dashboard/contracts/dashboard-schemas";
+import { errorResponse } from "~/shared/lib/http-error";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;

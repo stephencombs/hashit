@@ -3,7 +3,7 @@ import { eq, lte, and, isNull } from "drizzle-orm";
 import { Cron } from "croner";
 import { db } from "../../src/db";
 import { automations, automationRuns } from "../../src/db/schema";
-import { getExecutor } from "../../server/lib/executors";
+import { getExecutor } from "../../src/features/automations/server/executors";
 
 export default defineTask({
   meta: {

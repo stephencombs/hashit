@@ -4,12 +4,12 @@ import { db } from "~/db";
 import { threads } from "~/db/schema";
 import { desc, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { createThreadBodySchema } from "~/lib/schemas";
+import { createThreadBodySchema } from "~/features/chat-v1/contracts/schemas";
 import {
   buildChatStreamPath,
   getDurableChatSessionTarget,
   isDurableStreamsConfigured,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 
 export const Route = createFileRoute("/api/threads")({
   server: {

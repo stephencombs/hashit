@@ -3,8 +3,8 @@ import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "../../src/db";
 import { dashboardSnapshots } from "../../src/db/schema";
-import { generateDashboard } from "../../server/lib/dashboard-generator";
-import type { PersistedWidget } from "../../src/db/schema";
+import { generateDashboard } from "../../src/features/dashboard/server/dashboard-generator";
+import type { PersistedWidget } from "../../src/features/dashboard/contracts/dashboard-schemas";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_PERSONA = "HR Admin";

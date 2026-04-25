@@ -4,7 +4,7 @@ import {
   buildReadStreamUrl,
   getDurableChatSessionTarget,
   getDurableReadHeaders,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 import { buildV2ChatStreamPath } from "~/features/chat-v2/server/keys";
 
 function normalizeChatId(id: string | null): string | null {

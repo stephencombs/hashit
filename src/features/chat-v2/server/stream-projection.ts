@@ -6,15 +6,11 @@ import {
   buildReadStreamUrl,
   getDurableReadHeaders,
   readDurableStreamHeadOffset,
-} from "~/lib/durable-streams";
+} from "~/shared/lib/durable-streams";
 import { readV2UiSpecEventsByMessageId } from "./durable-spec-events";
 import { buildV2ChatStreamPath } from "./keys";
 import { normalizeRuntimeParts, type V2RuntimePart } from "./runtime-message";
-import {
-  ATTACHMENT_ONLY_CONTENT_PREFIX,
-  extractTextContent,
-  summarizePartForPlaceholder,
-} from "./user-message";
+import { extractTextContent } from "./user-message";
 
 /**
  * Materializes Durable Stream chat state and projects it into V2 Postgres
@@ -74,13 +70,6 @@ function deriveSnapshotContent(
   const textContent = extractTextContent(parts);
   if (textContent.length > 0) {
     return textContent;
-  }
-
-  const summaries = parts
-    .map((part) => summarizePartForPlaceholder(part))
-    .filter((value): value is string => value !== null);
-  if (summaries.length > 0) {
-    return `${ATTACHMENT_ONLY_CONTENT_PREFIX} ${summaries.join(", ")}`;
   }
 
   return "";

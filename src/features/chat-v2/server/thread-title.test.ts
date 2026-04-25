@@ -26,7 +26,7 @@ vi.mock("@tanstack/ai", () => ({
   chat: mocks.mockChat,
 }));
 
-vi.mock("~/lib/openai-adapter", () => ({
+vi.mock("~/shared/lib/openai-adapter", () => ({
   getAzureAdapter: mocks.mockGetAzureAdapter,
 }));
 

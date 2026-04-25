@@ -3,7 +3,7 @@ import { Cron } from "croner";
 import { eq } from "drizzle-orm";
 import { db } from "~/db";
 import { automations } from "~/db/schema";
-import { updateAutomationBodySchema } from "~/lib/schemas";
+import { updateAutomationBodySchema } from "~/features/automations/contracts/schemas";
 
 export const Route = createFileRoute("/api/automations/$automationId")({
   server: {

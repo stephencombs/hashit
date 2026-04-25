@@ -47,7 +47,7 @@ vi.mock("@durable-streams/tanstack-ai-transport", () => ({
     mocks.mockMaterializeSnapshotFromDurableStream,
 }));
 
-vi.mock("~/lib/durable-streams", () => ({
+vi.mock("~/shared/lib/durable-streams", () => ({
   buildReadStreamUrl: mocks.mockBuildReadStreamUrl,
   getDurableReadHeaders: mocks.mockGetDurableReadHeaders,
   readDurableStreamHeadOffset: mocks.mockReadDurableStreamHeadOffset,

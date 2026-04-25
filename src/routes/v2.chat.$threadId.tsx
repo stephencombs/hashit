@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import {
-  v2ThreadAttachmentSummaryQueryOptions,
   v2ThreadMessagesQueryOptions,
   v2ThreadSessionQueryOptions,
 } from "~/features/chat-v2/data/query-options";
@@ -22,9 +21,6 @@ export function loadV2ThreadRouteData({ params, context }: V2ThreadLoaderArgs) {
     ),
     context.queryClient.ensureQueryData(
       v2ThreadMessagesQueryOptions(params.threadId),
-    ),
-    context.queryClient.ensureQueryData(
-      v2ThreadAttachmentSummaryQueryOptions(params.threadId),
     ),
   ]);
 }

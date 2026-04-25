@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { summarizeToolActivity } from "../../src/lib/agent-runtime-utils";
-import { resolveAgentModel } from "../../src/lib/agent-profile-policy";
+import { summarizeToolActivity } from "../../src/shared/lib/agent-runtime-utils";
+import { resolveAgentModel } from "../../src/shared/lib/agent-profile-policy";
 
 type ScenarioResult =
   | { id: string; status: "passed"; detail?: string }
@@ -67,8 +67,8 @@ async function main() {
       async () => {
         const [{ executeAutomationRun }, { loadThreadMessagesForRuntime }] =
           await Promise.all([
-            import("../../src/lib/automation-agent"),
-            import("../../src/lib/chat-helpers"),
+            import("../../src/features/automations/server/automation-agent"),
+            import("../../src/features/chat-v1/server/chat-helpers"),
           ]);
         const result = await executeAutomationRun(automationPrompt!, undefined);
         assert.ok(result.threadId);
@@ -101,7 +101,7 @@ async function main() {
           import("drizzle-orm"),
           import("../../src/db"),
           import("../../src/db/schema"),
-          import("../../server/lib/dashboard-generator"),
+          import("../../src/features/dashboard/server/dashboard-generator"),
         ]);
         const snapshotId = nanoid();
         await db.insert(dashboardSnapshots).values({

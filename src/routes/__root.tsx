@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
 import { createRootRouteWithContext } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import appCss from "~/app.css?url";
+import appCss from "~/app/styles/app.css?url";
 import {
   NotFoundPage,
   RootComponent,
   RootErrorPage,
-} from "~/features/routes/root-route-components";
+} from "~/app/root-route-components";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;

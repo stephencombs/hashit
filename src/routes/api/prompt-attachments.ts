@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { nanoid } from "nanoid";
-import { attachmentResponseSchema } from "~/lib/attachment-schemas";
-import { uploadAttachment } from "~/lib/server/attachments";
-import { parseAttachmentUploadRequest } from "~/lib/server/prompt-attachments-upload";
+import { attachmentResponseSchema } from "~/shared/lib/attachment-schemas";
+import { uploadAttachment } from "~/shared/lib/server/attachments";
+import { parseAttachmentUploadRequest } from "~/shared/lib/server/prompt-attachments-upload";
 
 const ATTACHMENT_ID_LENGTH = 24;
 
