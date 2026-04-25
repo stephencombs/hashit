@@ -1,28 +1,24 @@
 import { withJsonRender } from "~/lib/json-render-stream";
-import { createAgentRun, type AgentRunTelemetry } from "~/lib/agent-runner";
+import { createAgentRun, type AgentRunState } from "~/lib/agent-runner";
 import {
   createThread,
   loadThreadMessagesForRuntime,
   withPersistence,
 } from "~/lib/chat-helpers";
-import type { RequestLogger } from "evlog";
 import type { MessagePart, StreamChunk } from "@tanstack/ai";
-import type { AgentTraceState } from "~/lib/telemetry/agent-spans";
 
 export interface PreparedAutomationRun {
   threadId: string;
   threadCreated: boolean;
   prompt: string;
   userParts: Array<MessagePart>;
-  telemetry: AgentRunTelemetry;
+  runState: AgentRunState;
   stream: AsyncIterable<StreamChunk>;
 }
 
 export async function prepareAutomationRun(
   prompt: string,
   existingThreadId: string | undefined,
-  log?: RequestLogger,
-  traceState?: AgentTraceState,
 ): Promise<PreparedAutomationRun> {
   let threadId = existingThreadId;
   let threadCreated = false;
@@ -42,13 +38,10 @@ export async function prepareAutomationRun(
 
   const userParts: Array<MessagePart> = [{ type: "text", content: prompt }];
 
-  const { stream, telemetry } = await createAgentRun({
+  const { stream, runState } = await createAgentRun({
     profile: "automation",
-    source: traceState?.source ?? "automation-executor",
     messages,
     conversationId: threadId,
-    log,
-    traceState,
   });
 
   return {
@@ -56,7 +49,7 @@ export async function prepareAutomationRun(
     threadCreated,
     prompt,
     userParts,
-    telemetry,
+    runState,
     stream: withJsonRender(stream),
   };
 }
@@ -64,18 +57,11 @@ export async function prepareAutomationRun(
 export async function executeAutomationRun(
   prompt: string,
   existingThreadId: string | undefined,
-  log?: RequestLogger,
-  traceState?: AgentTraceState,
 ): Promise<{
   threadId: string;
-  telemetry: AgentRunTelemetry;
+  runState: AgentRunState;
 }> {
-  const prepared = await prepareAutomationRun(
-    prompt,
-    existingThreadId,
-    log,
-    traceState,
-  );
+  const prepared = await prepareAutomationRun(prompt, existingThreadId);
 
   for await (const _chunk of withPersistence(
     prepared.stream,
@@ -84,14 +70,13 @@ export async function executeAutomationRun(
     prepared.prompt,
     prepared.userParts,
     true,
-    log ?? ({ set() {} } as RequestLogger),
-    prepared.telemetry,
+    prepared.runState,
   )) {
     // Drain the stream to completion so persistence and middleware can run.
   }
 
   return {
     threadId: prepared.threadId,
-    telemetry: prepared.telemetry,
+    runState: prepared.runState,
   };
 }

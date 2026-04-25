@@ -1,16 +1,11 @@
 import { defineConfig } from "nitro";
-import evlog from "evlog/nitro/v3";
 
 export default defineConfig({
   experimental: {
     asyncContext: true,
     tasks: true,
   },
-  plugins: [
-    "./server/plugins/00.migrate.ts",
-    "./server/plugins/evlog-drain.ts",
-    "./server/plugins/otlp-tracing.ts",
-  ],
+  plugins: ["./server/plugins/00.migrate.ts"],
   tasks: {
     "automations:tick": {
       handler: "./tasks/automations/tick.ts",
@@ -29,10 +24,4 @@ export default defineConfig({
     "* * * * *": ["automations:tick"],
     "0 0 * * *": ["dashboard:check"],
   },
-  modules: [
-    evlog({
-      env: { service: "hashit" },
-      exclude: ["/health"],
-    }),
-  ],
 });

@@ -26,10 +26,6 @@ class RenderErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
-    console.error("[json-render-display] Widget render error:", error);
-  }
-
   render() {
     return this.state.hasError ? this.props.fallback : this.props.children;
   }

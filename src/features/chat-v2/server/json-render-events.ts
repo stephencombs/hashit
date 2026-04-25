@@ -5,16 +5,8 @@ import {
 } from "@json-render/core";
 import type { StreamChunk } from "@tanstack/ai";
 
-export interface V2UiGenerationMetrics {
-  patchLinesReceived: number;
-  patchesEmitted: number;
-  specsCompleted: number;
-  totalMs: number;
-}
-
 export async function* withV2JsonRenderEvents(
   stream: AsyncIterable<StreamChunk>,
-  onMetrics?: (metrics: V2UiGenerationMetrics) => void,
 ): AsyncIterable<StreamChunk> {
   let compiler = createSpecStreamCompiler<Spec>();
   let hasSpec = false;
@@ -25,11 +17,6 @@ export async function* withV2JsonRenderEvents(
   const textQueue: string[] = [];
   const patchQueue: Array<{ spec: Spec; specIndex: number }> = [];
   const completeQueue: Array<{ spec: Spec; specIndex: number }> = [];
-
-  let patchLinesReceived = 0;
-  let patchesEmitted = 0;
-  let specsCompleted = 0;
-  let firstPatchAt = 0;
 
   function enqueueProse(fragment: string): void {
     if (hasSpec) {
@@ -45,8 +32,6 @@ export async function* withV2JsonRenderEvents(
     const patch = parseSpecStreamLine(line);
     if (!patch) return;
     hasSpec = true;
-    patchLinesReceived += 1;
-    if (firstPatchAt === 0) firstPatchAt = Date.now();
     compiler.push(JSON.stringify(patch) + "\n");
     patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex });
   }
@@ -111,7 +96,6 @@ export async function* withV2JsonRenderEvents(
     while (completeQueue.length > 0) {
       const entry = completeQueue.shift();
       if (!entry) continue;
-      specsCompleted += 1;
       yield {
         type: "CUSTOM",
         name: "spec_complete",
@@ -126,7 +110,6 @@ export async function* withV2JsonRenderEvents(
     const latest = patchQueue[patchQueue.length - 1];
     patchQueue.length = 0;
     if (!latest) return;
-    patchesEmitted += 1;
     yield {
       type: "CUSTOM",
       name: "spec_patch",
@@ -138,7 +121,6 @@ export async function* withV2JsonRenderEvents(
   function* emitFinalSpecComplete(): Generator<StreamChunk> {
     if (!hasSpec) return;
     hasSpec = false;
-    specsCompleted += 1;
     yield {
       type: "CUSTOM",
       name: "spec_complete",
@@ -177,11 +159,4 @@ export async function* withV2JsonRenderEvents(
     yield* drainPatchQueue();
     yield* emitFinalSpecComplete();
   }
-
-  onMetrics?.({
-    patchLinesReceived,
-    patchesEmitted,
-    specsCompleted,
-    totalMs: firstPatchAt > 0 ? Date.now() - firstPatchAt : 0,
-  });
 }

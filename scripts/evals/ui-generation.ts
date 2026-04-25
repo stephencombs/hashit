@@ -13,10 +13,7 @@
  */
 
 import assert from "node:assert/strict";
-import {
-  withJsonRender,
-  type UiGenerationMetrics,
-} from "../../src/lib/json-render-stream";
+import { withJsonRender } from "../../src/lib/json-render-stream";
 import { validateWidgetSpec } from "../../src/lib/ui-catalog";
 import type { StreamChunk } from "@tanstack/ai";
 import type { Spec } from "@json-render/core";
@@ -147,51 +144,19 @@ const scenarios: Promise<ScenarioResult>[] = [
 
   runScenario("patch-coalescing-reduces-patch-events", async () => {
     // Stream the JSONL in very small chunks so multiple patch lines arrive per cycle.
-    let metrics: UiGenerationMetrics | undefined;
     const chunks = await collectChunks(
-      withJsonRender(makeTextStream(SINGLE_SPEC_JSONL, 8), (m) => {
-        metrics = m;
-      }),
+      withJsonRender(makeTextStream(SINGLE_SPEC_JSONL, 8)),
     );
     const patches = chunks.filter(
       (c) =>
         c.type === "CUSTOM" && (c as { name: string }).name === "spec_patch",
     );
-    assert.ok(metrics, "onMetrics callback must have been called");
-    assert.ok(
-      metrics!.patchesEmitted <= metrics!.patchLinesReceived,
-      `patchesEmitted (${metrics!.patchesEmitted}) must be ≤ patchLinesReceived (${metrics!.patchLinesReceived})`,
-    );
-    assert.ok(
-      patches.length <= metrics!.patchLinesReceived,
-      `patch event count (${patches.length}) must be ≤ patch lines parsed (${metrics!.patchLinesReceived})`,
-    );
-  }),
-
-  runScenario("metrics-callback-reports-specs-completed", async () => {
-    let metrics: UiGenerationMetrics | undefined;
-    await collectChunks(
-      withJsonRender(makeTextStream(MULTI_SPEC_JSONL), (m) => {
-        metrics = m;
-      }),
-    );
-    assert.ok(metrics, "onMetrics callback must be called");
-    assert.equal(
-      metrics!.specsCompleted,
-      2,
-      `Expected specsCompleted=2, got ${metrics!.specsCompleted}`,
-    );
-    assert.ok(metrics!.totalMs >= 0, "totalMs must be non-negative");
+    assert.ok(patches.length > 0, "Expected at least one spec_patch event");
   }),
 
   runScenario("no-spec-in-prose-only-stream", async () => {
     const prose = "Hello world. No spec here.\n\nJust regular markdown text.";
-    let metrics: UiGenerationMetrics | undefined;
-    const chunks = await collectChunks(
-      withJsonRender(makeTextStream(prose), (m) => {
-        metrics = m;
-      }),
-    );
+    const chunks = await collectChunks(withJsonRender(makeTextStream(prose)));
     const completes = chunks.filter(
       (c) =>
         c.type === "CUSTOM" && (c as { name: string }).name === "spec_complete",
@@ -201,9 +166,6 @@ const scenarios: Promise<ScenarioResult>[] = [
       0,
       "No spec_complete expected for prose-only stream",
     );
-    assert.ok(metrics, "onMetrics must fire even with no specs");
-    assert.equal(metrics!.specsCompleted, 0);
-    assert.equal(metrics!.patchLinesReceived, 0);
   }),
 
   runScenario("validateWidgetSpec-accepts-valid-bar-chart", () => {
@@ -333,17 +295,17 @@ async function main() {
   const failed = results.filter((r) => r.status === "failed");
   const skipped = results.filter((r) => r.status === "skipped");
 
-  console.log("\n─── UI Generation Evals ────────────────────────");
+  process.stdout.write("\n--- UI Generation Evals ------------------------\n");
   for (const r of results) {
     const icon =
-      r.status === "passed" ? "✓" : r.status === "skipped" ? "⊘" : "✗";
-    const detail = r.status !== "passed" ? ` — ${r.detail}` : "";
-    console.log(`  ${icon} ${r.id}${detail}`);
+      r.status === "passed" ? "PASS" : r.status === "skipped" ? "SKIP" : "FAIL";
+    const detail = r.status !== "passed" ? ` - ${r.detail}` : "";
+    process.stdout.write(`  ${icon} ${r.id}${detail}\n`);
   }
-  console.log(
-    `\n  Passed: ${passed.length}  Failed: ${failed.length}  Skipped: ${skipped.length}`,
+  process.stdout.write(
+    `\n  Passed: ${passed.length}  Failed: ${failed.length}  Skipped: ${skipped.length}\n`,
   );
-  console.log("────────────────────────────────────────────────\n");
+  process.stdout.write("------------------------------------------------\n");
 
   if (failed.length > 0) {
     process.exit(1);
@@ -351,6 +313,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

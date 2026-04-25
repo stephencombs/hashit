@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createError } from "evlog";
 import { desc, eq } from "drizzle-orm";
 import { db } from "~/db";
 import { dashboardSnapshots } from "~/db/schema";
@@ -8,6 +7,7 @@ import {
   persistedRecipeSchema,
   persistedWidgetSchema,
 } from "~/lib/dashboard-schemas";
+import { errorResponse } from "~/lib/http-error";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/dashboard/history")({
           snapshots: summaries,
         });
         if (!parsed.success) {
-          throw createError({
+          return errorResponse({
             message: "Invalid dashboard history payload",
             status: 500,
             why: parsed.error.issues.map((issue) => issue.message).join("; "),

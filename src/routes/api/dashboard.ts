@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createError } from "evlog";
 import { nanoid } from "nanoid";
 import { desc, eq, and } from "drizzle-orm";
 import { db } from "~/db";
@@ -11,6 +10,7 @@ import {
   postDashboardGenerationResultSchema,
   snapshotResponseSchema,
 } from "~/lib/dashboard-schemas";
+import { errorResponse } from "~/lib/http-error";
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const GENERATING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/dashboard")({
           !process.env.AZURE_OPENAI_ENDPOINT ||
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
-          throw createError({
+          return errorResponse({
             message: "Azure OpenAI environment variables not configured",
             status: 500,
             why: "Missing one or more required environment variables",
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/api/dashboard")({
         const rawBody = await request.json().catch(() => ({}));
         const parsedBody = postDashboardBodySchema.safeParse(rawBody);
         if (!parsedBody.success) {
-          throw createError({
+          return errorResponse({
             message: "Invalid dashboard generation request body",
             status: 400,
             why: parsedBody.error.issues
@@ -156,11 +156,6 @@ export const Route = createFileRoute("/api/dashboard")({
           if (parsedWidgets.success) {
             previousWidgets = parsedWidgets.data.filter((w) => w.spec !== null);
             previousWidgetIds = previousWidgets.map((w) => w.widgetId);
-          } else {
-            console.warn(
-              `[dashboard] Invalid persisted widgets for snapshot ${lastComplete.id}:`,
-              parsedWidgets.error.message,
-            );
           }
         }
 
@@ -182,12 +177,7 @@ export const Route = createFileRoute("/api/dashboard")({
           persona,
           previousWidgetIds,
           previousWidgets,
-        }).catch((err: unknown) => {
-          console.error(
-            `[dashboard] Generation failed for snapshot ${snapshotId}:`,
-            err,
-          );
-        });
+        }).catch(() => {});
 
         return Response.json(
           postDashboardGenerationResultSchema.parse({

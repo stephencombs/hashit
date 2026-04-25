@@ -26,9 +26,6 @@ export default defineTask({
       .then((rows) => rows[0] ?? null);
 
     if (latest?.status === "generating") {
-      console.log(
-        `[dashboard:check] Snapshot ${latest.id} is still generating, skipping`,
-      );
       return { result: { skipped: true, reason: "already_generating" } };
     }
 
@@ -38,9 +35,6 @@ export default defineTask({
       Date.now() - latest.createdAt.getTime() > STALE_MS;
 
     if (!isStale) {
-      console.log(
-        `[dashboard:check] Latest snapshot ${latest!.id} is fresh (${Math.round((Date.now() - latest!.createdAt.getTime()) / 60_000)}m old), skipping`,
-      );
       return { result: { skipped: true, reason: "fresh" } };
     }
 
@@ -60,10 +54,6 @@ export default defineTask({
       previousWidgetIds,
       createdAt: new Date(),
     });
-
-    console.log(
-      `[dashboard:check] Triggering generation for snapshot ${snapshotId} (previousWidgetIds: ${previousWidgetIds.length})`,
-    );
 
     await generateDashboard({
       snapshotId,

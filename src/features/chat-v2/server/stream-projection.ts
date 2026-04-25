@@ -1,6 +1,5 @@
 import { materializeSnapshotFromDurableStream } from "@durable-streams/tanstack-ai-transport";
 import { and, eq, inArray } from "drizzle-orm";
-import type { RequestLogger } from "evlog";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
 import {
@@ -8,10 +7,8 @@ import {
   getDurableReadHeaders,
   readDurableStreamHeadOffset,
 } from "~/lib/durable-streams";
-import type { V2AgentRunTelemetry } from "./agent-runner";
 import { readV2UiSpecEventsByMessageId } from "./durable-spec-events";
 import { buildV2ChatStreamPath } from "./keys";
-import { createV2RunMetadata } from "./persistence-runtime";
 import { normalizeRuntimeParts, type V2RuntimePart } from "./runtime-message";
 import {
   ATTACHMENT_ONLY_CONTENT_PREFIX,
@@ -25,11 +22,7 @@ import {
  */
 type ProjectV2StreamSnapshotOptions = {
   threadId: string;
-  telemetry: V2AgentRunTelemetry;
-  persistUserTurn: boolean;
   replaceLatestAssistant?: boolean;
-  userMessageId?: string;
-  log?: RequestLogger;
 };
 
 type SnapshotMessage = {
@@ -131,17 +124,6 @@ function toProjectedMessages(
   return projected;
 }
 
-function findLastMessageIdByRole(
-  messages: Array<ProjectedMessage>,
-  role: ProjectedRole,
-): string | undefined {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === role) return message.id;
-  }
-  return undefined;
-}
-
 function findSupersededAssistantIds(
   messages: Array<ProjectedMessage>,
 ): Array<string> {
@@ -172,24 +154,9 @@ function findSupersededAssistantIds(
   return superseded;
 }
 
-function createAssistantMetadata(
-  telemetry: V2AgentRunTelemetry,
-): Record<string, unknown> {
-  const hasRunError: boolean =
-    telemetry.status === "failed" || telemetry.status === "aborted";
-  return createV2RunMetadata(telemetry, {
-    error: hasRunError ? telemetry.error : undefined,
-    partial: telemetry.status !== "completed",
-  });
-}
-
 export async function projectV2StreamSnapshotToDb({
   threadId,
-  telemetry,
-  persistUserTurn,
   replaceLatestAssistant = false,
-  userMessageId,
-  log,
 }: ProjectV2StreamSnapshotOptions): Promise<ProjectV2StreamSnapshotResult> {
   const streamPath = buildV2ChatStreamPath(threadId);
   const [snapshotResult, specPartsByMessageId] = await Promise.all([
@@ -242,44 +209,27 @@ export async function projectV2StreamSnapshotToDb({
     supersededIds.forEach((id) => existingIds.delete(id));
   }
 
-  const latestUserId = persistUserTurn
-    ? (userMessageId ?? findLastMessageIdByRole(projectedMessages, "user"))
-    : undefined;
-  const latestAssistantId = findLastMessageIdByRole(
-    projectedMessages,
-    "assistant",
-  );
-  const userMetadata = createV2RunMetadata(telemetry);
-  const assistantMetadata = createAssistantMetadata(telemetry);
-
   const nowMs = Date.now();
   const newRows = projectedMessages
     .filter((message) => !supersededAssistantIds.has(message.id))
     .filter((message) => !existingIds.has(message.id))
     .map((message, index) => {
-      const metadata =
-        message.role === "user" && latestUserId && message.id === latestUserId
-          ? userMetadata
-          : message.role === "assistant" &&
-              latestAssistantId &&
-              message.id === latestAssistantId
-            ? assistantMetadata
-            : undefined;
-
       return {
         id: message.id,
         threadId,
         role: message.role,
         content: message.content,
         parts: message.parts,
-        metadata,
         createdAt: new Date(nowMs + index),
       };
     });
 
   if (newRows.length > 0) {
     // V2 runtime parts include custom ui-spec payloads that are narrowed at read time.
-    await db.insert(v2Messages).values(newRows as never).onConflictDoNothing();
+    await db
+      .insert(v2Messages)
+      .values(newRows as never)
+      .onConflictDoNothing();
   }
 
   let resumeOffset = offset;
@@ -289,11 +239,8 @@ export async function projectV2StreamSnapshotToDb({
   if (shouldReadHeadOffset) {
     try {
       resumeOffset = await readDurableStreamHeadOffset(streamPath);
-    } catch (error) {
-      log?.set({
-        v2ProjectionResumeOffsetError:
-          error instanceof Error ? error.message : String(error),
-      });
+    } catch {
+      // The durable snapshot can still be projected without a head offset.
     }
   }
   const shouldUpdateResumeOffset =
@@ -309,13 +256,6 @@ export async function projectV2StreamSnapshotToDb({
       })
       .where(eq(v2Threads.id, threadId));
   }
-
-  log?.set({
-    v2ProjectionMessageCount: projectedMessages.length,
-    v2ProjectionInsertedCount: newRows.length,
-    v2ProjectionSupersededAssistantCount: supersededAssistantIds.size,
-    v2ProjectionResumeOffset: resumeOffset,
-  });
 
   return {
     persistedMessageCount: newRows.length,

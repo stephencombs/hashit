@@ -706,14 +706,7 @@ export function useChatRuntime({
 
   const resolveInteractive = useCallback(
     (toolName: InteractiveToolName, output: unknown) => {
-      const resolved = resolvePending(toolName, output);
-      if (!resolved && process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[interactive-tool] resolvePending("${toolName}") had no awaiting handler; ` +
-            `this usually means the tool call finished before the UI responded ` +
-            `or the session was recreated while a form was open.`,
-        );
-      }
+      resolvePending(toolName, output);
     },
     [],
   );

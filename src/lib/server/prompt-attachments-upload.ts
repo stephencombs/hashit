@@ -1,4 +1,3 @@
-import { createError } from "evlog";
 import {
   ALLOWED_MIME_TYPES,
   MAX_ATTACHMENT_BYTES,
@@ -6,6 +5,7 @@ import {
   isAllowedMimeType,
   sniffAllowedMimeType,
 } from "~/lib/attachment-schemas";
+import { createHttpError } from "~/lib/http-error";
 
 export interface ParsedAttachmentUpload {
   buffer: Buffer;
@@ -18,7 +18,7 @@ export async function parseAttachmentUploadRequest(
 ): Promise<{ formData: FormData; upload: ParsedAttachmentUpload }> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
-    throw createError({
+    throw createHttpError({
       message: "Expected multipart/form-data upload",
       status: 415,
       why: `Received Content-Type "${contentType || "none"}"`,
@@ -30,7 +30,7 @@ export async function parseAttachmentUploadRequest(
   try {
     formData = await request.formData();
   } catch (err) {
-    throw createError({
+    throw createHttpError({
       message: "Failed to parse multipart upload",
       status: 400,
       why: err instanceof Error ? err.message : String(err),
@@ -40,7 +40,7 @@ export async function parseAttachmentUploadRequest(
 
   const file = formData.get("file");
   if (!(file instanceof File)) {
-    throw createError({
+    throw createHttpError({
       message: 'Missing "file" field in upload',
       status: 400,
       why: 'No File entry was found under the "file" key',
@@ -49,7 +49,7 @@ export async function parseAttachmentUploadRequest(
   }
 
   if (file.size === 0) {
-    throw createError({
+    throw createHttpError({
       message: "Uploaded file is empty",
       status: 400,
       why: "File size is 0 bytes",
@@ -58,7 +58,7 @@ export async function parseAttachmentUploadRequest(
   }
 
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    throw createError({
+    throw createHttpError({
       message: "Uploaded file exceeds maximum size",
       status: 413,
       why: `Received ${file.size} bytes (limit ${MAX_ATTACHMENT_BYTES})`,
@@ -68,7 +68,7 @@ export async function parseAttachmentUploadRequest(
 
   const claimedMime = file.type.toLowerCase();
   if (!isAllowedMimeType(claimedMime)) {
-    throw createError({
+    throw createHttpError({
       message: "Unsupported attachment type",
       status: 415,
       why: `Content-Type "${claimedMime || "unknown"}" is not in the allowlist`,
@@ -79,7 +79,7 @@ export async function parseAttachmentUploadRequest(
   const buffer = Buffer.from(await file.arrayBuffer());
   const sniffed = sniffAllowedMimeType(buffer);
   if (!sniffed) {
-    throw createError({
+    throw createHttpError({
       message: "Unable to verify file type from contents",
       status: 415,
       why: "File magic bytes did not match any allowed type",
@@ -87,7 +87,7 @@ export async function parseAttachmentUploadRequest(
     });
   }
   if (sniffed !== claimedMime) {
-    throw createError({
+    throw createHttpError({
       message: "File contents do not match Content-Type",
       status: 415,
       why: `Magic bytes resolved to "${sniffed}" but Content-Type is "${claimedMime}"`,

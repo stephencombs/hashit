@@ -2,38 +2,23 @@ import { chat, generateMessageId } from "@tanstack/ai";
 import { nanoid } from "nanoid";
 import { db } from "~/db";
 import { threads, messages as messagesTable } from "~/db/schema";
-import { eq, desc, count, asc } from "drizzle-orm";
-import type { RequestLogger } from "evlog";
+import { eq, count, asc } from "drizzle-orm";
 import type { StreamChunk, MessagePart } from "@tanstack/ai";
-import type { AgentRunTelemetry } from "~/lib/agent-runner";
+import type { AgentRunState } from "~/lib/agent-runner";
 import type { AppMessagePart } from "~/components/chat/message-row.types";
 import {
   buildArgsPreview,
   buildResultSummary,
 } from "~/lib/server/message-part-previews";
-import {
-  createRunMetadata,
-  summarizeToolActivity,
-} from "~/lib/agent-runtime-utils";
+import { summarizeToolActivity } from "~/lib/agent-runtime-utils";
 import { getAzureAdapter } from "~/lib/openai-adapter";
-import {
-  createChildSpan,
-  finalizeAgentRunTrace,
-  finishPersistenceSpan,
-  startPersistenceSpan,
-} from "~/lib/telemetry/agent-spans";
-import {
-  endTraceSpan,
-  markTraceError,
-  markTraceSuccess,
-} from "~/lib/telemetry/otel";
 import {
   buildChatStreamPath,
   readDurableStreamHeadOffset,
 } from "~/lib/durable-streams";
 
 function getRunTerminalEventName(
-  status: AgentRunTelemetry["status"],
+  status: AgentRunState["status"],
 ): "run_complete" | "run_aborted" | "run_waiting_input" | "run_error" {
   if (status === "completed") return "run_complete";
   if (status === "aborted") return "run_aborted";
@@ -55,15 +40,13 @@ export async function createThread(
 ): Promise<string> {
   const now = new Date();
   const id = nanoid();
-  await db
-    .insert(threads)
-    .values({
-      id,
-      title,
-      source: source ?? null,
-      createdAt: now,
-      updatedAt: now,
-    });
+  await db.insert(threads).values({
+    id,
+    title,
+    source: source ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
   return id;
 }
 
@@ -405,379 +388,279 @@ export async function* withPersistence(
   userContent: string,
   userParts: Array<MessagePart>,
   persistUserTurn: boolean,
-  log: RequestLogger,
-  telemetry: AgentRunTelemetry,
+  runState: AgentRunState,
   userMessageId?: string,
 ): AsyncIterable<StreamChunk> {
-  startPersistenceSpan(telemetry.traceState, {
-    "agent.thread_id": threadId,
-    "agent.thread_created": threadCreated,
-  });
+  if (threadCreated) {
+    yield {
+      type: "CUSTOM" as const,
+      name: "thread_created",
+      value: { threadId },
+      timestamp: Date.now(),
+    };
+  }
 
-  const runPersistenceStep = async <T>(
-    name: string,
-    fn: () => Promise<T>,
-    attributes?: Record<string, unknown>,
-  ): Promise<T> => {
-    const span = createChildSpan(telemetry.traceState, name, { attributes });
+  if (persistUserTurn) {
     try {
-      const result = await fn();
-      markTraceSuccess(span, attributes);
-      return result;
-    } catch (error) {
-      markTraceError(span, error, attributes);
-      throw error;
-    } finally {
-      endTraceSpan(span);
+      await persistUserMessage(
+        threadId,
+        userContent,
+        userParts,
+        undefined,
+        userMessageId,
+      );
+    } catch {
+      // Preserve stream delivery even when user-message persistence fails.
+    }
+  }
+
+  // Start title generation early so the sidebar can receive a title update
+  // while the assistant turn is still streaming.
+  const titlePromise = persistUserTurn
+    ? maybeGenerateTitle(threadId, userContent).catch(() => null)
+    : null;
+  let generatedTitle: string | null = null;
+  let titleEventEmitted = false;
+  if (titlePromise) {
+    void titlePromise.then((title) => {
+      generatedTitle = title;
+    });
+  }
+
+  let accumulated = "";
+  let accumulatedThinking = "";
+  const assistantParts: Array<AppMessagePart> = [];
+  const toolCalls = new Map<
+    string,
+    { name: string; args: string; partIndex?: number }
+  >();
+  const pendingToolResults = new Map<string, unknown>();
+  let summaryEmitted = false;
+  let streamError: string | null = null;
+  let persistenceError: string | null = null;
+
+  const getToolCallName = (chunk: StreamChunk): string => {
+    const modernName = (chunk as { toolCallName?: unknown }).toolCallName;
+    if (typeof modernName === "string" && modernName.length > 0) {
+      return modernName;
+    }
+    return "unknown_tool";
+  };
+
+  const parseToolResultValue = (value: unknown): unknown => {
+    if (value === undefined) return undefined;
+    if (typeof value === "string") return tryParseJSON(value);
+    return value;
+  };
+
+  const getToolResultFromChunk = (chunk: StreamChunk): unknown => {
+    const contentValue = (chunk as { content?: unknown }).content;
+    if (contentValue !== undefined) {
+      return parseToolResultValue(contentValue);
+    }
+    return undefined;
+  };
+
+  const appendReasoningDelta = (chunk: StreamChunk): void => {
+    const delta = (chunk as { delta?: unknown }).delta;
+    if (typeof delta === "string" && delta.length > 0) {
+      accumulatedThinking += delta;
+      return;
+    }
+
+    const content = (chunk as { content?: unknown }).content;
+    if (typeof content === "string" && content.length > 0) {
+      accumulatedThinking = content;
+      return;
     }
   };
 
+  const emitTitleIfReady = () => {
+    if (titleEventEmitted || !generatedTitle) return;
+    titleEventEmitted = true;
+    return {
+      type: "CUSTOM" as const,
+      name: "thread_title_updated",
+      value: { threadId, title: generatedTitle },
+      timestamp: Date.now(),
+    } as StreamChunk;
+  };
+
   try {
-    if (threadCreated) {
+    for await (const chunk of stream) {
+      if (chunk.type === "REASONING_MESSAGE_CONTENT") {
+        appendReasoningDelta(chunk);
+      }
+
+      if (chunk.type === "TEXT_MESSAGE_CONTENT") {
+        if (chunk.content) {
+          accumulated = chunk.content;
+        } else if (chunk.delta) {
+          accumulated += chunk.delta;
+        }
+      } else if (chunk.type === "TOOL_CALL_START") {
+        const toolName = getToolCallName(chunk);
+        toolCalls.set(chunk.toolCallId, { name: toolName, args: "" });
+        if (!summaryEmitted) {
+          summaryEmitted = true;
+          const summary = await generateToolSummary(toolName);
+          assistantParts.push({
+            type: "tool-summary",
+            content: summary,
+          });
+          yield {
+            type: "CUSTOM" as const,
+            name: "tool_summary",
+            value: { summary },
+            timestamp: Date.now(),
+          };
+        }
+      } else if (chunk.type === "TOOL_CALL_ARGS") {
+        const tc = toolCalls.get(chunk.toolCallId);
+        if (tc) tc.args += chunk.delta;
+      } else if (chunk.type === "TOOL_CALL_END") {
+        const existing = toolCalls.get(chunk.toolCallId);
+        const toolName = existing?.name ?? getToolCallName(chunk);
+        const toolCall = existing ?? { name: toolName, args: "" };
+        const pendingResult = pendingToolResults.get(chunk.toolCallId);
+        if (toolCall) {
+          assistantParts.push({
+            type: "tool-call",
+            id: chunk.toolCallId,
+            name: toolName,
+            arguments: toolCall.args,
+            argsPreview: buildArgsPreview(toolCall.args),
+            state: pendingResult !== undefined ? "result" : "input-complete",
+            output: pendingResult,
+          });
+          toolCall.partIndex = assistantParts.length - 1;
+          toolCall.name = toolName;
+          toolCalls.set(chunk.toolCallId, toolCall);
+          pendingToolResults.delete(chunk.toolCallId);
+        }
+      } else if (chunk.type === "TOOL_CALL_RESULT") {
+        const toolResult = getToolResultFromChunk(chunk);
+        if (toolResult !== undefined) {
+          const toolCall = toolCalls.get(chunk.toolCallId);
+          const partIndex = toolCall?.partIndex;
+          const part =
+            partIndex !== undefined ? assistantParts[partIndex] : undefined;
+          if (
+            part &&
+            part.type === "tool-call" &&
+            part.id === chunk.toolCallId
+          ) {
+            assistantParts[partIndex] = {
+              ...part,
+              state: "result",
+              output: toolResult,
+            };
+          } else {
+            pendingToolResults.set(chunk.toolCallId, toolResult);
+          }
+        }
+      } else if (chunk.type === "CUSTOM" && chunk.name === "spec_complete") {
+        const { spec, specIndex } = chunk.value as {
+          spec: unknown;
+          specIndex: number;
+        };
+        assistantParts.push({
+          type: "ui-spec",
+          spec: spec as import("@json-render/core").Spec,
+          specIndex,
+        });
+      }
+      yield {
+        ...chunk,
+      };
+      const titleEvent = emitTitleIfReady();
+      if (titleEvent) yield titleEvent;
+    }
+  } catch (err) {
+    streamError = err instanceof Error ? err.message : String(err);
+    if (runState.status === "running") {
+      runState.status = "failed";
+      runState.error = streamError;
+    }
+  }
+
+  if (accumulatedThinking) {
+    assistantParts.unshift({
+      type: "thinking",
+      content: accumulatedThinking,
+    });
+  }
+
+  if (accumulated) {
+    assistantParts.push({ type: "text", content: accumulated });
+  }
+
+  if (assistantParts.length > 0) {
+    let resumeOffset: string | undefined;
+    try {
+      resumeOffset = await readDurableStreamHeadOffset(
+        buildChatStreamPath(threadId),
+      );
+    } catch {
+      // Missing offsets only affect resumability; message persistence can continue.
+    }
+
+    try {
+      await persistAssistantMessage(
+        threadId,
+        accumulated,
+        assistantParts,
+        undefined,
+        resumeOffset,
+      );
+    } catch (err) {
+      persistenceError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  // Try to deliver a title update before terminal events without stalling the
+  // response tail; if generation is still running, continue after a short wait.
+  if (!titleEventEmitted && titlePromise) {
+    const settledTitle =
+      generatedTitle ??
+      (await Promise.race<string | null>([
+        titlePromise,
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 200);
+        }),
+      ]));
+    if (settledTitle) {
+      titleEventEmitted = true;
       yield {
         type: "CUSTOM" as const,
-        name: "thread_created",
-        value: { threadId },
+        name: "thread_title_updated",
+        value: { threadId, title: settledTitle },
         timestamp: Date.now(),
       };
     }
-
-    if (persistUserTurn) {
-      try {
-        await runPersistenceStep(
-          "agent.persistence.user_message",
-          () =>
-            persistUserMessage(
-              threadId,
-              userContent,
-              userParts,
-              createRunMetadata(telemetry),
-              userMessageId,
-            ),
-          {
-            "agent.thread_id": threadId,
-            "agent.message_role": "user",
-          },
-        );
-      } catch (err) {
-        log.set({ persistUserError: String(err) });
-      }
-    }
-
-    // Start title generation early so the sidebar can receive a title update
-    // while the assistant turn is still streaming.
-    const titlePromise = persistUserTurn
-      ? maybeGenerateTitle(threadId, userContent).catch(() => null)
-      : null;
-    let generatedTitle: string | null = null;
-    let titleEventEmitted = false;
-    if (titlePromise) {
-      void titlePromise.then((title) => {
-        generatedTitle = title;
-      });
-    }
-
-    let accumulated = "";
-    let accumulatedThinking = "";
-    const assistantParts: Array<AppMessagePart> = [];
-    const toolCalls = new Map<
-      string,
-      { name: string; args: string; partIndex?: number }
-    >();
-    const pendingToolResults = new Map<string, unknown>();
-    let summaryEmitted = false;
-    let streamError: string | null = null;
-    let persistenceError: string | null = null;
-
-    const getToolCallName = (chunk: StreamChunk): string => {
-      const modernName = (chunk as { toolCallName?: unknown }).toolCallName;
-      if (typeof modernName === "string" && modernName.length > 0) {
-        return modernName;
-      }
-      return "unknown_tool";
-    };
-
-    const parseToolResultValue = (value: unknown): unknown => {
-      if (value === undefined) return undefined;
-      if (typeof value === "string") return tryParseJSON(value);
-      return value;
-    };
-
-    const getToolResultFromChunk = (chunk: StreamChunk): unknown => {
-      const contentValue = (chunk as { content?: unknown }).content;
-      if (contentValue !== undefined) {
-        return parseToolResultValue(contentValue);
-      }
-      return undefined;
-    };
-
-    const appendReasoningDelta = (chunk: StreamChunk): void => {
-      const delta = (chunk as { delta?: unknown }).delta;
-      if (typeof delta === "string" && delta.length > 0) {
-        accumulatedThinking += delta;
-        return;
-      }
-
-      const content = (chunk as { content?: unknown }).content;
-      if (typeof content === "string" && content.length > 0) {
-        accumulatedThinking = content;
-        return;
-      }
-    };
-
-    const emitTitleIfReady = () => {
-      if (titleEventEmitted || !generatedTitle) return;
-      titleEventEmitted = true;
-      return {
-        type: "CUSTOM" as const,
-        name: "thread_title_updated",
-        value: { threadId, title: generatedTitle },
-        timestamp: Date.now(),
-      } as StreamChunk;
-    };
-
-    try {
-      for await (const chunk of stream) {
-        if (chunk.type === "REASONING_MESSAGE_CONTENT") {
-          appendReasoningDelta(chunk);
-        }
-
-        if (chunk.type === "TEXT_MESSAGE_CONTENT") {
-          if (chunk.content) {
-            accumulated = chunk.content;
-          } else if (chunk.delta) {
-            accumulated += chunk.delta;
-          }
-        } else if (chunk.type === "TOOL_CALL_START") {
-          const toolName = getToolCallName(chunk);
-          toolCalls.set(chunk.toolCallId, { name: toolName, args: "" });
-          if (!summaryEmitted) {
-            summaryEmitted = true;
-            const summary = await generateToolSummary(toolName);
-            assistantParts.push({
-              type: "tool-summary",
-              content: summary,
-            });
-            yield {
-              type: "CUSTOM" as const,
-              name: "tool_summary",
-              value: { summary },
-              timestamp: Date.now(),
-            };
-          }
-        } else if (chunk.type === "TOOL_CALL_ARGS") {
-          const tc = toolCalls.get(chunk.toolCallId);
-          if (tc) tc.args += chunk.delta;
-        } else if (chunk.type === "TOOL_CALL_END") {
-          const existing = toolCalls.get(chunk.toolCallId);
-          const toolName = existing?.name ?? getToolCallName(chunk);
-          const toolCall = existing ?? { name: toolName, args: "" };
-          const pendingResult = pendingToolResults.get(chunk.toolCallId);
-          if (toolCall) {
-            assistantParts.push({
-              type: "tool-call",
-              id: chunk.toolCallId,
-              name: toolName,
-              arguments: toolCall.args,
-              argsPreview: buildArgsPreview(toolCall.args),
-              state: pendingResult !== undefined ? "result" : "input-complete",
-              output: pendingResult,
-            });
-            toolCall.partIndex = assistantParts.length - 1;
-            toolCall.name = toolName;
-            toolCalls.set(chunk.toolCallId, toolCall);
-            pendingToolResults.delete(chunk.toolCallId);
-          }
-        } else if (chunk.type === "TOOL_CALL_RESULT") {
-          const toolResult = getToolResultFromChunk(chunk);
-          if (toolResult !== undefined) {
-            const toolCall = toolCalls.get(chunk.toolCallId);
-            const partIndex = toolCall?.partIndex;
-            const part =
-              partIndex !== undefined ? assistantParts[partIndex] : undefined;
-            if (part && part.type === "tool-call" && part.id === chunk.toolCallId) {
-              assistantParts[partIndex] = {
-                ...part,
-                state: "result",
-                output: toolResult,
-              };
-            } else {
-              pendingToolResults.set(chunk.toolCallId, toolResult);
-            }
-          }
-        } else if (chunk.type === "CUSTOM" && chunk.name === "spec_complete") {
-          const { spec, specIndex } = chunk.value as {
-            spec: unknown;
-            specIndex: number;
-          };
-          assistantParts.push({
-            type: "ui-spec",
-            spec: spec as import("@json-render/core").Spec,
-            specIndex,
-          });
-        }
-        yield {
-          ...chunk,
-        };
-        const titleEvent = emitTitleIfReady();
-        if (titleEvent) yield titleEvent;
-      }
-    } catch (err) {
-      streamError = err instanceof Error ? err.message : String(err);
-      if (telemetry.status === "running") {
-        telemetry.status = "failed";
-        telemetry.error = streamError;
-        telemetry.completedAt = Date.now();
-        telemetry.durationMs = telemetry.completedAt - telemetry.startedAt;
-      }
-      log.set({
-        streamError,
-        runStatus: telemetry.status,
-      });
-    }
-
-    if (accumulatedThinking) {
-      assistantParts.unshift({
-        type: "thinking",
-        content: accumulatedThinking,
-      });
-    }
-
-    if (accumulated) {
-      assistantParts.push({ type: "text", content: accumulated });
-    }
-
-    if (assistantParts.length > 0) {
-      let resumeOffset: string | undefined;
-      try {
-        resumeOffset = await runPersistenceStep(
-          "agent.persistence.resume_offset",
-          () => readDurableStreamHeadOffset(buildChatStreamPath(threadId)),
-          {
-            "agent.thread_id": threadId,
-          },
-        );
-      } catch (err) {
-        log.set({ resumeOffsetError: String(err) });
-      }
-
-      try {
-        await runPersistenceStep(
-          "agent.persistence.assistant_message",
-          () =>
-            persistAssistantMessage(
-              threadId,
-              accumulated,
-              assistantParts,
-              createRunMetadata(telemetry, {
-                error: streamError ?? undefined,
-                partial: !!streamError,
-              }),
-              resumeOffset,
-            ),
-          {
-            "agent.thread_id": threadId,
-            "agent.message_role": "assistant",
-            "agent.partial": !!streamError,
-          },
-        );
-      } catch (err) {
-        persistenceError = err instanceof Error ? err.message : String(err);
-        log.set({ persistAssistantError: persistenceError });
-      }
-    }
-
-    // Try to deliver a title update before terminal events without stalling the
-    // response tail; if generation is still running, continue after a short wait.
-    if (!titleEventEmitted && titlePromise) {
-      const settledTitle =
-        generatedTitle ??
-        (await Promise.race<string | null>([
-          titlePromise,
-          new Promise<null>((resolve) => {
-            setTimeout(() => resolve(null), 200);
-          }),
-        ]));
-      if (settledTitle) {
-        titleEventEmitted = true;
-        yield {
-          type: "CUSTOM" as const,
-          name: "thread_title_updated",
-          value: { threadId, title: settledTitle },
-          timestamp: Date.now(),
-        };
-      }
-    }
-
-    yield {
-      type: "CUSTOM" as const,
-      name: getRunTerminalEventName(telemetry.status),
-      value: {
-        threadId,
-        status: telemetry.status,
-        finishReason: telemetry.finishReason ?? null,
-        durationMs: telemetry.durationMs ?? null,
-        toolCallCount: telemetry.toolCallCount,
-        iterationCount: telemetry.iterationCount,
-        error: streamError ?? telemetry.error ?? null,
-        traceId: telemetry.traceId ?? null,
-      },
-      timestamp: Date.now(),
-    };
-
-    yield {
-      type: "CUSTOM" as const,
-      name: "persistence_complete",
-      value: {
-        threadId,
-        status: telemetry.status,
-        error: streamError ?? persistenceError ?? telemetry.error ?? null,
-        traceId: telemetry.traceId ?? null,
-      },
-      timestamp: Date.now(),
-    };
-
-    const finalError =
-      persistenceError ??
-      streamError ??
-      (telemetry.status === "failed" || telemetry.status === "aborted"
-        ? telemetry.error
-        : undefined);
-
-    finishPersistenceSpan(telemetry.traceState, {
-      error: finalError,
-      attributes: {
-        "agent.status": telemetry.status,
-        "agent.thread_id": threadId,
-      },
-    });
-    finalizeAgentRunTrace(telemetry.traceState, {
-      error: finalError,
-      attributes: {
-        "agent.status": telemetry.status,
-        "agent.thread_id": threadId,
-        "agent.tool_call_count": telemetry.toolCallCount,
-        "agent.iteration_count": telemetry.iterationCount,
-      },
-    });
-  } finally {
-    if (!telemetry.traceState?.completed) {
-      finishPersistenceSpan(telemetry.traceState, {
-        error: telemetry.error,
-        attributes: {
-          "agent.status": telemetry.status,
-          "agent.thread_id": threadId,
-        },
-      });
-      finalizeAgentRunTrace(telemetry.traceState, {
-        error: telemetry.error,
-        attributes: {
-          "agent.status": telemetry.status,
-          "agent.thread_id": threadId,
-        },
-      });
-    }
   }
+
+  yield {
+    type: "CUSTOM" as const,
+    name: getRunTerminalEventName(runState.status),
+    value: {
+      threadId,
+      status: runState.status,
+      error: streamError ?? runState.error ?? null,
+    },
+    timestamp: Date.now(),
+  };
+
+  yield {
+    type: "CUSTOM" as const,
+    name: "persistence_complete",
+    value: {
+      threadId,
+      status: runState.status,
+      error: streamError ?? persistenceError ?? runState.error ?? null,
+    },
+    timestamp: Date.now(),
+  };
 }
 
 /**

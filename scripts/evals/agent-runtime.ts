@@ -1,13 +1,6 @@
 import assert from "node:assert/strict";
-import {
-  createRunMetadata,
-  summarizeToolActivity,
-} from "../../src/lib/agent-runtime-utils";
+import { summarizeToolActivity } from "../../src/lib/agent-runtime-utils";
 import { resolveAgentModel } from "../../src/lib/agent-profile-policy";
-import type {
-  AgentRunStatus,
-  AgentRunTelemetry,
-} from "../../src/lib/agent-runner";
 
 type ScenarioResult =
   | { id: string; status: "passed"; detail?: string }
@@ -37,45 +30,6 @@ async function runScenario(
       detail: error instanceof Error ? error.message : String(error),
     };
   }
-}
-
-function createTelemetry(status: AgentRunStatus): AgentRunTelemetry {
-  const startedAt = Date.now();
-  return {
-    profile: "automation",
-    source: "automation-executor",
-    status,
-    requestId: "req_eval",
-    streamId: "stream_eval",
-    conversationId: "thread_eval",
-    provider: "openai",
-    model: "gpt-5",
-    traceId: "trace_eval",
-    spanId: "span_eval",
-    requestMessageCount: 1,
-    iterationCount: 2,
-    toolCallCount: 1,
-    toolCalls: [
-      {
-        toolName: "HCM.Persons.Mcp__search_people",
-        toolCallId: "tool_eval",
-        ok: status === "completed",
-        durationMs: 120,
-        error: status === "completed" ? undefined : "tool failure",
-      },
-    ],
-    mcpServersUsed: ["HCM.Persons.Mcp"],
-    finishReason: status === "completed" ? "stop" : null,
-    durationMs: 450,
-    usage: {
-      promptTokens: 10,
-      completionTokens: 20,
-      totalTokens: 30,
-    },
-    error: status === "completed" ? undefined : "tool failure",
-    startedAt,
-    completedAt: startedAt + 450,
-  };
 }
 
 async function main() {
@@ -108,35 +62,6 @@ async function main() {
   );
 
   results.push(
-    await runScenario("run-metadata-complete", async () => {
-      const metadata = createRunMetadata(createTelemetry("completed"));
-      assert.equal(metadata.runStatus, "completed");
-      assert.equal(metadata.runSource, "automation-executor");
-      assert.equal(metadata.traceId, "trace_eval");
-      assert.equal(metadata.spanId, "span_eval");
-      assert.equal(metadata.totalTokens, undefined);
-      assert.deepEqual(metadata.usage, {
-        promptTokens: 10,
-        completionTokens: 20,
-        totalTokens: 30,
-      });
-      assert.equal(metadata.partial, false);
-    }),
-  );
-
-  results.push(
-    await runScenario("run-metadata-error", async () => {
-      const metadata = createRunMetadata(createTelemetry("failed"), {
-        partial: true,
-      });
-      assert.equal(metadata.runStatus, "failed");
-      assert.equal(metadata.partial, true);
-      assert.equal(metadata.error, "tool failure");
-      assert.equal(metadata.traceId, "trace_eval");
-    }),
-  );
-
-  results.push(
     await runScenario(
       "automation-live-run",
       async () => {
@@ -148,7 +73,7 @@ async function main() {
         const result = await executeAutomationRun(automationPrompt!, undefined);
         assert.ok(result.threadId);
         assert.ok(
-          ["completed", "failed", "aborted"].includes(result.telemetry.status),
+          ["completed", "failed", "aborted"].includes(result.runState.status),
         );
         const persisted = await loadThreadMessagesForRuntime(result.threadId);
         assert.ok(persisted.length >= 1);
@@ -215,17 +140,10 @@ async function main() {
   const passed = results.filter((result) => result.status === "passed").length;
   const failed = results.filter((result) => result.status === "failed");
 
-  console.table(
-    results.map((result) => ({
-      id: result.id,
-      status: result.status,
-      detail: result.detail ?? "",
-    })),
-  );
-
-  console.log(
+  process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);
+  process.stdout.write(
     `agent-runtime evals: ${passed} passed, ${failed.length} failed, ` +
-      `${results.filter((result) => result.status === "skipped").length} skipped`,
+      `${results.filter((result) => result.status === "skipped").length} skipped\n`,
   );
 
   if (failed.length > 0) {
@@ -234,6 +152,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("agent-runtime eval harness failed to start:", error);
+  process.stderr.write(
+    `agent-runtime eval harness failed to start: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

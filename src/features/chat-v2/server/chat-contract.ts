@@ -17,6 +17,9 @@ export const v2ChatRequestSchema = z.object({
       threadId: z.string().optional(),
       conversationId: z.string().optional(),
       model: z.string().optional(),
+      temperature: z.number().min(0).max(2).optional(),
+      systemPrompt: z.string().max(4000).optional(),
+      maxToolIterations: z.number().int().min(1).max(20).optional(),
       selectedServers: z.array(z.string()).optional(),
       enabledTools: z.record(z.string(), z.array(z.string())).optional(),
       source: z.string().optional(),
@@ -26,3 +29,6 @@ export const v2ChatRequestSchema = z.object({
 
 export type V2IncomingChatRole = z.infer<typeof v2ChatMessageRoleSchema>;
 export type V2IncomingChatMessage = z.infer<typeof v2ChatMessageSchema>;
+export type V2ChatRequestData = NonNullable<
+  z.infer<typeof v2ChatRequestSchema>["data"]
+>;

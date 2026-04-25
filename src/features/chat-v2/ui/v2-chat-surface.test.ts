@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { V2RuntimeMessage } from "../server/runtime-message";
 import {
+  buildV2ChatRequestBody,
   hasV2ComposerPayload,
   mergeBackfilledMessages,
   resolveV2InitialSnapMode,
@@ -175,5 +176,45 @@ describe("hasV2ComposerPayload", () => {
         files: [],
       }),
     ).toBe(false);
+  });
+});
+
+describe("buildV2ChatRequestBody", () => {
+  it("passes supported runtime and tool settings", () => {
+    expect(
+      buildV2ChatRequestBody({
+        threadId: "thread-1",
+        model: " gpt-4o ",
+        temperature: 0.2,
+        systemPrompt: "  Be direct. ",
+        selectedServers: ["alpha"],
+        enabledTools: { alpha: ["search"] },
+      }),
+    ).toEqual({
+      threadId: "thread-1",
+      source: "v2-chat",
+      model: "gpt-4o",
+      temperature: 0.2,
+      systemPrompt: "Be direct.",
+      selectedServers: ["alpha"],
+      enabledTools: { alpha: ["search"] },
+    });
+  });
+
+  it("omits MCP tool preferences when no server is selected", () => {
+    expect(
+      buildV2ChatRequestBody({
+        threadId: "thread-1",
+        model: "",
+        temperature: 0.7,
+        systemPrompt: "",
+        selectedServers: [],
+        enabledTools: { alpha: ["search"] },
+      }),
+    ).toEqual({
+      threadId: "thread-1",
+      source: "v2-chat",
+      temperature: 0.7,
+    });
   });
 });

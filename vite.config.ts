@@ -23,12 +23,6 @@ export default defineConfig({
     },
     external: [
       "@modelcontextprotocol/sdk",
-      "@opentelemetry/api",
-      "@opentelemetry/exporter-trace-otlp-http",
-      "@opentelemetry/otlp-transformer",
-      "@opentelemetry/resources",
-      "@opentelemetry/sdk-trace-node",
-      "@opentelemetry/semantic-conventions",
       "pg",
       "pg-native",
       "protobufjs",

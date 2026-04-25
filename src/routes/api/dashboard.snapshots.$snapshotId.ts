@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createError } from "evlog";
 import { eq } from "drizzle-orm";
 import { db } from "~/db";
 import { dashboardSnapshots } from "~/db/schema";
@@ -7,6 +6,7 @@ import {
   dashboardSnapshotDetailResponseSchema,
   dashboardSnapshotWireSchema,
 } from "~/lib/dashboard-schemas";
+import { errorResponse } from "~/lib/http-error";
 
 export const Route = createFileRoute("/api/dashboard/snapshots/$snapshotId")({
   server: {
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/dashboard/snapshots/$snapshotId")({
       GET: async ({ params }) => {
         const snapshotId = params.snapshotId;
         if (!snapshotId) {
-          throw createError({
+          return errorResponse({
             message: "Missing snapshot id",
             status: 400,
             why: "Route matched without a snapshotId",

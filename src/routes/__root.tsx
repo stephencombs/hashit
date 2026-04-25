@@ -1,7 +1,5 @@
 /// <reference types="vite/client" />
 import { createRootRouteWithContext } from "@tanstack/react-router";
-import { createMiddleware } from "@tanstack/react-start";
-import { evlogErrorHandler } from "evlog/nitro/v3";
 import type { QueryClient } from "@tanstack/react-query";
 import appCss from "~/app.css?url";
 import {
@@ -13,9 +11,6 @@ import {
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  server: {
-    middleware: [createMiddleware().server(evlogErrorHandler)],
-  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const mockLogSet = vi.fn();
-  const mockUseRequest = vi.fn(() => ({
-    context: { log: { set: mockLogSet } },
-  }));
   const mockEnsureDurableChatSessionStream = vi.fn();
   const mockToDurableChatSessionResponse = vi.fn(
     async () =>
@@ -23,38 +19,21 @@ const mocks = vi.hoisted(() => {
     stream: (async function* () {
       yield { type: "TEXT_MESSAGE_CONTENT", delta: "ok" };
     })(),
-    telemetry: {
+    runState: {
       status: "completed",
-      toolCallCount: 0,
-      iterationCount: 1,
       error: undefined,
-      traceState: { completed: false },
     },
   }));
-  const mockStartAgentRunTrace = vi.fn(() => ({
-    traceId: "trace-id",
-    spanId: "span-id",
-    completed: false,
-  }));
-  const mockFinalizeAgentRunTrace = vi.fn();
 
   return {
     mockCreateAgentRun,
     mockEnsureDurableChatSessionStream,
     mockExtractUserMessage,
-    mockFinalizeAgentRunTrace,
-    mockLogSet,
-    mockStartAgentRunTrace,
     mockSyncPriorToolOutputs,
     mockToDurableChatSessionResponse,
-    mockUseRequest,
     mockWithPersistence,
   };
 });
-
-vi.mock("nitro/context", () => ({
-  useRequest: mocks.mockUseRequest,
-}));
 
 vi.mock("@durable-streams/tanstack-ai-transport", () => ({
   ensureDurableChatSessionStream: mocks.mockEnsureDurableChatSessionStream,
@@ -78,11 +57,6 @@ vi.mock("~/lib/agent-runner", () => ({
 vi.mock("~/lib/multimodal-parts", () => ({
   isVisionCapableModel: () => true,
   userMessagesContainMedia: () => false,
-}));
-
-vi.mock("~/lib/telemetry/agent-spans", () => ({
-  startAgentRunTrace: mocks.mockStartAgentRunTrace,
-  finalizeAgentRunTrace: mocks.mockFinalizeAgentRunTrace,
 }));
 
 vi.mock("~/lib/durable-streams", () => ({

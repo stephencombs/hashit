@@ -78,20 +78,25 @@ export const PROFILE_CONFIGS: Record<AgentRunProfile, RunProfileConfig> = {
     },
   },
   interactiveChatV2: {
-    includeFormTool: false,
-    includeMcpTools: false,
-    lazyMcpTools: false,
-    allowCustomSystemPrompt: false,
+    includeFormTool: true,
+    includeMcpTools: true,
+    lazyMcpTools: true,
+    allowCustomSystemPrompt: true,
     allowModelOverride: true,
-    allowTemperatureOverride: false,
-    defaultMaxIterations: 2,
-    buildSystemPrompts: ({ extraSystemPrompts }) => {
+    allowTemperatureOverride: true,
+    defaultMaxIterations: 5,
+    buildSystemPrompts: ({ customSystemPrompt, extraSystemPrompts }) => {
       const prompts = [
+        ...(customSystemPrompt ? [customSystemPrompt] : []),
         V2_CORE_SYSTEM_PROMPT,
         V2_TOKEN_RULE,
         uiCatalog.prompt({
           mode: "inline",
-          customRules: CHAT_CATALOG_RULES,
+          customRules: [
+            ...CHAT_CATALOG_RULES,
+            FORM_RULE,
+            DUPLICATE_RESOLUTION_RULE,
+          ],
         }),
       ];
       if (extraSystemPrompts?.length) prompts.push(...extraSystemPrompts);

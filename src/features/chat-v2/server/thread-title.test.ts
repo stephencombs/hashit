@@ -9,13 +9,11 @@ const mocks = vi.hoisted(() => {
   const mockUpdateWhere = vi.fn(() => ({ returning: mockUpdateReturning }));
   const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
-  const mockLogSet = vi.fn();
 
   return {
     mockAppendV2CustomEvents,
     mockChat,
     mockGetAzureAdapter,
-    mockLogSet,
     mockSelect,
     mockUpdate,
     mockUpdateReturning,
@@ -118,7 +116,6 @@ describe("queueV2ThreadTitleGeneration", () => {
       streamTarget: {
         writeUrl: "http://durable.local/v2-chat/thread-1",
       } as never,
-      log: { set: mocks.mockLogSet } as never,
     });
 
     await vi.waitFor(() => {

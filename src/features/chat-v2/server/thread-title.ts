@@ -1,7 +1,6 @@
 import type { DurableChatSessionStreamTarget } from "@durable-streams/tanstack-ai-transport";
 import { chat } from "@tanstack/ai";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import type { RequestLogger } from "evlog";
 import { db } from "~/db";
 import { v2Messages, v2Threads } from "~/db/schema";
 import { getAzureAdapter } from "~/lib/openai-adapter";
@@ -20,12 +19,7 @@ const inFlightTitleGenerations = new Set<string>();
 type QueueV2ThreadTitleGenerationOptions = {
   threadId: string;
   streamTarget: DurableChatSessionStreamTarget;
-  log?: RequestLogger;
 };
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function collapseWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -148,7 +142,6 @@ async function persistGeneratedTitle(
 async function runV2ThreadTitleGeneration({
   threadId,
   streamTarget,
-  log,
 }: QueueV2ThreadTitleGenerationOptions): Promise<void> {
   const firstPrompt = await readFirstPromptForTitle(threadId);
   if (!firstPrompt) return;
@@ -165,25 +158,17 @@ async function runV2ThreadTitleGeneration({
       title: generatedTitle,
     }),
   ]);
-
-  log?.set({
-    v2GeneratedThreadTitle: generatedTitle,
-  });
 }
 
 export function queueV2ThreadTitleGeneration(
   options: QueueV2ThreadTitleGenerationOptions,
 ): void {
-  const { threadId, log } = options;
+  const { threadId } = options;
   if (inFlightTitleGenerations.has(threadId)) return;
 
   inFlightTitleGenerations.add(threadId);
   void runV2ThreadTitleGeneration(options)
-    .catch((error) => {
-      log?.set({
-        v2ThreadTitleGenerationError: toErrorMessage(error),
-      });
-    })
+    .catch(() => {})
     .finally(() => {
       inFlightTitleGenerations.delete(threadId);
     });

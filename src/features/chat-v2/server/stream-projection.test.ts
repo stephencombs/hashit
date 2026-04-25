@@ -23,7 +23,6 @@ const mocks = vi.hoisted(() => {
   const mockUpdateWhere = vi.fn(async () => undefined);
   const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
   const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
-  const mockLogSet = vi.fn();
 
   return {
     mockBuildReadStreamUrl,
@@ -33,7 +32,6 @@ const mocks = vi.hoisted(() => {
     mockInsert,
     mockInsertOnConflictDoNothing,
     mockInsertValues,
-    mockLogSet,
     mockMaterializeSnapshotFromDurableStream,
     mockReadDurableStreamHeadOffset,
     mockReadV2UiSpecEventsByMessageId,
@@ -82,21 +80,12 @@ vi.mock("~/db/schema", () => ({
 
 import { projectV2StreamSnapshotToDb } from "./stream-projection";
 
-function createTelemetry() {
-  return {
-    profile: "interactiveChatV2",
-    source: "interactive-chat-v2",
-    status: "completed",
-    requestMessageCount: 1,
-    iterationCount: 1,
-    toolCallCount: 0,
-    toolCalls: [],
-    startedAt: 1000,
-    completedAt: 1020,
-    durationMs: 20,
-    finishReason: "stop",
-    traceId: "trace-id",
-  } as const;
+function firstMockArg<T>(mock: {
+  mock: { calls: Array<Array<unknown>> };
+}): T {
+  const value = mock.mock.calls[0]?.[0];
+  expect(value).toBeDefined();
+  return value as T;
 }
 
 function mockSelectResults(params: {
@@ -147,10 +136,6 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-1",
-      telemetry: createTelemetry(),
-      persistUserTurn: true,
-      userMessageId: "u-1",
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(0);
@@ -183,32 +168,30 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-2",
-      telemetry: createTelemetry(),
-      persistUserTurn: true,
-      userMessageId: "u-2",
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(2);
     expect(result.resumeOffset).toBe("off-2");
 
     expect(mocks.mockInsert).toHaveBeenCalledTimes(1);
-    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
-      id: string;
-      role: string;
-      content: string;
-      metadata?: Record<string, unknown>;
-    }>;
+    const insertedRows = firstMockArg<
+      Array<{
+        id: string;
+        role: string;
+        content: string;
+        metadata?: Record<string, unknown>;
+      }>
+    >(mocks.mockInsertValues);
     expect(insertedRows.map((row) => row.id)).toEqual(["u-2", "a-2"]);
-    expect(insertedRows[0]?.metadata?.runStatus).toBe("completed");
-    expect(insertedRows[1]?.metadata?.runStatus).toBe("completed");
+    expect(insertedRows[0]?.metadata).toBeUndefined();
+    expect(insertedRows[1]?.metadata).toBeUndefined();
     expect(mocks.mockInsertOnConflictDoNothing).toHaveBeenCalledTimes(1);
 
     expect(mocks.mockUpdate).toHaveBeenCalledTimes(1);
-    const threadPatch = mocks.mockUpdateSet.mock.calls[0]?.[0] as {
+    const threadPatch = firstMockArg<{
       resumeOffset?: string;
       updatedAt?: Date;
-    };
+    }>(mocks.mockUpdateSet);
     expect(threadPatch.resumeOffset).toBe("off-2");
     expect(threadPatch.updatedAt).toBeInstanceOf(Date);
   });
@@ -232,16 +215,15 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-3",
-      telemetry: createTelemetry(),
-      persistUserTurn: false,
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(1);
-    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
-      id: string;
-      parts: Array<{ type: string; content?: string }>;
-    }>;
+    const insertedRows = firstMockArg<
+      Array<{
+        id: string;
+        parts: Array<{ type: string; content?: string }>;
+      }>
+    >(mocks.mockInsertValues);
     expect(insertedRows[0]?.id).toBe("a-3");
     expect(insertedRows[0]?.parts).toEqual([
       { type: "text", content: "Fallback assistant text" },
@@ -290,16 +272,15 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-chart",
-      telemetry: createTelemetry(),
-      persistUserTurn: false,
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(1);
-    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
-      id: string;
-      parts: Array<{ type: string; specIndex?: number }>;
-    }>;
+    const insertedRows = firstMockArg<
+      Array<{
+        id: string;
+        parts: Array<{ type: string; specIndex?: number }>;
+      }>
+    >(mocks.mockInsertValues);
     expect(insertedRows[0]?.id).toBe("a-chart");
     expect(insertedRows[0]?.parts).toEqual([
       expect.objectContaining({
@@ -340,19 +321,15 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-regen",
-      telemetry: createTelemetry(),
-      persistUserTurn: false,
       replaceLatestAssistant: true,
-      userMessageId: "u-regen",
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(1);
     expect(mocks.mockDelete).toHaveBeenCalledTimes(1);
     expect(mocks.mockDeleteWhere).toHaveBeenCalledTimes(1);
-    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
-      id: string;
-    }>;
+    const insertedRows = firstMockArg<Array<{ id: string }>>(
+      mocks.mockInsertValues,
+    );
     expect(insertedRows.map((row) => row.id)).toEqual(["a-new"]);
   });
 
@@ -399,17 +376,13 @@ describe("projectV2StreamSnapshotToDb", () => {
 
     const result = await projectV2StreamSnapshotToDb({
       threadId: "thread-later",
-      telemetry: createTelemetry(),
-      persistUserTurn: true,
       replaceLatestAssistant: false,
-      userMessageId: "u-new",
-      log: { set: mocks.mockLogSet } as never,
     });
 
     expect(result.persistedMessageCount).toBe(1);
-    const insertedRows = mocks.mockInsertValues.mock.calls[0]?.[0] as Array<{
-      id: string;
-    }>;
+    const insertedRows = firstMockArg<Array<{ id: string }>>(
+      mocks.mockInsertValues,
+    );
     expect(insertedRows.map((row) => row.id)).toEqual(["a-new"]);
     expect(mocks.mockDelete).not.toHaveBeenCalled();
   });

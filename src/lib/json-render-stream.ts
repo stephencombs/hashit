@@ -5,18 +5,6 @@ import {
 import type { Spec } from "@json-render/core";
 import type { StreamChunk } from "@tanstack/ai";
 
-/** Telemetry counters emitted once after the stream closes. */
-export interface UiGenerationMetrics {
-  /** Total patch lines parsed from the LLM output. */
-  patchLinesReceived: number;
-  /** Number of `spec_patch` events emitted to the client (≤ patchLinesReceived due to coalescing). */
-  patchesEmitted: number;
-  /** Number of `spec_complete` events emitted (one per spec block). */
-  specsCompleted: number;
-  /** Wall-clock milliseconds from first patch line to last spec_complete. */
-  totalMs: number;
-}
-
 /**
  * Async generator that intercepts TEXT_MESSAGE_CONTENT chunks from a TanStack AI
  * chat stream, separates prose from json-render JSONL patches, compiles patches
@@ -29,13 +17,9 @@ export interface UiGenerationMetrics {
  * intact. (The stock createMixedStreamParser drops empty lines and the old fix of
  * appending `\n\n` after every non-empty line turned `- a\n- b` into loose lists
  * and confused Streamdown.)
- *
- * Pass an `onMetrics` callback to receive per-stream telemetry after the stream
- * completes — useful for observability without polluting the hot rendering path.
  */
 export async function* withJsonRender(
   stream: AsyncIterable<StreamChunk>,
-  onMetrics?: (metrics: UiGenerationMetrics) => void,
 ): AsyncIterable<StreamChunk> {
   let compiler = createSpecStreamCompiler<Spec>();
   let hasSpec = false;
@@ -44,12 +28,6 @@ export async function* withJsonRender(
   const textQueue: string[] = [];
   const patchQueue: Array<{ spec: Spec; specIndex: number }> = [];
   const completeQueue: Array<{ spec: Spec; specIndex: number }> = [];
-
-  // Telemetry counters — only paid for when onMetrics is provided.
-  let patchLinesReceived = 0;
-  let patchesEmitted = 0;
-  let specsCompleted = 0;
-  let firstPatchAt = 0;
 
   let parseBuffer = "";
   let inSpecFence = false;
@@ -67,10 +45,6 @@ export async function* withJsonRender(
   function enqueuePatch(patch: ReturnType<typeof parseSpecStreamLine>) {
     if (!patch) return;
     hasSpec = true;
-    if (onMetrics) {
-      patchLinesReceived++;
-      if (firstPatchAt === 0) firstPatchAt = Date.now();
-    }
     compiler.push(JSON.stringify(patch) + "\n");
     patchQueue.push({ spec: { ...compiler.getResult() } as Spec, specIndex });
   }
@@ -138,7 +112,6 @@ export async function* withJsonRender(
   function* drainCompleteQueue() {
     while (completeQueue.length > 0) {
       const entry = completeQueue.shift()!;
-      if (onMetrics) specsCompleted++;
       yield {
         type: "CUSTOM" as const,
         name: "spec_complete",
@@ -156,7 +129,6 @@ export async function* withJsonRender(
     // cuts SSE bandwidth and client rerender frequency without losing any data.
     const latest = patchQueue[patchQueue.length - 1]!;
     patchQueue.length = 0;
-    if (onMetrics) patchesEmitted++;
     yield {
       type: "CUSTOM" as const,
       name: "spec_patch",
@@ -168,7 +140,6 @@ export async function* withJsonRender(
   function* emitSpecComplete() {
     if (hasSpec) {
       hasSpec = false;
-      if (onMetrics) specsCompleted++;
       yield {
         type: "CUSTOM" as const,
         name: "spec_complete",
@@ -207,14 +178,5 @@ export async function* withJsonRender(
     yield* drainTextQueue();
     yield* drainPatchQueue();
     yield* emitSpecComplete();
-  }
-
-  if (onMetrics) {
-    onMetrics({
-      patchLinesReceived,
-      patchesEmitted,
-      specsCompleted,
-      totalMs: firstPatchAt > 0 ? Date.now() - firstPatchAt : 0,
-    });
   }
 }

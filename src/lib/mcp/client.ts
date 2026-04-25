@@ -121,11 +121,6 @@ export async function getMcpTools(
   for (const result of results) {
     if (result.status === "fulfilled") {
       allTools.push(...result.value);
-    } else {
-      console.error(
-        "[mcp] Failed to connect:",
-        result.reason instanceof Error ? result.reason.message : result.reason,
-      );
     }
   }
 
@@ -157,11 +152,6 @@ export async function getAllMcpTools(
   for (const result of results) {
     if (result.status === "fulfilled") {
       allTools.push(...result.value);
-    } else {
-      console.error(
-        "[mcp] Failed to connect:",
-        result.reason instanceof Error ? result.reason.message : result.reason,
-      );
     }
   }
 

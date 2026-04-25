@@ -1,35 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRequest } from "nitro/context";
-import { createError } from "evlog";
 import {
   toDurableChatSessionResponse,
   type DurableSessionMessage,
 } from "@durable-streams/tanstack-ai-transport";
-import type { RequestLogger } from "evlog";
 import { getDurableChatSessionTarget } from "~/lib/durable-streams";
 import {
   isVisionCapableModel,
   userMessagesContainMedia,
 } from "~/lib/multimodal-parts";
-import { createV2AgentRun } from "~/features/chat-v2/server/agent-runner";
+import {
+  createV2AgentRun,
+  type V2AgentRunMessages,
+} from "~/features/chat-v2/server/agent-runner";
 import { v2ChatRequestSchema } from "~/features/chat-v2/server/chat-contract";
 import { buildV2ChatStreamPath } from "~/features/chat-v2/server/keys";
 import {
   appendV2CustomEvents,
   buildV2TerminalEvents,
-  createV2PersistenceMiddleware,
-  finalizeV2PersistenceTelemetry,
 } from "~/features/chat-v2/server/persistence-runtime";
 import { hasV2MessageByIdServer } from "~/features/chat-v2/server/messages.server";
-import { createV2RunLifecycleMiddleware } from "~/features/chat-v2/server/run-lifecycle-middleware";
+import {
+  createV2RunLifecycleController,
+  createV2RunLifecycleMiddleware,
+} from "~/features/chat-v2/server/run-lifecycle-middleware";
 import { withV2JsonRenderEvents } from "~/features/chat-v2/server/json-render-events";
 import { projectV2StreamSnapshotToDb } from "~/features/chat-v2/server/stream-projection";
-import {
-  beginV2ThreadRun,
-  endV2ThreadRun,
-} from "~/features/chat-v2/server/thread-run-state.server";
+import { beginV2ThreadRun } from "~/features/chat-v2/server/thread-run-state.server";
 import { queueV2ThreadTitleGeneration } from "~/features/chat-v2/server/thread-title";
 import { extractV2UserMessage } from "~/features/chat-v2/server/user-message";
+import { resolveV2RuntimePolicy } from "~/features/chat-v2/server/runtime-policy";
+import { resolveV2Tools } from "~/features/chat-v2/server/tool-runtime";
+import { errorResponse } from "~/lib/http-error";
 
 type MinimalMessage = {
   role?: string;
@@ -65,15 +66,12 @@ export const Route = createFileRoute("/api/v2/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const req = useRequest();
-        const log = req.context?.log as RequestLogger;
-
         if (
           !process.env.AZURE_OPENAI_API_KEY ||
           !process.env.AZURE_OPENAI_ENDPOINT ||
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
-          throw createError({
+          return errorResponse({
             message: "Azure OpenAI environment variables not configured",
             status: 500,
             why: "Missing one or more required environment variables",
@@ -84,7 +82,7 @@ export const Route = createFileRoute("/api/v2/chat")({
         const body = await request.json().catch(() => undefined);
         const parsedBody = v2ChatRequestSchema.safeParse(body);
         if (!parsedBody.success) {
-          throw createError({
+          return errorResponse({
             message: "Invalid V2 chat request payload",
             status: 400,
             why:
@@ -98,7 +96,7 @@ export const Route = createFileRoute("/api/v2/chat")({
         const url = new URL(request.url);
         const threadId = url.searchParams.get("id") ?? data?.threadId;
         if (!threadId) {
-          throw createError({
+          return errorResponse({
             message: "Missing thread id for durable chat session",
             status: 400,
             why: "Request is missing both `id` query param and `data.threadId`.",
@@ -107,32 +105,13 @@ export const Route = createFileRoute("/api/v2/chat")({
         }
 
         if (!messages.some((message) => hasUsablePayload(message))) {
-          throw createError({
+          return errorResponse({
             message: "V2 request has no usable message content",
             status: 400,
             why: "All input messages are empty.",
             fix: "Send at least one message with text content.",
           });
         }
-
-        const requestedModel =
-          data?.model?.trim() || process.env.AZURE_OPENAI_DEPLOYMENT;
-        if (
-          userMessagesContainMedia(messages) &&
-          !isVisionCapableModel(requestedModel)
-        ) {
-          throw createError({
-            message: "Model does not support image or document input",
-            status: 415,
-            why: `Selected model "${requestedModel ?? "unknown"}" cannot process image, audio, video, or document parts`,
-            fix: "Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)",
-          });
-        }
-
-        log.set({
-          route: "/api/v2/chat",
-          requestMessageCount: messages.length,
-        });
 
         const {
           id: userMessageId,
@@ -158,32 +137,38 @@ export const Route = createFileRoute("/api/v2/chat")({
         const streamPath = buildV2ChatStreamPath(threadId);
         const streamTarget = getDurableChatSessionTarget(streamPath);
         const conversationId = data?.conversationId ?? threadId;
+        const requestHasMedia = userMessagesContainMedia(messages);
 
-        const { stream: responseStream, telemetry } = await createV2AgentRun({
-          messages: messages as Array<Record<string, unknown>>,
+        const runtimePolicy = resolveV2RuntimePolicy({ data });
+
+        const requestedModel =
+          runtimePolicy.model ?? process.env.AZURE_OPENAI_DEPLOYMENT;
+        if (requestHasMedia && !isVisionCapableModel(requestedModel)) {
+          return errorResponse({
+            message: "Model does not support image or document input",
+            status: 415,
+            why: `Selected model "${requestedModel ?? "unknown"}" cannot process image, audio, video, or document parts`,
+            fix: "Select a vision-capable deployment (e.g. gpt-4o, gpt-4.1, gpt-5)",
+          });
+        }
+
+        const toolRuntime = await resolveV2Tools({ policy: runtimePolicy });
+        const lifecycleController = createV2RunLifecycleController({
+          threadId,
+        });
+
+        const { stream: responseStream, runState } = await createV2AgentRun({
+          messages: messages as V2AgentRunMessages,
           conversationId,
-          model: data?.model,
-          log,
-          middlewareFactory: (telemetry) => [
-            createV2PersistenceMiddleware({
-              threadId,
-              telemetry,
-              log,
-            }),
-            createV2RunLifecycleMiddleware({ threadId, log }),
+          model: runtimePolicy.model,
+          runtimePolicy,
+          tools: toolRuntime.tools,
+          allowedToolNames: toolRuntime.allowedToolNames,
+          middlewareFactory: () => [
+            createV2RunLifecycleMiddleware(lifecycleController),
           ],
         });
-        const renderedResponseStream = withV2JsonRenderEvents(
-          responseStream,
-          (metrics) => {
-            log.set({
-              v2UiGenPatchLinesReceived: metrics.patchLinesReceived,
-              v2UiGenPatchesEmitted: metrics.patchesEmitted,
-              v2UiGenSpecsCompleted: metrics.specsCompleted,
-              v2UiGenTotalMs: metrics.totalMs,
-            });
-          },
-        );
+        const renderedResponseStream = withV2JsonRenderEvents(responseStream);
 
         const newUserMessage = shouldPersistUserTurn
           ? extractLatestUserMessage(messages)
@@ -194,19 +179,6 @@ export const Route = createFileRoute("/api/v2/chat")({
 
         await beginV2ThreadRun(threadId);
         let persistenceError: string | undefined;
-        let eventError: string | undefined;
-        let persistenceFinalized = false;
-
-        const finalizePersistence = (): void => {
-          if (persistenceFinalized) return;
-          persistenceFinalized = true;
-          finalizeV2PersistenceTelemetry({
-            threadId,
-            telemetry,
-            persistenceError,
-            eventError,
-          });
-        };
 
         try {
           const response = await toDurableChatSessionResponse({
@@ -219,50 +191,34 @@ export const Route = createFileRoute("/api/v2/chat")({
           try {
             await projectV2StreamSnapshotToDb({
               threadId,
-              telemetry,
-              persistUserTurn: shouldPersistUserTurn,
               replaceLatestAssistant: isRegenerationTurn,
-              userMessageId,
-              log,
             });
           } catch (error) {
             persistenceError = toErrorMessage(error);
-            log.set({
-              v2ProjectionError: persistenceError,
-            });
           }
 
           const terminalEvents = buildV2TerminalEvents({
             threadId,
-            telemetry,
+            runState,
             persistenceError,
           });
 
           try {
             await appendV2CustomEvents(streamTarget, terminalEvents);
-          } catch (error) {
-            eventError = toErrorMessage(error);
-            log.set({
-              v2PersistenceEventAppendError: eventError,
-            });
+          } catch {
+            // Best effort: durable response already succeeded.
           }
 
           if (shouldPersistUserTurn && !persistenceError) {
             queueV2ThreadTitleGeneration({
               threadId,
               streamTarget,
-              log,
             });
           }
 
-          finalizePersistence();
           return response;
         } catch (error) {
-          await endV2ThreadRun(threadId);
-          if (!persistenceError) {
-            persistenceError = toErrorMessage(error);
-          }
-          finalizePersistence();
+          await lifecycleController.end();
           throw error;
         }
       },

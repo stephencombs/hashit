@@ -40,11 +40,8 @@ export const getThread = createServerFn({ method: "GET" })
           initialResumeOffset = await readDurableStreamHeadOffset(
             buildChatStreamPath(threadId),
           );
-        } catch (error) {
-          console.error(
-            "[getThread] durable head lookup failed, using Postgres-only hydration",
-            error,
-          );
+        } catch {
+          // Fall back to Postgres-only hydration if the durable stream is unavailable.
         }
       }
     }

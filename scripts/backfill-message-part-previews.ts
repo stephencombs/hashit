@@ -50,7 +50,7 @@ async function main() {
   let updated = 0;
   let cursor: Date | undefined;
 
-  console.log("Starting backfill of message part previews...");
+  process.stdout.write("Starting backfill of message part previews...\n");
 
   while (true) {
     const rows = await db
@@ -83,15 +83,17 @@ async function main() {
     }
 
     cursor = rows[rows.length - 1].createdAt;
-    console.log(`  processed ${total} rows, updated ${updated}...`);
+    process.stdout.write(`  processed ${total} rows, updated ${updated}...\n`);
 
     if (rows.length < BATCH_SIZE) break;
   }
 
-  console.log(`Done. Processed ${total} rows total, updated ${updated}.`);
+  process.stdout.write(
+    `Done. Processed ${total} rows total, updated ${updated}.\n`,
+  );
 }
 
 main().catch((err) => {
-  console.error(err);
+  process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

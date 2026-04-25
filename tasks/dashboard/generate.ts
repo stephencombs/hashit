@@ -15,10 +15,6 @@ export default defineTask({
         previousWidgets?: import("../../src/db/schema").PersistedWidget[];
       };
 
-    console.log(
-      `[dashboard:generate] Starting generation for snapshot ${snapshotId} (persona: ${persona})`,
-    );
-
     await generateDashboard({
       snapshotId,
       persona,

@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRequest } from "nitro/context";
-import { createError } from "evlog";
 import {
   toDurableChatSessionResponse,
   type DurableSessionMessage,
@@ -12,7 +10,6 @@ import {
   syncPriorToolOutputs,
   withPersistence,
 } from "~/lib/chat-helpers";
-import type { RequestLogger } from "evlog";
 import type { StreamChunk } from "@tanstack/ai";
 import { createAgentRun } from "~/lib/agent-runner";
 import {
@@ -20,14 +17,15 @@ import {
   userMessagesContainMedia,
 } from "~/lib/multimodal-parts";
 import {
-  finalizeAgentRunTrace,
-  startAgentRunTrace,
-} from "~/lib/telemetry/agent-spans";
-import {
   buildChatStreamPath,
   getDurableChatSessionTarget,
 } from "~/lib/durable-streams";
 import { beginThreadRun, endThreadRun } from "~/lib/server/thread-run-state";
+import {
+  createHttpError,
+  errorResponse,
+  toErrorResponse,
+} from "~/lib/http-error";
 
 async function* withThreadRunTracking(
   stream: AsyncIterable<StreamChunk>,
@@ -39,24 +37,6 @@ async function* withThreadRunTracking(
     }
   } finally {
     endThreadRun(threadId);
-  }
-}
-
-async function* withTraceFinalization(
-  stream: AsyncIterable<StreamChunk>,
-  traceState: ReturnType<typeof startAgentRunTrace>,
-  getFinalAttributes: () => Record<string, unknown>,
-  getFinalError: () => string | undefined,
-): AsyncIterable<StreamChunk> {
-  try {
-    for await (const chunk of stream) {
-      yield chunk;
-    }
-  } finally {
-    finalizeAgentRunTrace(traceState, {
-      error: getFinalError(),
-      attributes: getFinalAttributes(),
-    });
   }
 }
 
@@ -81,15 +61,12 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const req = useRequest();
-        const log = req.context?.log as RequestLogger;
-
         if (
           !process.env.AZURE_OPENAI_API_KEY ||
           !process.env.AZURE_OPENAI_ENDPOINT ||
           !process.env.AZURE_OPENAI_DEPLOYMENT
         ) {
-          throw createError({
+          return errorResponse({
             message: "Azure OpenAI environment variables not configured",
             status: 500,
             why: "Missing one or more required environment variables",
@@ -108,7 +85,7 @@ export const Route = createFileRoute("/api/chat")({
         // require a stable id here and key the durable session stream on it.
         const threadId = url.searchParams.get("id") ?? data?.threadId;
         if (!threadId) {
-          throw createError({
+          return errorResponse({
             message: "Missing thread id for durable chat session",
             status: 400,
             why: "Request is missing an `id` query param and data.threadId — durable connections require a stable session id.",
@@ -135,7 +112,7 @@ export const Route = createFileRoute("/api/chat")({
             userMessagesContainMedia(messages) &&
             !isVisionCapableModel(requestedModel)
           ) {
-            throw createError({
+            throw createHttpError({
               message: "Model does not support image or document input",
               status: 415,
               why: `Selected model "${requestedModel ?? "unknown"}" cannot process image, audio, video, or document parts`,
@@ -159,38 +136,16 @@ export const Route = createFileRoute("/api/chat")({
                 threadId,
                 (messages ?? []) as Parameters<typeof syncPriorToolOutputs>[1],
               );
-            } catch (err) {
-              log.set({ syncPriorToolOutputsError: String(err) });
+            } catch {
+              // Continuations should still stream even if prior tool-output sync fails.
             }
           }
 
           const conversationId: string | undefined =
             data?.conversationId || threadId;
-          const traceState = startAgentRunTrace({
-            profile: "interactiveChat",
-            source: "interactive-chat",
-            conversationId,
-            log,
-            attributes: {
-              "http.route": "/api/chat",
-              "agent.thread_id": threadId,
-              "agent.thread_created": false,
-              "agent.message_count": messages?.length,
-            },
-          });
 
-          log.set({
-            conversationId,
-            threadId,
-            messageCount: messages?.length,
-            model: data?.model,
-            traceId: traceState.traceId,
-            spanId: traceState.spanId,
-          });
-
-          const { stream: rawStream, telemetry } = await createAgentRun({
+          const { stream: rawStream, runState } = await createAgentRun({
             profile: "interactiveChat",
-            source: "interactive-chat",
             messages,
             conversationId,
             model: data?.model,
@@ -198,20 +153,9 @@ export const Route = createFileRoute("/api/chat")({
             customSystemPrompt: data?.systemPrompt,
             selectedServers: data?.selectedServers,
             enabledTools: data?.enabledTools,
-            log,
-            traceState,
           });
 
-          const renderedStream = withJsonRender(rawStream, (metrics) => {
-            log.set({
-              uiGenPatchLinesReceived: metrics.patchLinesReceived,
-              uiGenPatchesEmitted: metrics.patchesEmitted,
-              uiGenSpecsCompleted: metrics.specsCompleted,
-              uiGenTotalMs: metrics.totalMs,
-            });
-          });
-
-          log.set({ phase: "stream_started" });
+          const renderedStream = withJsonRender(rawStream);
 
           // Only persist + echo a new user message when this POST represents a
           // fresh user turn. Tool-result continuations must pass `newMessages:
@@ -231,25 +175,10 @@ export const Route = createFileRoute("/api/chat")({
                 userContent,
                 userParts,
                 shouldPersistUserTurn,
-                log,
-                telemetry,
+                runState,
                 userMessageId,
               )
-            : withTraceFinalization(
-                renderedStream,
-                traceState,
-                () => ({
-                  "agent.status": telemetry.status,
-                  "agent.thread_id": threadId,
-                  "agent.tool_call_count": telemetry.toolCallCount,
-                  "agent.iteration_count": telemetry.iterationCount,
-                }),
-                () =>
-                  telemetry.status === "failed" ||
-                  telemetry.status === "aborted"
-                    ? telemetry.error
-                    : undefined,
-              );
+            : renderedStream;
           const trackedResponseStream = withThreadRunTracking(
             responseStream,
             threadId,
@@ -266,6 +195,8 @@ export const Route = createFileRoute("/api/chat")({
           });
         } catch (error) {
           endThreadRun(threadId);
+          const response = toErrorResponse(error);
+          if (response) return response;
           throw error;
         }
       },

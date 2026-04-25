@@ -79,15 +79,13 @@ describe("/api/v2/prompt-attachments", () => {
   });
 
   it("rejects uploads missing a valid thread id", async () => {
-    await expect(
-      UploadRoute.options.server.handlers.POST({
-        request: new Request("http://localhost/api/v2/prompt-attachments", {
-          method: "POST",
-        }),
+    const response = await UploadRoute.options.server.handlers.POST({
+      request: new Request("http://localhost/api/v2/prompt-attachments", {
+        method: "POST",
       }),
-    ).rejects.toMatchObject({
-      status: 400,
     });
+
+    expect(response.status).toBe(400);
   });
 });
 

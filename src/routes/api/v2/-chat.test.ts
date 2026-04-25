@@ -2,10 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const callOrder: Array<string> = [];
-  const mockLogSet = vi.fn();
-  const mockUseRequest = vi.fn(() => ({
-    context: { log: { set: mockLogSet } },
-  }));
   const mockToDurableChatSessionResponse = vi.fn(async () => {
     callOrder.push("durable:start");
     await Promise.resolve();
@@ -21,22 +17,9 @@ const mocks = vi.hoisted(() => {
       yield { type: "TEXT_MESSAGE_CONTENT", delta: "ok" };
       yield { type: "RUN_FINISHED", finishReason: "stop", duration: 11 };
     })(),
-    telemetry: {
-      profile: "interactiveChatV2",
-      source: "interactive-chat-v2",
+    runState: {
       status: "completed",
-      requestMessageCount: 1,
-      iterationCount: 1,
-      toolCallCount: 0,
-      toolCalls: [],
-      startedAt: 1000,
-      completedAt: 1011,
-      durationMs: 11,
       finishReason: "stop",
-      traceId: "trace-id",
-      traceState: {
-        completed: false,
-      },
     },
   }));
   const mockProjectV2StreamSnapshotToDb = vi.fn(async () => {
@@ -50,12 +33,6 @@ const mocks = vi.hoisted(() => {
   const mockAppendV2CustomEvents = vi.fn(async () => {
     callOrder.push("append-events");
   });
-  const mockFinalizeV2PersistenceTelemetry = vi.fn(() => {
-    callOrder.push("finalize");
-  });
-  const mockCreateV2PersistenceMiddleware = vi.fn(() => ({
-    name: "v2-persistence",
-  }));
   const mockWithV2JsonRenderEvents = vi.fn(
     (stream: AsyncIterable<unknown>) => stream,
   );
@@ -65,30 +42,27 @@ const mocks = vi.hoisted(() => {
   const mockHasV2MessageByIdServer = vi.fn(async () => false);
   const mockIsVisionCapableModel = vi.fn(() => true);
   const mockUserMessagesContainMedia = vi.fn(() => false);
+  const mockGetMcpTools = vi.fn(async () => ({
+    serversUsed: ["alpha"],
+    tools: [{ name: "search" }],
+  }));
 
   return {
     callOrder,
     mockAppendV2CustomEvents,
     mockBeginThreadRun,
     mockCreateV2AgentRun,
-    mockCreateV2PersistenceMiddleware,
     mockEndThreadRun,
-    mockFinalizeV2PersistenceTelemetry,
-    mockLogSet,
     mockProjectV2StreamSnapshotToDb,
     mockQueueV2ThreadTitleGeneration,
     mockHasV2MessageByIdServer,
     mockIsVisionCapableModel,
+    mockGetMcpTools,
     mockToDurableChatSessionResponse,
-    mockUseRequest,
     mockUserMessagesContainMedia,
     mockWithV2JsonRenderEvents,
   };
 });
-
-vi.mock("nitro/context", () => ({
-  useRequest: mocks.mockUseRequest,
-}));
 
 vi.mock("@durable-streams/tanstack-ai-transport", () => ({
   toDurableChatSessionResponse: mocks.mockToDurableChatSessionResponse,
@@ -104,6 +78,10 @@ vi.mock("~/lib/durable-streams", () => ({
 vi.mock("~/lib/multimodal-parts", () => ({
   isVisionCapableModel: mocks.mockIsVisionCapableModel,
   userMessagesContainMedia: mocks.mockUserMessagesContainMedia,
+}));
+
+vi.mock("~/lib/mcp/client", () => ({
+  getMcpTools: mocks.mockGetMcpTools,
 }));
 
 vi.mock("~/features/chat-v2/server/keys", () => ({
@@ -141,7 +119,7 @@ vi.mock("~/features/chat-v2/server/persistence-runtime", () => ({
     threadId: string;
     updatedTitle?: string;
     persistenceError?: string;
-    telemetry: { status: string };
+    runState: { status: string };
   }) => [
     ...(input.updatedTitle
       ? [
@@ -159,7 +137,7 @@ vi.mock("~/features/chat-v2/server/persistence-runtime", () => ({
     {
       type: "CUSTOM",
       name: "run_complete",
-      value: { status: input.telemetry.status },
+      value: { status: input.runState.status },
       timestamp: 123,
     },
     {
@@ -169,22 +147,22 @@ vi.mock("~/features/chat-v2/server/persistence-runtime", () => ({
       timestamp: 123,
     },
   ],
-  createV2PersistenceMiddleware: mocks.mockCreateV2PersistenceMiddleware,
-  finalizeV2PersistenceTelemetry: mocks.mockFinalizeV2PersistenceTelemetry,
 }));
 
 import { Route } from "~/routes/api/v2/chat";
 
-function makeRequest(): Request {
+function makeRequest(body?: Record<string, unknown>): Request {
   return new Request("http://localhost/api/v2/chat?id=thread-1", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      messages: [{ id: "m-1", role: "user", content: "Hello world" }],
-      data: {},
-    }),
+    body: JSON.stringify(
+      body ?? {
+        messages: [{ id: "m-1", role: "user", content: "Hello world" }],
+        data: {},
+      },
+    ),
   });
 }
 
@@ -224,7 +202,6 @@ describe("/api/v2/chat", () => {
       "project",
       "append-events",
       "queue-title",
-      "finalize",
     ]);
     expect(mocks.mockProjectV2StreamSnapshotToDb).toHaveBeenCalledTimes(1);
     expect(mocks.mockAppendV2CustomEvents).toHaveBeenCalledTimes(1);
@@ -244,11 +221,6 @@ describe("/api/v2/chat", () => {
     });
 
     expect(response.status).toBe(202);
-    expect(mocks.mockLogSet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        v2ProjectionError: "projection failed",
-      }),
-    );
     const appendedEvents = mocks.mockAppendV2CustomEvents.mock
       .calls[0]?.[1] as Array<{
       name: string;
@@ -276,7 +248,6 @@ describe("/api/v2/chat", () => {
     );
     expect(mocks.mockProjectV2StreamSnapshotToDb).toHaveBeenCalledWith(
       expect.objectContaining({
-        persistUserTurn: false,
         replaceLatestAssistant: true,
       }),
     );
@@ -287,14 +258,75 @@ describe("/api/v2/chat", () => {
     mocks.mockUserMessagesContainMedia.mockReturnValueOnce(true);
     mocks.mockIsVisionCapableModel.mockReturnValueOnce(false);
 
-    await expect(
-      Route.options.server.handlers.POST({
-        request: makeRequest(),
-      }),
-    ).rejects.toMatchObject({
-      status: 415,
+    const response = await Route.options.server.handlers.POST({
+      request: makeRequest(),
     });
 
+    expect(response.status).toBe(415);
     expect(mocks.mockCreateV2AgentRun).not.toHaveBeenCalled();
+  });
+
+  it("passes runtime and tool preferences through the V2 policy boundary", async () => {
+    const response = await Route.options.server.handlers.POST({
+      request: makeRequest({
+        messages: [{ id: "m-1", role: "user", content: "Hello world" }],
+        data: {
+          model: "gpt-4o",
+          temperature: 0.2,
+          systemPrompt: "Be concise.",
+          maxToolIterations: 4,
+          selectedServers: ["alpha"],
+          enabledTools: { alpha: ["search"] },
+        },
+      }),
+    });
+
+    expect(response.status).toBe(202);
+    expect(mocks.mockCreateV2AgentRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-4o",
+        runtimePolicy: expect.objectContaining({
+          model: "gpt-4o",
+          temperature: 0.2,
+          maxToolIterations: 4,
+          selectedServers: ["alpha"],
+          enabledTools: { alpha: ["search"] },
+        }),
+        tools: expect.any(Array),
+        allowedToolNames: expect.any(Set),
+      }),
+    );
+  });
+
+  it("accepts attachment-only user messages and checks the resolved model", async () => {
+    mocks.mockUserMessagesContainMedia.mockReturnValueOnce(true);
+
+    const response = await Route.options.server.handlers.POST({
+      request: makeRequest({
+        messages: [
+          {
+            id: "m-attachment",
+            role: "user",
+            parts: [
+              {
+                type: "image",
+                source: {
+                  type: "url",
+                  value: "https://example.com/image.png",
+                  mimeType: "image/png",
+                },
+              },
+            ],
+          },
+        ],
+        data: {
+          model: "gpt-4o",
+        },
+      }),
+    });
+
+    expect(response.status).toBe(202);
+    expect(mocks.mockIsVisionCapableModel).toHaveBeenCalledWith("gpt-4o");
+    expect(mocks.mockCreateV2AgentRun).toHaveBeenCalled();
   });
 });

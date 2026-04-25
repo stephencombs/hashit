@@ -50,25 +50,11 @@ vi.mock("~/db/schema", () => ({
 }));
 
 vi.mock("~/lib/agent-runtime-utils", () => ({
-  createRunMetadata: vi.fn(),
   summarizeToolActivity: vi.fn(async () => "summary"),
 }));
 
 vi.mock("~/lib/openai-adapter", () => ({
   getAzureAdapter: vi.fn(),
-}));
-
-vi.mock("~/lib/telemetry/agent-spans", () => ({
-  createChildSpan: vi.fn(),
-  finalizeAgentRunTrace: vi.fn(),
-  finishPersistenceSpan: vi.fn(),
-  startPersistenceSpan: vi.fn(),
-}));
-
-vi.mock("~/lib/telemetry/otel", () => ({
-  endTraceSpan: vi.fn(),
-  markTraceError: vi.fn(),
-  markTraceSuccess: vi.fn(),
 }));
 
 import { persistAssistantMessage } from "~/lib/chat-helpers";

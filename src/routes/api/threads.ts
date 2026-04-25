@@ -51,11 +51,8 @@ export const Route = createFileRoute("/api/threads")({
             await ensureDurableChatSessionStream(
               getDurableChatSessionTarget(buildChatStreamPath(thread.id)),
             );
-          } catch (err) {
-            console.error(
-              "[threads] ensureDurableChatSessionStream failed",
-              err,
-            );
+          } catch {
+            // Thread creation should succeed even if durable stream pre-creation fails.
           }
         }
 

@@ -14,7 +14,6 @@ export const persistedRecipeSchema = z.object({
   dataSources: z.array(persistedRecipeDataSourceSchema),
   render: z.string(),
   score: z.number(),
-  traceId: z.string().optional(),
   /** 0–100 composite from id / insight / source novelty (dashboard generator). */
   uniquenessScore: z.number().optional(),
   uniquenessReasons: z.array(z.string()).optional(),
@@ -26,7 +25,6 @@ export const persistedWidgetSchema = z.object({
   insight: z.string(),
   spec: z.record(z.string(), z.unknown()).nullable(),
   skipReason: z.string().optional(),
-  traceId: z.string().optional(),
 });
 
 export const dashboardRenderableSpecSchema = z.custom<Spec>((value) => {

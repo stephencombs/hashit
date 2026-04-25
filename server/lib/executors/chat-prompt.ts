@@ -14,24 +14,16 @@ export async function executeChatPrompt(
   const result = await executeAutomationRun(prompt, threadId);
 
   return {
-    success: result.telemetry.status === "completed",
+    success: result.runState.status === "completed",
     error:
-      result.telemetry.status === "completed"
+      result.runState.status === "completed"
         ? undefined
-        : result.telemetry.error ||
-          `Automation run ended with status: ${result.telemetry.status}`,
+        : result.runState.error ||
+          `Automation run ended with status: ${result.runState.status}`,
     data: {
       threadId: result.threadId,
-      runStatus: result.telemetry.status,
-      finishReason: result.telemetry.finishReason,
-      durationMs: result.telemetry.durationMs,
-      toolCallCount: result.telemetry.toolCallCount,
-      iterationCount: result.telemetry.iterationCount,
-      totalTokens: result.telemetry.usage?.totalTokens,
-      requestId: result.telemetry.requestId,
-      traceId: result.telemetry.traceId,
-      spanId: result.telemetry.spanId,
-      mcpServersUsed: result.telemetry.mcpServersUsed,
+      runStatus: result.runState.status,
+      finishReason: result.runState.finishReason,
     },
   };
 }

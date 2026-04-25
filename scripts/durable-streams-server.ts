@@ -14,16 +14,20 @@ const server = new DurableStreamTestServer({ port, host, dataDir });
 
 async function main(): Promise<void> {
   const url = await server.start();
-  console.log(`[durable-streams] listening on ${url}`);
-  console.log(`[durable-streams] data dir: ${dataDir}`);
+  process.stdout.write(`[durable-streams] listening on ${url}\n`);
+  process.stdout.write(`[durable-streams] data dir: ${dataDir}\n`);
 }
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
-  console.log(`[durable-streams] received ${signal}, shutting down…`);
+  process.stdout.write(
+    `[durable-streams] received ${signal}, shutting down...\n`,
+  );
   try {
     await server.stop();
   } catch (err) {
-    console.error("[durable-streams] stop failed", err);
+    process.stderr.write(
+      `[durable-streams] stop failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
   }
   process.exit(0);
 }
@@ -32,6 +36,8 @@ process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
 main().catch((err) => {
-  console.error("[durable-streams] failed to start", err);
+  process.stderr.write(
+    `[durable-streams] failed to start: ${err instanceof Error ? err.message : String(err)}\n`,
+  );
   process.exit(1);
 });

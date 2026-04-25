@@ -1,9 +1,9 @@
-import { createError } from "evlog";
 import { DurableStream } from "@durable-streams/client";
 import type {
   DurableChatSessionStreamTarget,
   DurableStreamTarget,
 } from "@durable-streams/tanstack-ai-transport";
+import { createHttpError } from "~/lib/http-error";
 
 function withProtocol(url: string): string {
   return url.includes("://") ? url : `http://${url}`;
@@ -15,7 +15,7 @@ function stripTrailingSlash(url: string): string {
 
 function assertConfigured(url: string | undefined, name: string): string {
   if (!url) {
-    throw createError({
+    throw createHttpError({
       message: "Durable Streams endpoint not configured",
       status: 503,
       why: `Missing ${name} (or DURABLE_STREAMS_URL fallback) — the durable session transport cannot resolve a write/read URL.`,

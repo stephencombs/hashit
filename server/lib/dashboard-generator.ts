@@ -1,4 +1,3 @@
-import { createLogger } from "evlog";
 import { toolDefinition } from "@tanstack/ai";
 import { eq } from "drizzle-orm";
 import { db } from "../../src/db";
@@ -10,14 +9,6 @@ import type { ServerTool, Tool } from "@tanstack/ai";
 import type { PersistedWidget, PersistedRecipe } from "../../src/db/schema";
 import type { Spec } from "@json-render/core";
 import { createAgentRun } from "../../src/lib/agent-runner";
-import { finalizeAgentRunTrace } from "../../src/lib/telemetry/agent-spans";
-import {
-  endTraceSpan,
-  markTraceError,
-  markTraceSuccess,
-  startTraceSpan,
-  type StartedSpan,
-} from "../../src/lib/telemetry/otel";
 
 const PREFERRED_ROW_KEYS = [
   "data",
@@ -120,8 +111,7 @@ interface WidgetRecipe {
   dataSources: DataSource[];
   render: string;
   score: number;
-  traceId?: string;
-  /** Set by uniqueness pass for observability */
+  /** Set by the uniqueness pass for deterministic selection details. */
   uniquenessScore?: number;
   uniquenessReasons?: string[];
 }
@@ -385,10 +375,6 @@ function selectUniqueRecipes(
   const deduped = dedupeRecipesByWidgetId(recipes);
 
   let bestResult: WidgetRecipe[] = [];
-  let bestLevel = -1;
-  let bestStats: GateStats | null = null;
-  let bestPool = 0;
-  let bestAvgUniq = 0;
 
   for (let levelIdx = 0; levelIdx < RELAXATION_LEVELS.length; levelIdx++) {
     const level = RELAXATION_LEVELS[levelIdx]!;
@@ -491,41 +477,15 @@ function selectUniqueRecipes(
       });
     }
 
-    const avgUniq =
-      selected.length === 0
-        ? 0
-        : selected.reduce((s, r) => s + (r.uniquenessScore ?? 0), 0) /
-          selected.length;
-
     if (selected.length > bestResult.length) {
       bestResult = selected;
-      bestLevel = levelIdx;
-      bestStats = stats;
-      bestPool = pool.length;
-      bestAvgUniq = avgUniq;
     }
 
     if (selected.length >= TARGET_RECIPE_COUNT) {
-      console.log(
-        `[dashboard][uniqueness] level=${levelIdx} threshold=${level.insightThreshold} maxFamily=${level.maxPerFamily} ` +
-          `planned=${recipes.length} deduped=${deduped.length} pool=${pool.length} ` +
-          `accepted=${selected.length} avgUniq=${avgUniq.toFixed(1)} target_met=1 ` +
-          `rej_histId=${stats.duplicateHistoricalId} rej_batchDup=${stats.duplicateInBatch} ` +
-          `rej_insight=${stats.insightSimilarity} rej_family=${stats.familyCap}`,
-      );
       return selected;
     }
   }
 
-  const lvl = bestLevel >= 0 ? RELAXATION_LEVELS[bestLevel]! : null;
-  const st = bestStats;
-  console.log(
-    `[dashboard][uniqueness] level=${bestLevel} threshold=${lvl?.insightThreshold ?? "n/a"} maxFamily=${lvl?.maxPerFamily ?? "n/a"} ` +
-      `planned=${recipes.length} deduped=${deduped.length} pool=${bestPool} ` +
-      `accepted=${bestResult.length} avgUniq=${bestAvgUniq.toFixed(1)} target_met=0 ` +
-      `rej_histId=${st?.duplicateHistoricalId ?? 0} rej_batchDup=${st?.duplicateInBatch ?? 0} ` +
-      `rej_insight=${st?.insightSimilarity ?? 0} rej_family=${st?.familyCap ?? 0}`,
-  );
   return bestResult;
 }
 
@@ -630,8 +590,6 @@ async function runPlanningPhase(
   persona: string,
   mcpTools: ServerTool[],
   previousWidgetIds: string[],
-  dashboardSpan?: StartedSpan,
-  dashboardTraceId?: string,
 ): Promise<WidgetRecipe[]> {
   const toolManifest = buildToolManifest(mcpTools);
 
@@ -724,122 +682,84 @@ score: 90
 Call submit_widget_recipes with your recipes sorted by score (highest first). Produce exactly 6 recipes.
 `;
 
-  const planningLog = createLogger();
-  const { stream, telemetry } = await createAgentRun({
+  const { stream } = await createAgentRun({
     profile: "dashboardPlanning",
-    source: "dashboard-planning",
     messages: [{ role: "user" as const, content: planningPrompt }],
     extraTools: [submitRecipesTool],
     maxToolIterations: 2,
-    parentSpan: dashboardSpan?.span,
-    log: planningLog,
   });
 
   let recipes: WidgetRecipe[] = [];
   let toolCalled = false;
 
-  try {
-    for await (const chunk of stream) {
-      if (chunk.type === "TOOL_CALL_END" && chunk.result) {
-        toolCalled = true;
-        try {
-          const parsed = JSON.parse(chunk.result) as {
-            recipes?: Array<{
-              widgetId: string;
-              title: string;
-              insight: string;
-              dataSources: string | DataSource[];
-              render: string;
-              score: number;
-            }>;
-          };
-          if (parsed.recipes) {
-            for (const r of parsed.recipes) {
-              let dataSources: DataSource[] = [];
-              if (typeof r.dataSources === "string") {
-                try {
-                  const raw = JSON.parse(r.dataSources) as Array<{
-                    toolName: string;
-                    toolParams: string | Record<string, unknown>;
-                    label: string;
-                  }>;
-                  dataSources = raw.map((ds) => ({
-                    toolName: ds.toolName,
-                    label: ds.label,
-                    toolParams:
-                      typeof ds.toolParams === "string"
-                        ? (JSON.parse(ds.toolParams) as Record<string, unknown>)
-                        : ds.toolParams || {},
-                  }));
-                } catch {
-                  console.warn(
-                    `[dashboard] Failed to parse dataSources for "${r.widgetId}": ${r.dataSources}`,
-                  );
-                  continue;
-                }
-              } else if (Array.isArray(r.dataSources)) {
-                dataSources = r.dataSources.map((ds) => ({
+  for await (const chunk of stream) {
+    if (chunk.type === "TOOL_CALL_END" && chunk.result) {
+      toolCalled = true;
+      try {
+        const parsed = JSON.parse(chunk.result) as {
+          recipes?: Array<{
+            widgetId: string;
+            title: string;
+            insight: string;
+            dataSources: string | DataSource[];
+            render: string;
+            score: number;
+          }>;
+        };
+        if (parsed.recipes) {
+          for (const r of parsed.recipes) {
+            let dataSources: DataSource[] = [];
+            if (typeof r.dataSources === "string") {
+              try {
+                const raw = JSON.parse(r.dataSources) as Array<{
+                  toolName: string;
+                  toolParams: string | Record<string, unknown>;
+                  label: string;
+                }>;
+                dataSources = raw.map((ds) => ({
                   toolName: ds.toolName,
                   label: ds.label,
                   toolParams:
                     typeof ds.toolParams === "string"
-                      ? (JSON.parse(
-                          ds.toolParams as unknown as string,
-                        ) as Record<string, unknown>)
+                      ? (JSON.parse(ds.toolParams) as Record<string, unknown>)
                       : ds.toolParams || {},
                 }));
-              }
-              if (dataSources.length === 0) {
-                console.warn(
-                  `[dashboard] Skipping recipe "${r.widgetId}": no data sources`,
-                );
+              } catch {
                 continue;
               }
-              recipes.push({
-                widgetId: r.widgetId,
-                title: r.title || formatWidgetId(r.widgetId),
-                insight: r.insight || r.render,
-                dataSources,
-                render: r.render,
-                score: r.score,
-                traceId: dashboardTraceId,
-              });
+            } else if (Array.isArray(r.dataSources)) {
+              dataSources = r.dataSources.map((ds) => ({
+                toolName: ds.toolName,
+                label: ds.label,
+                toolParams:
+                  typeof ds.toolParams === "string"
+                    ? (JSON.parse(ds.toolParams as unknown as string) as Record<
+                        string,
+                        unknown
+                      >)
+                    : ds.toolParams || {},
+              }));
             }
+            if (dataSources.length === 0) {
+              continue;
+            }
+            recipes.push({
+              widgetId: r.widgetId,
+              title: r.title || formatWidgetId(r.widgetId),
+              insight: r.insight || r.render,
+              dataSources,
+              render: r.render,
+              score: r.score,
+            });
           }
-        } catch (err) {
-          console.error("[dashboard] Failed to parse planning result:", err);
         }
+      } catch {
+        recipes = [];
       }
     }
-  } finally {
-    finalizeAgentRunTrace(telemetry.traceState, {
-      error:
-        telemetry.status === "failed" || telemetry.status === "aborted"
-          ? telemetry.error
-          : undefined,
-      attributes: {
-        "agent.status": telemetry.status,
-        "dashboard.trace_id": dashboardTraceId,
-      },
-    });
-    planningLog.emit();
   }
 
-  if (!toolCalled) {
-    console.warn(
-      `[dashboard] Planning LLM did not call submit_widget_recipes. Tools in manifest: ${mcpTools.length}`,
-    );
-  } else if (recipes.length === 0) {
-    console.warn("[dashboard] Planning LLM called tool but produced 0 recipes");
-  } else {
-    const toolNames = recipes.flatMap((r) =>
-      r.dataSources.map((ds) => ds.toolName),
-    );
-    console.log(
-      `[dashboard] Planning produced ${recipes.length} insight widgets using tools: ${toolNames.join(", ")} ` +
-        `(duration=${telemetry.durationMs ?? "n/a"}ms, tokens=${telemetry.usage?.totalTokens ?? "n/a"})`,
-    );
-  }
+  if (!toolCalled) return [];
 
   return recipes.sort((a, b) => b.score - a.score);
 }
@@ -856,9 +776,6 @@ function resolveToolName(
     return parts.length === 2 && parts[1] === name;
   });
   if (suffixMatches.length === 1) {
-    console.log(
-      `[dashboard] Corrected tool name: "${name}" → "${suffixMatches[0].name}"`,
-    );
     return suffixMatches[0].name;
   }
 
@@ -866,9 +783,6 @@ function resolveToolName(
     t.name.toLowerCase().includes(name.toLowerCase()),
   );
   if (substringMatches.length === 1) {
-    console.log(
-      `[dashboard] Corrected tool name: "${name}" → "${substringMatches[0].name}"`,
-    );
     return substringMatches[0].name;
   }
 
@@ -876,9 +790,6 @@ function resolveToolName(
     name.toLowerCase().includes(t.name.split("__")[1]?.toLowerCase() ?? ""),
   );
   if (reverseMatches.length === 1) {
-    console.log(
-      `[dashboard] Corrected tool name: "${name}" → "${reverseMatches[0].name}"`,
-    );
     return reverseMatches[0].name;
   }
 
@@ -899,19 +810,11 @@ function validateRecipes(
       const resolved = resolveToolName(source.toolName, mcpTools, toolNameSet);
       if (resolved) {
         validSources.push({ ...source, toolName: resolved });
-      } else {
-        console.warn(
-          `[dashboard] Dropped source "${source.label}" from "${recipe.widgetId}": no matching tool for "${source.toolName}"`,
-        );
       }
     }
 
     if (validSources.length > 0) {
       validated.push({ ...recipe, dataSources: validSources });
-    } else {
-      console.warn(
-        `[dashboard] Dropped recipe "${recipe.widgetId}": all data sources had invalid tool names`,
-      );
     }
   }
 
@@ -1006,7 +909,6 @@ function toPersistedRecipes(recipes: WidgetRecipe[]): PersistedRecipe[] {
       render: r.render,
       score: r.score,
     };
-    if (r.traceId !== undefined) base.traceId = r.traceId;
     if (r.uniquenessScore !== undefined)
       base.uniquenessScore = r.uniquenessScore;
     if (r.uniquenessReasons !== undefined)
@@ -1032,9 +934,6 @@ async function executeDataSource(
 ): Promise<unknown> {
   const tool = mcpTools.find((t) => t.name === source.toolName);
   if (!tool) {
-    console.warn(
-      `[dashboard] Tool not found for source "${source.label}": ${source.toolName}`,
-    );
     return null;
   }
 
@@ -1053,11 +952,7 @@ async function executeDataSource(
         tool.execute as (args: unknown) => Promise<unknown>
       )(toolParams);
       return isEmptyResult(toolResult) ? null : toolResult;
-    } catch (err) {
-      console.warn(
-        `[dashboard] Tool execution failed for "${source.label}" (${source.toolName}):`,
-        err instanceof Error ? err.message : err,
-      );
+    } catch {
       return null;
     }
   })();
@@ -1070,8 +965,6 @@ async function renderWidget(
   recipe: WidgetRecipe,
   mcpTools: ServerTool[],
   dataSourceCache: Map<string, Promise<unknown>>,
-  dashboardSpan?: StartedSpan,
-  dashboardTraceId?: string,
 ): Promise<PersistedWidget> {
   const results: Record<string, unknown> = {};
 
@@ -1099,7 +992,6 @@ async function renderWidget(
       insight: recipe.insight,
       spec: null,
       skipReason: "All data sources returned empty or failed",
-      traceId: dashboardTraceId,
     };
   }
 
@@ -1125,41 +1017,17 @@ ${recipe.render}
 - If the available data is insufficient to produce a meaningful visualization, output NOTHING - no spec block at all.
 - Do not output any text outside the spec block.`;
 
-  const renderLog = createLogger();
-  const { stream: uiStream, telemetry } = await createAgentRun({
+  const { stream: uiStream } = await createAgentRun({
     profile: "dashboardRender",
-    source: "dashboard-render",
     messages: [{ role: "user" as const, content: uiPrompt }],
     extraSystemPrompts: [CATALOG_PROMPT],
-    parentSpan: dashboardSpan?.span,
-    log: renderLog,
   });
 
   let spec: Spec | null = null;
-  try {
-    for await (const chunk of withJsonRender(uiStream, (metrics) => {
-      console.log(
-        `[dashboard][ui-gen] widget="${recipe.widgetId}" ` +
-          `patchLines=${metrics.patchLinesReceived} patchesEmitted=${metrics.patchesEmitted} ` +
-          `specsCompleted=${metrics.specsCompleted} ms=${metrics.totalMs}`,
-      );
-    })) {
-      if (chunk.type === "CUSTOM" && chunk.name === "spec_complete") {
-        spec = (chunk.value as { spec: Spec }).spec;
-      }
+  for await (const chunk of withJsonRender(uiStream)) {
+    if (chunk.type === "CUSTOM" && chunk.name === "spec_complete") {
+      spec = (chunk.value as { spec: Spec }).spec;
     }
-  } finally {
-    finalizeAgentRunTrace(telemetry.traceState, {
-      error:
-        telemetry.status === "failed" || telemetry.status === "aborted"
-          ? telemetry.error
-          : undefined,
-      attributes: {
-        "agent.status": telemetry.status,
-        "dashboard.widget_id": recipe.widgetId,
-      },
-    });
-    renderLog.emit();
   }
 
   const validation = validateWidgetSpec(spec);
@@ -1167,30 +1035,20 @@ ${recipe.render}
     const reason = validation.valid
       ? "UI generation produced no visualization"
       : (validation as { valid: false; reason: string }).reason;
-    console.warn(
-      `[dashboard] Dropping spec for "${recipe.widgetId}": ${reason}`,
-    );
     return {
       widgetId: recipe.widgetId,
       title: recipe.title,
       insight: recipe.insight,
       spec: null,
       skipReason: reason,
-      traceId: dashboardTraceId,
     };
   }
-
-  console.log(
-    `[dashboard] Rendered "${recipe.widgetId}" in ${telemetry.durationMs ?? "n/a"}ms ` +
-      `(tokens=${telemetry.usage?.totalTokens ?? "n/a"})`,
-  );
 
   return {
     widgetId: recipe.widgetId,
     title: recipe.title,
     insight: recipe.insight,
     spec: spec as unknown as Record<string, unknown>,
-    traceId: dashboardTraceId,
   };
 }
 
@@ -1210,34 +1068,17 @@ export async function generateDashboard(
     previousWidgetIds,
     previousWidgets = [],
   } = params;
-  const dashboardSpan = startTraceSpan("dashboard.generation", {
-    attributes: {
-      "dashboard.snapshot_id": snapshotId,
-      "dashboard.persona": persona,
-      "dashboard.previous_widget_count": previousWidgetIds.length,
-    },
-  });
-  const dashboardTraceId = dashboardSpan.traceId;
 
   const carryForward = previousWidgets.filter((w) => w.spec !== null);
   const dataSourceCache = new Map<string, Promise<unknown>>();
   if (carryForward.length > 0) {
     await updateSnapshotWidgets(snapshotId, carryForward);
-    console.log(
-      `[dashboard] Seeded snapshot ${snapshotId} with ${carryForward.length} previous widgets`,
-    );
   }
 
   try {
     const mcpTools = await getAllMcpTools();
-    console.log(
-      `[dashboard] Loaded ${mcpTools.length} MCP tools for snapshot ${snapshotId}`,
-    );
 
     if (mcpTools.length === 0) {
-      markTraceError(dashboardSpan.span, "No MCP tools loaded", {
-        "dashboard.status": "failed",
-      });
       await db
         .update(dashboardSnapshots)
         .set({
@@ -1254,8 +1095,6 @@ export async function generateDashboard(
       persona,
       mcpTools,
       previousWidgetIds,
-      dashboardSpan,
-      dashboardTraceId,
     );
     const validated = validateRecipes(rawRecipes, mcpTools);
     const recipes = selectUniqueRecipes(
@@ -1264,31 +1103,12 @@ export async function generateDashboard(
       previousWidgets,
     );
 
-    console.log(
-      `[dashboard] Planning: ${rawRecipes.length} raw → ${validated.length} validated → ${recipes.length} unique recipes`,
-    );
-
     await db
       .update(dashboardSnapshots)
       .set({ recipes: toPersistedRecipes(recipes) })
       .where(eq(dashboardSnapshots.id, snapshotId));
 
     if (recipes.length === 0) {
-      if (carryForward.length > 0) {
-        markTraceSuccess(dashboardSpan.span, {
-          "dashboard.status": "complete",
-          "dashboard.widget_count": carryForward.length,
-          "dashboard.success_count": carryForward.length,
-        });
-      } else {
-        markTraceError(
-          dashboardSpan.span,
-          "Planning phase produced no valid widget recipes",
-          {
-            "dashboard.status": "failed",
-          },
-        );
-      }
       await db
         .update(dashboardSnapshots)
         .set({
@@ -1316,12 +1136,7 @@ export async function generateDashboard(
       ];
       writeQueue = writeQueue
         .then(() => updateSnapshotWidgets(snapshotId, current))
-        .catch((err) => {
-          console.warn(
-            `[dashboard] Snapshot flush failed for ${snapshotId}:`,
-            err,
-          );
-        });
+        .catch(() => {});
     }
 
     // Bounded concurrency: at most MAX_CONCURRENT_RENDERS widget renders run in
@@ -1336,29 +1151,19 @@ export async function generateDashboard(
         let task = queue.shift();
         while (task) {
           const { recipe, i } = task;
-          console.log(
-            `[dashboard] Rendering widget "${recipe.widgetId}" for snapshot ${snapshotId}`,
-          );
           try {
             widgetsInOrder[i] = await renderWidget(
               recipe,
               mcpTools,
               dataSourceCache,
-              dashboardSpan,
-              dashboardTraceId,
             );
           } catch (err) {
-            console.error(
-              `[dashboard] renderWidget failed for "${recipe.widgetId}":`,
-              err,
-            );
             widgetsInOrder[i] = {
               widgetId: recipe.widgetId,
               title: recipe.title,
               insight: recipe.insight,
               spec: null,
               skipReason: `Render error — ${err instanceof Error ? err.message : String(err)}`,
-              traceId: dashboardTraceId,
             };
           }
           flushSnapshot();
@@ -1386,26 +1191,7 @@ export async function generateDashboard(
         completedAt: new Date(),
       })
       .where(eq(dashboardSnapshots.id, snapshotId));
-
-    const newCount = widgets.length - carryForward.length;
-    const successCount = widgets.filter((w) => w.spec !== null).length;
-    markTraceSuccess(dashboardSpan.span, {
-      "dashboard.status": "complete",
-      "dashboard.widget_count": widgets.length,
-      "dashboard.success_count": successCount,
-    });
-    console.log(
-      `[dashboard] Snapshot ${snapshotId} complete: ${successCount} renderable widgets (${carryForward.length} carried forward, ${newCount} new)`,
-    );
   } catch (err) {
-    markTraceError(dashboardSpan.span, err, {
-      "dashboard.status": "failed",
-      "dashboard.snapshot_id": snapshotId,
-    });
-    console.error(
-      `[dashboard] Fatal error generating snapshot ${snapshotId}:`,
-      err,
-    );
     await db
       .update(dashboardSnapshots)
       .set({
@@ -1415,7 +1201,5 @@ export async function generateDashboard(
         completedAt: new Date(),
       })
       .where(eq(dashboardSnapshots.id, snapshotId));
-  } finally {
-    endTraceSpan(dashboardSpan.span);
   }
 }
