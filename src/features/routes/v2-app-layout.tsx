@@ -15,7 +15,10 @@ export function V2AppLayout({ defaultSidebarOpen }: V2AppLayoutProps) {
   useV2ThreadActivitySync();
 
   return (
-    <SidebarProvider defaultOpen={defaultSidebarOpen} className="[--sidebar-width:280px]">
+    <SidebarProvider
+      defaultOpen={defaultSidebarOpen}
+      className="[--sidebar-width:280px]"
+    >
       <V2Sidebar />
       <SidebarInset>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

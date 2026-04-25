@@ -74,7 +74,10 @@ async function readUntil(
     const chunk = await Promise.race([
       reader.read(),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timed out reading stream")), timeout),
+        setTimeout(
+          () => reject(new Error("Timed out reading stream")),
+          timeout,
+        ),
       ),
     ]);
     if (chunk.done) return output;
@@ -82,7 +85,9 @@ async function readUntil(
     if (predicate(output)) return output;
   }
 
-  throw new Error(`Timed out waiting for expected stream data. Received: ${output}`);
+  throw new Error(
+    `Timed out waiting for expected stream data. Received: ${output}`,
+  );
 }
 
 describe("/api/v2/thread-events", () => {

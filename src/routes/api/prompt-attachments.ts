@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { nanoid } from "nanoid";
-import {
-  attachmentResponseSchema,
-} from "~/lib/attachment-schemas";
+import { attachmentResponseSchema } from "~/lib/attachment-schemas";
 import { uploadAttachment } from "~/lib/server/attachments";
 import { parseAttachmentUploadRequest } from "~/lib/server/prompt-attachments-upload";
 

@@ -916,10 +916,13 @@ export const PromptInput = ({
     ? controller.attachments.openFileDialog
     : openFileDialogLocal;
 
-  const clear = useCallback((options?: ClearAttachmentsOptions) => {
-    clearAttachments(options);
-    clearReferencedSources();
-  }, [clearAttachments, clearReferencedSources]);
+  const clear = useCallback(
+    (options?: ClearAttachmentsOptions) => {
+      clearAttachments(options);
+      clearReferencedSources();
+    },
+    [clearAttachments, clearReferencedSources],
+  );
 
   // Let provider know about our hidden file input so external menus can call openFileDialog()
   useEffect(() => {

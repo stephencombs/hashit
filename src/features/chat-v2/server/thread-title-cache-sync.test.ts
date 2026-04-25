@@ -104,7 +104,11 @@ describe("thread title cache sync", () => {
       initialResumeOffset: "16",
     });
 
-    const result = await commitV2ThreadTitle(queryClient, threadId, "  Roadmap Plan  ");
+    const result = await commitV2ThreadTitle(
+      queryClient,
+      threadId,
+      "  Roadmap Plan  ",
+    );
 
     const sessionAfter = queryClient.getQueryData<{
       thread: V2Thread;

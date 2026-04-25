@@ -67,9 +67,9 @@ function V2ThreadAttachmentSummaryPanel({
   }
 
   return (
-    <div className="border-b px-6 py-2 text-xs text-muted-foreground">
+    <div className="text-muted-foreground border-b px-6 py-2 text-xs">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium text-foreground">
+        <span className="text-foreground font-medium">
           Attachments: {summary.totalCount}
         </span>
         {ATTACHMENT_TYPES.map((type) => {

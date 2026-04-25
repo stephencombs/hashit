@@ -80,9 +80,7 @@ vi.mock("~/db/schema", () => ({
 
 import { projectV2StreamSnapshotToDb } from "./stream-projection";
 
-function firstMockArg<T>(mock: {
-  mock: { calls: Array<Array<unknown>> };
-}): T {
+function firstMockArg<T>(mock: { mock: { calls: Array<Array<unknown>> } }): T {
   const value = mock.mock.calls[0]?.[0];
   expect(value).toBeDefined();
   return value as T;

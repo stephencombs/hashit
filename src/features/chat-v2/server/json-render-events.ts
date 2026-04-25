@@ -76,7 +76,9 @@ export async function* withV2JsonRenderEvents(
     buffer = "";
   }
 
-  function* drainTextQueue(templateChunk?: StreamChunk): Generator<StreamChunk> {
+  function* drainTextQueue(
+    templateChunk?: StreamChunk,
+  ): Generator<StreamChunk> {
     while (textQueue.length > 0) {
       const text = textQueue.shift();
       if (!text) continue;

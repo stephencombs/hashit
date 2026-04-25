@@ -125,8 +125,9 @@ function MessageRowImpl({
         index: number;
       } => isRenderableAttachmentPart(item.part),
     )
-    .map(({ part, index }): AttachmentData =>
-      toAttachmentData(part, `${message.id}:attachment:${index}`),
+    .map(
+      ({ part, index }): AttachmentData =>
+        toAttachmentData(part, `${message.id}:attachment:${index}`),
     );
   const attachmentsNode =
     attachments.length > 0 ? (

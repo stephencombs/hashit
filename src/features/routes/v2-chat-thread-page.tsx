@@ -63,15 +63,18 @@ function EditableV2ThreadTitle({
     setV2ThreadTitle(queryClient, threadId, nextTitle);
 
     try {
-      await toast.promise(commitV2ThreadTitle(queryClient, threadId, nextTitle), {
-        loading: "Saving thread title...",
-        success: "Thread title updated.",
-        error: (error) => {
-          setV2ThreadTitle(queryClient, threadId, previousTitle);
-          heading.textContent = previousTitle;
-          return toRenameErrorMessage(error);
+      await toast.promise(
+        commitV2ThreadTitle(queryClient, threadId, nextTitle),
+        {
+          loading: "Saving thread title...",
+          success: "Thread title updated.",
+          error: (error) => {
+            setV2ThreadTitle(queryClient, threadId, previousTitle);
+            heading.textContent = previousTitle;
+            return toRenameErrorMessage(error);
+          },
         },
-      });
+      );
     } catch {
       // Error handling is centralized in toast.promise above.
     } finally {

@@ -13,7 +13,9 @@ function resolveThreadId(request: Request): string | null {
   return value;
 }
 
-export const Route = createFileRoute("/api/v2/prompt-attachments/$attachmentId")({
+export const Route = createFileRoute(
+  "/api/v2/prompt-attachments/$attachmentId",
+)({
   server: {
     handlers: {
       GET: async ({ params, request }) => {

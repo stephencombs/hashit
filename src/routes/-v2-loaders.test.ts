@@ -4,7 +4,9 @@ import { loadV2LayoutData } from "./v2";
 
 describe("v2 route loaders", () => {
   it("preloads the v2 thread list in the layout loader", async () => {
-    const ensureQueryData = vi.fn(async (options: { queryKey: unknown[] }) => options);
+    const ensureQueryData = vi.fn(
+      async (options: { queryKey: unknown[] }) => options,
+    );
 
     await loadV2LayoutData({
       context: {
@@ -16,15 +18,13 @@ describe("v2 route loaders", () => {
     const firstCall = ensureQueryData.mock.calls[0]?.[0] as {
       queryKey: unknown[];
     };
-    expect(firstCall.queryKey).toEqual([
-      "v2",
-      "threads",
-      "list",
-    ]);
+    expect(firstCall.queryKey).toEqual(["v2", "threads", "list"]);
   });
 
   it("preloads session and messages in the thread loader", async () => {
-    const ensureQueryData = vi.fn(async (options: { queryKey: unknown[] }) => options);
+    const ensureQueryData = vi.fn(
+      async (options: { queryKey: unknown[] }) => options,
+    );
 
     await loadV2ThreadRouteData({
       params: { threadId: "thread-123" },

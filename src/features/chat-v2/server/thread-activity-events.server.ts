@@ -39,7 +39,9 @@ export async function listV2ThreadActivityEventsAfter({
   afterId,
   limit = DEFAULT_EVENT_BATCH_SIZE,
   upToId,
-}: ListV2ThreadActivityEventsAfterOptions): Promise<Array<V2ThreadActivityEventRecord>> {
+}: ListV2ThreadActivityEventsAfterOptions): Promise<
+  Array<V2ThreadActivityEventRecord>
+> {
   const safeAfterId = Number.isFinite(afterId) ? Math.max(0, afterId) : 0;
   const safeLimit = Number.isFinite(limit)
     ? Math.min(Math.max(1, Math.trunc(limit)), 500)

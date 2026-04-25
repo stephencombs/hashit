@@ -182,8 +182,12 @@ export const Route = createFileRoute("/api/v2/thread-events")({
     handlers: {
       GET: async ({ request }) => {
         const requestUrl = new URL(request.url);
-        const cursorFromHeader = parseCursor(request.headers.get("Last-Event-ID"));
-        const cursorFromQuery = parseCursor(requestUrl.searchParams.get("after"));
+        const cursorFromHeader = parseCursor(
+          request.headers.get("Last-Event-ID"),
+        );
+        const cursorFromQuery = parseCursor(
+          requestUrl.searchParams.get("after"),
+        );
         const initialCursor = Math.max(cursorFromHeader, cursorFromQuery);
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
@@ -206,7 +210,9 @@ export const Route = createFileRoute("/api/v2/thread-events")({
             subscriber.heartbeatTimer = setInterval(() => {
               if (subscriber.closed) return;
               try {
-                controller.enqueue(encoder.encode(`: keepalive ${Date.now()}\n\n`));
+                controller.enqueue(
+                  encoder.encode(`: keepalive ${Date.now()}\n\n`),
+                );
               } catch {
                 stop();
               }

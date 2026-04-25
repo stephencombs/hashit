@@ -27,7 +27,8 @@ export function useV2ThreadActivitySync(): void {
         type: "all",
       });
     let errorReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
-    let unknownThreadReconcileTimeout: ReturnType<typeof setTimeout> | null = null;
+    let unknownThreadReconcileTimeout: ReturnType<typeof setTimeout> | null =
+      null;
     const scheduleErrorReconcile = () => {
       if (errorReconcileTimeout) return;
       errorReconcileTimeout = setTimeout(() => {
@@ -43,7 +44,10 @@ export function useV2ThreadActivitySync(): void {
       }, UNKNOWN_THREAD_RECONCILIATION_DEBOUNCE_MS);
     };
 
-    const applyThreadStreamingState = (threadId: string, isStreaming: boolean) => {
+    const applyThreadStreamingState = (
+      threadId: string,
+      isStreaming: boolean,
+    ) => {
       const knownThread = threadsCollection.has(threadId);
       setV2ThreadStreamingState(queryClient, threadId, isStreaming);
       // Unknown events usually mean a thread was created/updated outside this client.
@@ -72,8 +76,14 @@ export function useV2ThreadActivitySync(): void {
       applyThreadStreamingState(payload.threadId, false);
     };
 
-    connection.addEventListener(v2ThreadRunStartedEvent, handleStarted as EventListener);
-    connection.addEventListener(v2ThreadRunFinishedEvent, handleFinished as EventListener);
+    connection.addEventListener(
+      v2ThreadRunStartedEvent,
+      handleStarted as EventListener,
+    );
+    connection.addEventListener(
+      v2ThreadRunFinishedEvent,
+      handleFinished as EventListener,
+    );
     connection.onopen = () => {
       if (errorReconcileTimeout) {
         clearTimeout(errorReconcileTimeout);

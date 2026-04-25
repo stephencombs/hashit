@@ -79,7 +79,9 @@ export async function endV2ThreadRun(
         runCount: sql`${v2ThreadRuns.runCount} - 1`,
         updatedAt: now,
       })
-      .where(and(eq(v2ThreadRuns.threadId, threadId), gt(v2ThreadRuns.runCount, 1)))
+      .where(
+        and(eq(v2ThreadRuns.threadId, threadId), gt(v2ThreadRuns.runCount, 1)),
+      )
       .returning({
         runCount: v2ThreadRuns.runCount,
       });
@@ -96,7 +98,9 @@ export async function endV2ThreadRun(
 
     const [deleted] = await tx
       .delete(v2ThreadRuns)
-      .where(and(eq(v2ThreadRuns.threadId, threadId), eq(v2ThreadRuns.runCount, 1)))
+      .where(
+        and(eq(v2ThreadRuns.threadId, threadId), eq(v2ThreadRuns.runCount, 1)),
+      )
       .returning({ threadId: v2ThreadRuns.threadId });
 
     if (deleted) {
@@ -135,7 +139,9 @@ export async function isV2ThreadRunActive(threadId: string): Promise<boolean> {
   const [row] = await db
     .select({ threadId: v2ThreadRuns.threadId })
     .from(v2ThreadRuns)
-    .where(and(eq(v2ThreadRuns.threadId, threadId), gt(v2ThreadRuns.runCount, 0)))
+    .where(
+      and(eq(v2ThreadRuns.threadId, threadId), gt(v2ThreadRuns.runCount, 0)),
+    )
     .limit(1);
   return Boolean(row);
 }

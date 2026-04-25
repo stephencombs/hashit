@@ -54,10 +54,12 @@ function toTimestamp(value: Date | string | number): number {
 }
 
 function sortByActivity(left: V2Thread, right: V2Thread): number {
-  const updatedAtDelta = toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+  const updatedAtDelta =
+    toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
   if (updatedAtDelta !== 0) return updatedAtDelta;
 
-  const createdAtDelta = toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
+  const createdAtDelta =
+    toTimestamp(right.createdAt) - toTimestamp(left.createdAt);
   if (createdAtDelta !== 0) return createdAtDelta;
 
   return right.id.localeCompare(left.id);

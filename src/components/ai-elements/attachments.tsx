@@ -349,7 +349,11 @@ export const AttachmentHoverCardContent = ({
   className,
   ...props
 }: AttachmentHoverCardContentProps) => (
-  <HoverCardContent align={align} className={cn("w-auto", className)} {...props} />
+  <HoverCardContent
+    align={align}
+    className={cn("w-auto", className)}
+    {...props}
+  />
 );
 
 export type AttachmentEmptyProps = HTMLAttributes<HTMLDivElement>;
@@ -359,10 +363,7 @@ export const AttachmentEmpty = ({
   children,
   ...props
 }: AttachmentEmptyProps) => (
-  <div
-    className={cn("text-muted-foreground text-xs", className)}
-    {...props}
-  >
+  <div className={cn("text-muted-foreground text-xs", className)} {...props}>
     {children ?? "No attachments"}
   </div>
 );

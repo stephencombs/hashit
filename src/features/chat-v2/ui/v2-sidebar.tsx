@@ -33,7 +33,7 @@ export function V2Sidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" className="select-none" {...props}>
       <SidebarHeader>
-        <div className="grid h-12 grid-cols-[auto_1fr] items-center gap-2 px-0 transition-[grid-template-columns,gap,padding] ease-linear group-data-[state=expanded]:duration-0 group-data-[state=expanded]:overflow-visible group-data-[state=collapsed]:duration-200 group-data-[state=collapsed]:overflow-hidden group-data-[collapsible=icon]:grid-cols-[auto_0fr] group-data-[collapsible=icon]:gap-0">
+        <div className="grid h-12 grid-cols-[auto_1fr] items-center gap-2 px-0 transition-[grid-template-columns,gap,padding] ease-linear group-data-[collapsible=icon]:grid-cols-[auto_0fr] group-data-[collapsible=icon]:gap-0 group-data-[state=collapsed]:overflow-hidden group-data-[state=collapsed]:duration-200 group-data-[state=expanded]:overflow-visible group-data-[state=expanded]:duration-0">
           <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
             <svg
               width="24"

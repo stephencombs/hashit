@@ -1,6 +1,9 @@
 import { stream } from "@durable-streams/client";
 import type { Spec } from "@json-render/core";
-import { buildReadStreamUrl, getDurableReadHeaders } from "~/lib/durable-streams";
+import {
+  buildReadStreamUrl,
+  getDurableReadHeaders,
+} from "~/lib/durable-streams";
 import { buildV2ChatStreamPath } from "./keys";
 
 type DurableChunk = {
@@ -17,9 +20,7 @@ type UiSpecEventPart = {
   specIndex: number;
 };
 
-function isSpecCompleteChunk(
-  chunk: DurableChunk,
-): chunk is DurableChunk & {
+function isSpecCompleteChunk(chunk: DurableChunk): chunk is DurableChunk & {
   type: "CUSTOM";
   name: "spec_complete";
   value: { spec: Spec; specIndex: number };

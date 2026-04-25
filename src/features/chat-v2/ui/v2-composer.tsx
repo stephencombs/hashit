@@ -11,7 +11,10 @@ import {
   type PromptInputMessage,
   usePromptInputAttachments,
 } from "~/components/ai-elements/prompt-input";
-import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_REQUEST } from "~/lib/attachment-schemas";
+import {
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS_PER_REQUEST,
+} from "~/lib/attachment-schemas";
 import { PaperclipIcon } from "lucide-react";
 
 type V2ComposerProps = {
@@ -31,12 +34,20 @@ export const V2Composer = memo(function V2Composer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const status = isStreaming ? "streaming" : isSubmitting ? "submitted" : "ready";
+  const status = isStreaming
+    ? "streaming"
+    : isSubmitting
+      ? "submitted"
+      : "ready";
 
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
       const trimmed = message.text.trim();
-      if ((trimmed.length === 0 && message.files.length === 0) || disabled || isSubmitting) {
+      if (
+        (trimmed.length === 0 && message.files.length === 0) ||
+        disabled ||
+        isSubmitting
+      ) {
         return;
       }
 

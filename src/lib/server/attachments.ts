@@ -65,7 +65,9 @@ export async function uploadAttachment(
   const container = await getAttachmentContainer();
   const blob = container.getBlockBlobClient(input.id);
   const metadata: Record<string, string> = {
-    [ORIGINAL_FILENAME_METADATA_KEY]: encodeURIComponent(input.originalFilename),
+    [ORIGINAL_FILENAME_METADATA_KEY]: encodeURIComponent(
+      input.originalFilename,
+    ),
   };
   if (input.threadId) {
     metadata[THREAD_ID_METADATA_KEY] = encodeURIComponent(input.threadId);

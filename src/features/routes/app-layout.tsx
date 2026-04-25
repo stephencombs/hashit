@@ -8,7 +8,10 @@ type AppLayoutProps = {
 
 export function AppLayout({ defaultSidebarOpen }: AppLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={defaultSidebarOpen} className="[--sidebar-width:280px]">
+    <SidebarProvider
+      defaultOpen={defaultSidebarOpen}
+      className="[--sidebar-width:280px]"
+    >
       <AppSidebar />
       <SidebarInset>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

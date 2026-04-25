@@ -78,7 +78,9 @@ function createEndTx(options: {
 
   const deleteReturning = vi
     .fn()
-    .mockResolvedValue(options.deleteSucceeded ? [{ threadId: "thread-1" }] : []);
+    .mockResolvedValue(
+      options.deleteSucceeded ? [{ threadId: "thread-1" }] : [],
+    );
   const del = vi.fn(() => ({
     where: vi.fn(() => ({
       returning: deleteReturning,
@@ -88,7 +90,9 @@ function createEndTx(options: {
   const selectLimit = vi
     .fn()
     .mockResolvedValue(
-      options.existingRunCount == null ? [] : [{ runCount: options.existingRunCount }],
+      options.existingRunCount == null
+        ? []
+        : [{ runCount: options.existingRunCount }],
     );
   const select = vi.fn(() => ({
     from: vi.fn(() => ({

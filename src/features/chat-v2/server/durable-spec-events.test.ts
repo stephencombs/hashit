@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => {
   const mockGetDurableReadHeaders = vi.fn(() => ({
     Authorization: "Bearer test",
   }));
-  const mockBuildV2ChatStreamPath = vi.fn((threadId: string) => `v2-chat/${threadId}`);
+  const mockBuildV2ChatStreamPath = vi.fn(
+    (threadId: string) => `v2-chat/${threadId}`,
+  );
 
   return {
     mockBuildReadStreamUrl,
@@ -46,7 +48,10 @@ describe("readV2UiSpecEventsByMessageId", () => {
           type: "CUSTOM",
           name: "spec_complete",
           value: {
-            spec: { root: "chart-1", elements: { "chart-1": { type: "BarChart" } } },
+            spec: {
+              root: "chart-1",
+              elements: { "chart-1": { type: "BarChart" } },
+            },
             specIndex: 0,
           },
         },
