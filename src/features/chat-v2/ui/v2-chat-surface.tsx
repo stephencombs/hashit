@@ -63,7 +63,7 @@ import {
   insertPendingV2Thread,
   setV2ThreadTitle,
 } from "../data/mutations";
-import type { V2RuntimeMessage } from "../server/runtime-message";
+import type { V2RuntimeMessage } from "../types";
 import { V2ChatConversation } from "./v2-chat-conversation";
 import { V2Composer } from "./v2-composer";
 

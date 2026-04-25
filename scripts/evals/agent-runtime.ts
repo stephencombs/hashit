@@ -68,7 +68,7 @@ async function main() {
         const [{ executeAutomationRun }, { listV2ThreadMessagesServer }] =
           await Promise.all([
             import("../../src/features/automations/server/automation-agent"),
-            import("../../src/features/chat-v2/server/messages.server"),
+            import("../../src/features/chat-v2/server"),
           ]);
         const result = await executeAutomationRun(automationPrompt!, undefined);
         assert.ok(result.threadId);

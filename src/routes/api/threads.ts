@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   createV2ThreadServer,
   listV2ThreadsServer,
-} from "~/features/chat-v2/server/threads.server";
+} from "~/features/chat-v2/server";
 import { z } from "zod";
 
 const createThreadBodySchema = z.object({

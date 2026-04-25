@@ -1,0 +1,134 @@
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { z } from "zod";
+import { db } from "~/db";
+import { v2Threads } from "~/db/schema";
+import { v2ThreadSchema, type V2Thread } from "../../types";
+
+const v2ThreadArraySchema = z.array(v2ThreadSchema);
+
+export type CreateV2ThreadInput = {
+  id?: string;
+  title?: string;
+};
+
+export type SetV2ThreadPinnedInput = {
+  threadId: string;
+  pinned: boolean;
+};
+
+export type SetV2ThreadTitleInput = {
+  threadId: string;
+  title: string;
+};
+
+export async function listV2ThreadsRepository(): Promise<Array<V2Thread>> {
+  const rows = await db
+    .select()
+    .from(v2Threads)
+    .where(isNull(v2Threads.deletedAt))
+    .orderBy(
+      sql`CASE WHEN ${v2Threads.pinnedAt} IS NOT NULL THEN 0 ELSE 1 END`,
+      desc(v2Threads.updatedAt),
+      desc(v2Threads.createdAt),
+      desc(v2Threads.id),
+    );
+
+  return v2ThreadArraySchema.parse(rows);
+}
+
+export async function getV2ThreadByIdRepository(
+  threadId: string,
+): Promise<V2Thread> {
+  const [row] = await db
+    .select()
+    .from(v2Threads)
+    .where(eq(v2Threads.id, threadId))
+    .limit(1);
+
+  if (!row || row.deletedAt) {
+    throw new Error("Thread not found");
+  }
+
+  return v2ThreadSchema.parse(row);
+}
+
+export async function createV2ThreadRepository(
+  input: CreateV2ThreadInput,
+): Promise<V2Thread> {
+  const now = new Date();
+  const nextId = input.id?.trim() || `v2_${nanoid()}`;
+  const nextTitle = input.title?.trim() || "Untitled";
+
+  const row = {
+    id: nextId,
+    title: nextTitle,
+    source: "v2-chat",
+    resumeOffset: null,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    pinnedAt: null,
+  };
+
+  await db.insert(v2Threads).values(row);
+  return v2ThreadSchema.parse(row);
+}
+
+export async function setV2ThreadPinnedRepository(
+  input: SetV2ThreadPinnedInput,
+): Promise<V2Thread> {
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      pinnedAt: input.pinned ? new Date() : null,
+    })
+    .where(and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)))
+    .returning();
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
+
+  return v2ThreadSchema.parse(row);
+}
+
+export async function setV2ThreadTitleRepository(
+  input: SetV2ThreadTitleInput,
+): Promise<V2Thread> {
+  const nextTitle = input.title.trim();
+  if (!nextTitle) {
+    throw new Error("Thread title is required");
+  }
+
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      title: nextTitle,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(v2Threads.id, input.threadId), isNull(v2Threads.deletedAt)))
+    .returning();
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
+
+  return v2ThreadSchema.parse(row);
+}
+
+export async function deleteV2ThreadRepository(
+  threadId: string,
+): Promise<void> {
+  const [row] = await db
+    .update(v2Threads)
+    .set({
+      deletedAt: new Date(),
+    })
+    .where(and(eq(v2Threads.id, threadId), isNull(v2Threads.deletedAt)))
+    .returning({ id: v2Threads.id });
+
+  if (!row) {
+    throw new Error("Thread not found");
+  }
+}

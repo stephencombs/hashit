@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { listV2ThreadMessagesServer } from "~/features/chat-v2/server/messages.server";
 import {
   deleteV2ThreadServer,
   getV2ThreadByIdServer,
+  listV2ThreadMessagesServer,
   setV2ThreadPinnedServer,
   setV2ThreadTitleServer,
-} from "~/features/chat-v2/server/threads.server";
+} from "~/features/chat-v2/server";
 
 export const Route = createFileRoute("/api/threads/$threadId")({
   server: {
